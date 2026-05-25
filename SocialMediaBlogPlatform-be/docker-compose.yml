@@ -1,0 +1,20 @@
+services:
+  user-postgres:
+    image: postgres:16-alpine
+    container_name: social-blog-user-postgres
+    environment:
+      POSTGRES_DB: social_blog_users
+      POSTGRES_USER: social_blog
+      POSTGRES_PASSWORD: social_blog
+    ports:
+      - "5432:5432"
+    volumes:
+      - user_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U social_blog -d social_blog_users"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  user_postgres_data:
