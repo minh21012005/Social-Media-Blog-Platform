@@ -1,11 +1,11 @@
-package com.socialmediablog.platform.services.user.domain.entity;
+package com.socialmediablog.platform.services.user.infrastructure.entity;
 
-import com.socialmediablog.platform.services.user.domain.EmailAddress;
-import com.socialmediablog.platform.services.user.domain.PasswordHash;
-import com.socialmediablog.platform.services.user.domain.Role;
-import com.socialmediablog.platform.services.user.domain.User;
-import com.socialmediablog.platform.services.user.domain.UserStatus;
-import com.socialmediablog.platform.services.user.domain.Username;
+import com.socialmediablog.platform.services.user.domain.vo.EmailAddress;
+import com.socialmediablog.platform.services.user.domain.vo.PasswordHash;
+import com.socialmediablog.platform.services.user.domain.model.Role;
+import com.socialmediablog.platform.services.user.domain.aggregate.User;
+import com.socialmediablog.platform.services.user.domain.model.UserStatus;
+import com.socialmediablog.platform.services.user.domain.vo.Username;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;

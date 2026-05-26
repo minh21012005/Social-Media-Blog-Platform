@@ -1,6 +1,6 @@
 package com.socialmediablog.platform.services.user.infrastructure.security;
 
-import com.socialmediablog.platform.services.user.application.port.PasswordHasher;
+import com.socialmediablog.platform.services.user.application.port.out.PasswordHasher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 

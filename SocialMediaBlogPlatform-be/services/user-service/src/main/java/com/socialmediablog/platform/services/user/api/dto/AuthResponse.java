@@ -1,6 +1,6 @@
 package com.socialmediablog.platform.services.user.api.dto;
 
-import com.socialmediablog.platform.services.user.application.AuthenticatedUser;
+import com.socialmediablog.platform.services.user.application.result.AuthenticatedUser;
 
 public record AuthResponse(
         String accessToken,

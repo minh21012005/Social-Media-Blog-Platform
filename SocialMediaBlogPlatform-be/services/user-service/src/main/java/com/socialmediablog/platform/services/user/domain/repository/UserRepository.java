@@ -1,8 +1,8 @@
-package com.socialmediablog.platform.services.user.application.port;
+package com.socialmediablog.platform.services.user.domain.repository;
 
-import com.socialmediablog.platform.services.user.domain.EmailAddress;
-import com.socialmediablog.platform.services.user.domain.User;
-import com.socialmediablog.platform.services.user.domain.Username;
+import com.socialmediablog.platform.services.user.domain.vo.EmailAddress;
+import com.socialmediablog.platform.services.user.domain.aggregate.User;
+import com.socialmediablog.platform.services.user.domain.vo.Username;
 import java.util.Optional;
 import java.util.UUID;
 

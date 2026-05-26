@@ -1,12 +1,15 @@
-package com.socialmediablog.platform.services.user.infrastructure.persistence;
+package com.socialmediablog.platform.services.user.infrastructure.adapter;
 
-import com.socialmediablog.platform.services.user.application.port.UserRepository;
-import com.socialmediablog.platform.services.user.domain.EmailAddress;
-import com.socialmediablog.platform.services.user.domain.User;
-import com.socialmediablog.platform.services.user.domain.Username;
+import com.socialmediablog.platform.services.user.domain.repository.UserRepository;
+import com.socialmediablog.platform.services.user.domain.vo.EmailAddress;
+import com.socialmediablog.platform.services.user.domain.aggregate.User;
+import com.socialmediablog.platform.services.user.domain.vo.Username;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+
+import com.socialmediablog.platform.services.user.infrastructure.entity.JpaUserEntity;
+import com.socialmediablog.platform.services.user.infrastructure.persistence.SpringDataJpaUserRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository

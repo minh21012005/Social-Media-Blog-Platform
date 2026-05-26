@@ -1,10 +1,10 @@
 package com.socialmediablog.platform.services.user.infrastructure.security;
 
 import com.socialmediablog.platform.common.security.JwtProperties;
-import com.socialmediablog.platform.services.user.application.IssuedToken;
-import com.socialmediablog.platform.services.user.application.port.AccessTokenIssuer;
-import com.socialmediablog.platform.services.user.domain.Role;
-import com.socialmediablog.platform.services.user.domain.User;
+import com.socialmediablog.platform.services.user.application.result.IssuedToken;
+import com.socialmediablog.platform.services.user.application.port.out.AccessTokenIssuer;
+import com.socialmediablog.platform.services.user.domain.model.Role;
+import com.socialmediablog.platform.services.user.domain.aggregate.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;

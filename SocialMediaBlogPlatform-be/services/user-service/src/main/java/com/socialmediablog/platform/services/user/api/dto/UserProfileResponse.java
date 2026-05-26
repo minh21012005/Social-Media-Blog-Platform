@@ -1,6 +1,6 @@
 package com.socialmediablog.platform.services.user.api.dto;
 
-import com.socialmediablog.platform.services.user.application.UserProfile;
+import com.socialmediablog.platform.services.user.application.result.UserProfile;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
