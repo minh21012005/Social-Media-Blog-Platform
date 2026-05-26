@@ -1,4 +1,4 @@
-package com.socialmediablog.platform.services.user.infrastructure.persistence;
+package com.socialmediablog.platform.services.user.domain.entity;
 
 import com.socialmediablog.platform.services.user.domain.EmailAddress;
 import com.socialmediablog.platform.services.user.domain.PasswordHash;
