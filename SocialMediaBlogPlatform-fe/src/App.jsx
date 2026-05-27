@@ -14,16 +14,22 @@ function loadAuth() {
 }
 
 function saveAuth(auth) {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth))
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+    accessToken: auth.accessToken,
+    tokenType: auth.tokenType,
+    expiresInSeconds: auth.expiresInSeconds,
+    user: auth.user,
+  }))
 }
 
 function clearAuth() {
   localStorage.removeItem(AUTH_STORAGE_KEY)
 }
 
-async function apiRequest(path, { method = 'GET', body, token } = {}) {
+async function apiRequest(path, { method = 'GET', body, token, credentials } = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
+    credentials,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -36,6 +42,13 @@ async function apiRequest(path, { method = 'GET', body, token } = {}) {
     throw new Error(payload?.message ?? 'Request failed')
   }
   return payload?.data
+}
+
+async function refreshAuth() {
+  return apiRequest('/api/v1/auth/refresh', {
+    method: 'POST',
+    credentials: 'include',
+  })
 }
 
 function useRoute() {
@@ -58,6 +71,7 @@ function useRoute() {
 function App() {
   const [route, navigate] = useRoute()
   const [auth, setAuth] = useState(loadAuth)
+  const [sessionStatus, setSessionStatus] = useState('idle')
 
   const session = useMemo(() => {
     if (!auth?.accessToken || !auth?.user) {
@@ -72,10 +86,75 @@ function App() {
     navigate('/')
   }
 
-  const handleLogout = () => {
+  const clearSession = () => {
     clearAuth()
     setAuth(null)
+  }
+
+  useEffect(() => {
+    const storedAuth = loadAuth()
+    if (!storedAuth?.accessToken) {
+      return
+    }
+
+    let active = true
+
+    async function verifySession() {
+      setSessionStatus('checking')
+      try {
+        const user = await apiRequest('/api/v1/users/me', { token: storedAuth.accessToken })
+        if (!active) {
+          return
+        }
+        const verifiedAuth = { ...storedAuth, user }
+        saveAuth(verifiedAuth)
+        setAuth(verifiedAuth)
+        setSessionStatus('ready')
+      } catch {
+        try {
+          const refreshed = await refreshAuth()
+          if (!active) {
+            return
+          }
+          saveAuth(refreshed)
+          setAuth(refreshed)
+          setSessionStatus('ready')
+        } catch {
+          if (!active) {
+            return
+          }
+          clearAuth()
+          setAuth(null)
+          setSessionStatus('idle')
+        }
+      }
+    }
+
+    verifySession()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    const currentAccessToken = auth?.accessToken
+    await apiRequest('/api/v1/auth/logout', {
+      method: 'POST',
+      token: currentAccessToken,
+      credentials: 'include',
+    }).catch(() => null)
+    clearSession()
     navigate('/')
+  }
+
+  const handleProfileUpdated = (user) => {
+    if (!auth) {
+      return
+    }
+    const nextAuth = { ...auth, user }
+    saveAuth(nextAuth)
+    setAuth(nextAuth)
   }
 
   if (route === '/login') {
@@ -86,7 +165,15 @@ function App() {
     return <AuthPage mode="register" onDone={handleAuthenticated} navigate={navigate} />
   }
 
-  return <HomePage session={session} onLogout={handleLogout} navigate={navigate} />
+  return (
+    <HomePage
+      session={session}
+      sessionStatus={sessionStatus}
+      onLogout={handleLogout}
+      onProfileUpdated={handleProfileUpdated}
+      navigate={navigate}
+    />
+  )
 }
 
 function AppHeader({ session, navigate, onLogout }) {
@@ -122,7 +209,7 @@ function AppHeader({ session, navigate, onLogout }) {
   )
 }
 
-function HomePage({ session, onLogout, navigate }) {
+function HomePage({ session, sessionStatus, onLogout, onProfileUpdated, navigate }) {
   return (
     <main>
       <AppHeader session={session} onLogout={onLogout} navigate={navigate} />
@@ -175,12 +262,12 @@ function HomePage({ session, onLogout, navigate }) {
 
         <aside className="side-panel">
           {session ? (
-            <div className="profile-panel">
-              <span className="avatar large">{session.user.displayName.slice(0, 1)}</span>
-              <h2>Welcome back, {session.user.displayName}</h2>
-              <p>Your account is active. The next milestone is publishing your first article.</p>
-              <button className="primary-button wide" type="button">Draft article</button>
-            </div>
+            <ProfilePanel
+              session={session}
+              sessionStatus={sessionStatus}
+              onProfileUpdated={onProfileUpdated}
+              onLogout={onLogout}
+            />
           ) : (
             <div className="profile-panel">
               <h2>Join the first circle of writers.</h2>
@@ -202,6 +289,119 @@ function HomePage({ session, onLogout, navigate }) {
         </aside>
       </section>
     </main>
+  )
+}
+
+function ProfilePanel({ session, sessionStatus, onProfileUpdated, onLogout }) {
+  const [displayName, setDisplayName] = useState(session.user.displayName)
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' })
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const updateProfile = async (event) => {
+    event.preventDefault()
+    setError('')
+    setMessage('')
+    setSaving(true)
+    try {
+      const user = await apiRequest('/api/v1/users/me', {
+        method: 'PATCH',
+        token: session.accessToken,
+        body: { displayName },
+      })
+      onProfileUpdated(user)
+      setDisplayName(user.displayName)
+      setMessage('Profile updated.')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const changePassword = async (event) => {
+    event.preventDefault()
+    setError('')
+    setMessage('')
+    setSaving(true)
+    try {
+      await apiRequest('/api/v1/users/me/change-password', {
+        method: 'POST',
+        token: session.accessToken,
+        credentials: 'include',
+        body: passwordForm,
+      })
+      setPasswordForm({ currentPassword: '', newPassword: '' })
+      setMessage('Password changed. Refresh sessions were revoked.')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="profile-panel">
+      <span className="avatar large">{session.user.displayName.slice(0, 1)}</span>
+      <h2>Welcome back, {session.user.displayName}</h2>
+      <p>
+        {sessionStatus === 'checking'
+          ? 'Checking your session...'
+          : 'Your account is active. The next milestone is publishing your first article.'}
+      </p>
+      <button className="primary-button wide" type="button">Draft article</button>
+
+      <form className="compact-form" onSubmit={updateProfile}>
+        <label>
+          Display name
+          <input
+            maxLength="80"
+            onChange={(event) => setDisplayName(event.target.value)}
+            required
+            type="text"
+            value={displayName}
+          />
+        </label>
+        <button className="ghost-button wide" disabled={saving} type="submit">Save profile</button>
+      </form>
+
+      <form className="compact-form" onSubmit={changePassword}>
+        <label>
+          Current password
+          <input
+            minLength="8"
+            maxLength="72"
+            onChange={(event) => setPasswordForm((current) => ({
+              ...current,
+              currentPassword: event.target.value,
+            }))}
+            required
+            type="password"
+            value={passwordForm.currentPassword}
+          />
+        </label>
+        <label>
+          New password
+          <input
+            minLength="8"
+            maxLength="72"
+            onChange={(event) => setPasswordForm((current) => ({
+              ...current,
+              newPassword: event.target.value,
+            }))}
+            required
+            type="password"
+            value={passwordForm.newPassword}
+          />
+        </label>
+        <button className="ghost-button wide" disabled={saving} type="submit">Change password</button>
+      </form>
+
+      {message && <p className="form-success">{message}</p>}
+      {error && <p className="form-error">{error}</p>}
+      <button className="ghost-button wide" type="button" onClick={onLogout}>Log out</button>
+    </div>
   )
 }
 
@@ -230,6 +430,7 @@ function AuthPage({ mode, onDone, navigate }) {
       const data = isRegister
         ? await apiRequest('/api/v1/auth/register', {
             method: 'POST',
+            credentials: 'include',
             body: {
               username: form.username,
               email: form.email,
@@ -239,6 +440,7 @@ function AuthPage({ mode, onDone, navigate }) {
           })
         : await apiRequest('/api/v1/auth/login', {
             method: 'POST',
+            credentials: 'include',
             body: {
               identifier: form.identifier,
               password: form.password,

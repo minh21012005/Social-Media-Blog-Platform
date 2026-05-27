@@ -12,7 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.NimbusReactiveJwtDecoder;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -32,7 +32,8 @@ public class GatewaySecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
-                        .pathMatchers("/api/v1/auth/**", "/actuator/health", "/actuator/info").permitAll()
+                        .pathMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()
                 )
@@ -42,8 +43,8 @@ public class GatewaySecurityConfig {
 
     @Bean
     ReactiveJwtDecoder reactiveJwtDecoder(JwtProperties jwtProperties) {
-        return NimbusReactiveJwtDecoder.withSecretKey(JwtSupport.hmacKey(jwtProperties.secret()))
-                .macAlgorithm(MacAlgorithm.HS256)
+        return NimbusReactiveJwtDecoder.withPublicKey(JwtSupport.rsaPublicKey(jwtProperties))
+                .signatureAlgorithm(SignatureAlgorithm.RS256)
                 .build();
     }
 

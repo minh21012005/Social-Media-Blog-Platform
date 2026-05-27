@@ -8,7 +8,7 @@ import com.socialmediablog.platform.services.user.domain.aggregate.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -42,7 +42,9 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
                 .claim("username", user.username().value())
                 .claim("roles", roles)
                 .build();
-        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+        JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256)
+                .keyId(jwtProperties.keyId())
+                .build();
         String tokenValue = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
         return new IssuedToken(tokenValue, "Bearer", jwtProperties.accessTokenTtl().toSeconds());
     }

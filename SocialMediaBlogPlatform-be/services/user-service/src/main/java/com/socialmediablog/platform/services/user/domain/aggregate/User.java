@@ -83,6 +83,18 @@ public class User {
         return new UserRegisteredEvent(UUID.randomUUID(), id, username.value(), email.value(), occurredAt);
     }
 
+    public boolean isActive() {
+        return status == UserStatus.ACTIVE;
+    }
+
+    public User updateProfile(String displayName, Instant now) {
+        return new User(id, username, email, passwordHash, displayName, status, roles, createdAt, now);
+    }
+
+    public User changePassword(PasswordHash passwordHash, Instant now) {
+        return new User(id, username, email, passwordHash, displayName, status, roles, createdAt, now);
+    }
+
     private static String normalizeDisplayName(String displayName, String fallback) {
         String normalized = displayName == null || displayName.isBlank() ? fallback : displayName.trim();
         if (normalized.length() > 80) {

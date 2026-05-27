@@ -2,7 +2,9 @@ package com.socialmediablog.platform.services.user.api.exception;
 
 import com.socialmediablog.platform.common.web.ApiResponse;
 import com.socialmediablog.platform.services.user.application.exception.DuplicateUserException;
+import com.socialmediablog.platform.services.user.application.exception.InactiveUserException;
 import com.socialmediablog.platform.services.user.application.exception.InvalidCredentialsException;
+import com.socialmediablog.platform.services.user.application.exception.InvalidRefreshTokenException;
 import com.socialmediablog.platform.services.user.application.exception.UserNotFoundException;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -33,9 +35,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.failure(exception.getMessage()));
     }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> invalidCredentials(InvalidCredentialsException exception) {
+    @ExceptionHandler({InvalidCredentialsException.class, InvalidRefreshTokenException.class})
+    public ResponseEntity<ApiResponse<Void>> invalidCredentials(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure(exception.getMessage()));
+    }
+
+    @ExceptionHandler(InactiveUserException.class)
+    public ResponseEntity<ApiResponse<Void>> inactiveUser(InactiveUserException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(exception.getMessage()));
     }
 
     @ExceptionHandler({JwtException.class, UserNotFoundException.class})

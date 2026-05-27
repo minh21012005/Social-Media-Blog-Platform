@@ -5,7 +5,7 @@ spring:
   application:
     name: user-service
   config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
   datasource:
     url: ${USER_SERVICE_DB_URL:jdbc:postgresql://localhost:5432/social_blog_users}
     username: ${USER_SERVICE_DB_USERNAME:social_blog}
@@ -23,7 +23,16 @@ spring:
 security:
   jwt:
     issuer: ${JWT_ISSUER:social-media-blog-platform}
-    secret: ${JWT_SECRET:local-development-jwt-secret-change-me-please}
+    key-id: ${JWT_KEY_ID:social-blog-local-dev}
+    private-key-path: ${JWT_PRIVATE_KEY_PATH:./config/jwt/dev-private-key.pem}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:./config/jwt/dev-public-key.pem}
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
+    refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:7d}
+  refresh-cookie:
+    name: ${REFRESH_TOKEN_COOKIE_NAME:refresh_token}
+    path: ${REFRESH_TOKEN_COOKIE_PATH:/api/v1/auth}
+    secure: ${REFRESH_TOKEN_COOKIE_SECURE:false}
+    same-site: ${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
 
 eureka:
   client:

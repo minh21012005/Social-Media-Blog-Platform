@@ -7,8 +7,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class JwtProperties {
 
     private String issuer = "social-media-blog-platform";
-    private String secret = "local-development-jwt-secret-change-me-please";
+    private String keyId = "social-blog-local-dev";
+    private String privateKey;
+    private String privateKeyPath;
+    private String publicKey;
+    private String publicKeyPath;
     private Duration accessTokenTtl = Duration.ofMinutes(60);
+    private Duration refreshTokenTtl = Duration.ofDays(7);
 
     public String issuer() {
         return issuer;
@@ -22,16 +27,64 @@ public class JwtProperties {
         this.issuer = issuer;
     }
 
-    public String secret() {
-        return secret;
+    public String keyId() {
+        return keyId;
     }
 
-    public String getSecret() {
-        return secret;
+    public String getKeyId() {
+        return keyId;
     }
 
-    public void setSecret(String secret) {
-        this.secret = secret;
+    public void setKeyId(String keyId) {
+        this.keyId = keyId;
+    }
+
+    public String privateKey() {
+        return privateKey;
+    }
+
+    public String getPrivateKey() {
+        return privateKey;
+    }
+
+    public void setPrivateKey(String privateKey) {
+        this.privateKey = privateKey;
+    }
+
+    public String privateKeyPath() {
+        return privateKeyPath;
+    }
+
+    public String getPrivateKeyPath() {
+        return privateKeyPath;
+    }
+
+    public void setPrivateKeyPath(String privateKeyPath) {
+        this.privateKeyPath = privateKeyPath;
+    }
+
+    public String publicKey() {
+        return publicKey;
+    }
+
+    public String getPublicKey() {
+        return publicKey;
+    }
+
+    public void setPublicKey(String publicKey) {
+        this.publicKey = publicKey;
+    }
+
+    public String publicKeyPath() {
+        return publicKeyPath;
+    }
+
+    public String getPublicKeyPath() {
+        return publicKeyPath;
+    }
+
+    public void setPublicKeyPath(String publicKeyPath) {
+        this.publicKeyPath = publicKeyPath;
     }
 
     public Duration accessTokenTtl() {
@@ -44,5 +97,17 @@ public class JwtProperties {
 
     public void setAccessTokenTtl(Duration accessTokenTtl) {
         this.accessTokenTtl = accessTokenTtl;
+    }
+
+    public Duration refreshTokenTtl() {
+        return refreshTokenTtl;
+    }
+
+    public Duration getRefreshTokenTtl() {
+        return refreshTokenTtl;
+    }
+
+    public void setRefreshTokenTtl(Duration refreshTokenTtl) {
+        this.refreshTokenTtl = refreshTokenTtl;
     }
 }

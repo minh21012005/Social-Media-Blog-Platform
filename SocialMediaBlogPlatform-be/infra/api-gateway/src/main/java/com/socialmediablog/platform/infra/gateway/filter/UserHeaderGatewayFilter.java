@@ -1,10 +1,12 @@
 package com.socialmediablog.platform.infra.gateway.filter;
 
+import com.socialmediablog.platform.common.security.GatewayUserHeaders;
 import com.socialmediablog.platform.common.security.JwtSupport;
 import java.util.Set;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -14,10 +16,6 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class UserHeaderGatewayFilter implements GlobalFilter, Ordered {
-
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String USERNAME_HEADER = "X-Username";
-    private static final String ROLES_HEADER = "X-Roles";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -39,23 +37,30 @@ public class UserHeaderGatewayFilter implements GlobalFilter, Ordered {
         Set<String> roles = JwtSupport.rolesFrom(jwt);
         ServerHttpRequest request = exchange.getRequest().mutate()
                 .headers(headers -> {
-                    headers.remove(USER_ID_HEADER);
-                    headers.remove(USERNAME_HEADER);
-                    headers.remove(ROLES_HEADER);
-                    headers.add(USER_ID_HEADER, jwt.getSubject());
-                    headers.add(USERNAME_HEADER, jwt.getClaimAsString("username"));
-                    headers.add(ROLES_HEADER, JwtSupport.rolesHeader(roles));
+                    headers.remove(HttpHeaders.AUTHORIZATION);
+                    headers.remove(GatewayUserHeaders.USER_ID);
+                    headers.remove(GatewayUserHeaders.USERNAME);
+                    headers.remove(GatewayUserHeaders.ROLES);
+                    headers.add(GatewayUserHeaders.USER_ID, jwt.getSubject());
+                    headers.add(GatewayUserHeaders.USERNAME, username(jwt));
+                    headers.add(GatewayUserHeaders.ROLES, JwtSupport.rolesHeader(roles));
                 })
                 .build();
         return exchange.mutate().request(request).build();
     }
 
+    private String username(Jwt jwt) {
+        String username = jwt.getClaimAsString("username");
+        return username == null ? "" : username;
+    }
+
     private ServerWebExchange stripUserHeaders(ServerWebExchange exchange) {
         ServerHttpRequest request = exchange.getRequest().mutate()
                 .headers(headers -> {
-                    headers.remove(USER_ID_HEADER);
-                    headers.remove(USERNAME_HEADER);
-                    headers.remove(ROLES_HEADER);
+                    headers.remove(HttpHeaders.AUTHORIZATION);
+                    headers.remove(GatewayUserHeaders.USER_ID);
+                    headers.remove(GatewayUserHeaders.USERNAME);
+                    headers.remove(GatewayUserHeaders.ROLES);
                 })
                 .build();
         return exchange.mutate().request(request).build();

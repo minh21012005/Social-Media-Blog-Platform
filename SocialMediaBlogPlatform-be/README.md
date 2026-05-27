@@ -7,7 +7,7 @@ Spring Boot and Spring Cloud microservices base for a Medium-like social bloggin
 - `infra/api-gateway`: edge gateway, CORS, JWT validation, service routes.
 - `infra/config-server`: centralized native configuration server.
 - `infra/discovery-server`: Eureka service discovery server.
-- `services/user-service`: user accounts, profiles, registration, login, JWT issuing.
+- `services/user-service`: user accounts, profiles, registration, login, JWT issuing, refresh tokens, logout.
 - `services/article-service`: article service placeholder for the next iteration.
 - `common/common-events`: shared event contracts.
 - `common/common-security`: shared JWT/current-user contracts.
@@ -31,6 +31,8 @@ Run infrastructure and services:
 .\mvnw.cmd -pl services/article-service -am spring-boot:run
 ```
 
+Local development values are provided in `.env`. Spring Boot imports this file automatically when services are started with Maven from this repository. The checked-in RSA keys under `config/jwt/` are for local development only.
+
 Default ports:
 
 - API Gateway: `8080`
@@ -44,12 +46,26 @@ Default ports:
 
 - `POST http://localhost:8080/api/v1/auth/register`
 - `POST http://localhost:8080/api/v1/auth/login`
+- `POST http://localhost:8080/api/v1/auth/refresh` using the HttpOnly `refresh_token` cookie.
+- `POST http://localhost:8080/api/v1/auth/logout` clears and revokes the HttpOnly `refresh_token` cookie.
 - `GET http://localhost:8080/api/v1/users/me` with `Authorization: Bearer <token>`
+- `PATCH http://localhost:8080/api/v1/users/me` with `Authorization: Bearer <token>`
+- `POST http://localhost:8080/api/v1/users/me/change-password` with `Authorization: Bearer <token>`
+
+Register, login, and refresh return the access token in the response body and set the refresh token as an HttpOnly cookie.
 
 ## Important Environment Variables
 
-- `JWT_SECRET`: shared HS256 secret, at least 32 bytes.
+- `JWT_PRIVATE_KEY_PATH`: RS256 private key path used only by `user-service`, default `./config/jwt/dev-private-key.pem`.
+- `JWT_PUBLIC_KEY_PATH`: RS256 public key path used by gateway/services to verify JWTs, default `./config/jwt/dev-public-key.pem`.
+- `JWT_KEY_ID`: JWT key id header value, default `social-blog-local-dev`.
 - `JWT_ISSUER`: token issuer, default `social-media-blog-platform`.
+- `JWT_ACCESS_TOKEN_TTL`: access token lifetime, default `15m`.
+- `JWT_REFRESH_TOKEN_TTL`: refresh token lifetime, default `7d`.
+- `REFRESH_TOKEN_COOKIE_NAME`: refresh cookie name, default `refresh_token`.
+- `REFRESH_TOKEN_COOKIE_PATH`: refresh cookie path, default `/api/v1/auth`.
+- `REFRESH_TOKEN_COOKIE_SECURE`: set `true` behind HTTPS, default `false` for local HTTP.
+- `REFRESH_TOKEN_COOKIE_SAME_SITE`: default `Lax`; use `None` with `Secure=true` for cross-site deployments.
 - `USER_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_users`.
 - `USER_SERVICE_DB_USERNAME`: default `social_blog`.
 - `USER_SERVICE_DB_PASSWORD`: default `social_blog`.
