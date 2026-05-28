@@ -8,9 +8,12 @@ Spring Boot and Spring Cloud microservices base for a Medium-like social bloggin
 - `infra/config-server`: centralized native configuration server.
 - `infra/discovery-server`: Eureka service discovery server.
 - `services/user-service`: user accounts, profiles, registration, login, JWT issuing, refresh tokens, logout.
-- `services/article-service`: article service placeholder for the next iteration.
+- `services/article-service`: article bounded context base.
+- `services/comment-service`: comment bounded context base.
+- `services/interaction-service`: likes/claps bounded context base.
+- `services/follower-service`: social graph bounded context base.
 - `common/common-events`: shared event contracts.
-- `common/common-security`: shared JWT/current-user contracts.
+- `common/common-security`: shared JWT, gateway header, and current-user contracts.
 - `common/common-web`: shared API response contracts.
 
 ## Local Runtime
@@ -29,6 +32,9 @@ Run infrastructure and services:
 .\mvnw.cmd -pl infra/api-gateway spring-boot:run
 .\mvnw.cmd -pl services/user-service -am spring-boot:run
 .\mvnw.cmd -pl services/article-service -am spring-boot:run
+.\mvnw.cmd -pl services/comment-service -am spring-boot:run
+.\mvnw.cmd -pl services/interaction-service -am spring-boot:run
+.\mvnw.cmd -pl services/follower-service -am spring-boot:run
 ```
 
 Local development values are provided in `.env`. Spring Boot imports this file automatically when services are started with Maven from this repository. The checked-in RSA keys under `config/jwt/` are for local development only.
@@ -40,6 +46,9 @@ Default ports:
 - Discovery Server: `8761`
 - User Service: `8081`
 - Article Service: `8082`
+- Comment Service: `8083`
+- Interaction Service: `8084`
+- Follower Service: `8085`
 - User PostgreSQL: `5432`
 
 ## Auth Endpoints
@@ -69,6 +78,10 @@ Register, login, and refresh return the access token in the response body and se
 - `USER_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_users`.
 - `USER_SERVICE_DB_USERNAME`: default `social_blog`.
 - `USER_SERVICE_DB_PASSWORD`: default `social_blog`.
+- `ARTICLE_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_articles`.
+- `COMMENT_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_comments`.
+- `INTERACTION_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_interactions`.
+- `FOLLOWER_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_followers`.
 - `CORS_ALLOWED_ORIGINS`: default `http://localhost:5173`.
 
 ## Checks

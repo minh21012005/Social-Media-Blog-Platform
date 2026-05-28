@@ -6,6 +6,19 @@ spring:
     name: article-service
   config:
     import: optional:file:.env[.properties],optional:file:../../.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  datasource:
+    url: ${ARTICLE_SERVICE_DB_URL:jdbc:postgresql://localhost:5432/social_blog_articles}
+    username: ${ARTICLE_SERVICE_DB_USERNAME:social_blog}
+    password: ${ARTICLE_SERVICE_DB_PASSWORD:social_blog}
+  flyway:
+    enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
 
 eureka:
   client:

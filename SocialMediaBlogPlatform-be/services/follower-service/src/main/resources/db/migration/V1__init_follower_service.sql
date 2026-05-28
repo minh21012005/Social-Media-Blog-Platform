@@ -1,0 +1,1 @@
+-- Base schema marker for follower-service. Feature tables will be added in later migrations.

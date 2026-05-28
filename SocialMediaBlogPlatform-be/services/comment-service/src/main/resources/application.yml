@@ -1,0 +1,32 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: comment-service
+  config:
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  datasource:
+    url: ${COMMENT_SERVICE_DB_URL:jdbc:postgresql://localhost:5432/social_blog_comments}
+    username: ${COMMENT_SERVICE_DB_USERNAME:social_blog}
+    password: ${COMMENT_SERVICE_DB_PASSWORD:social_blog}
+  flyway:
+    enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

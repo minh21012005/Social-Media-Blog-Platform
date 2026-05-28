@@ -19,6 +19,18 @@ spring:
               uri: lb://article-service
               predicates:
                 - Path=/api/v1/articles/**
+            - id: comment-service
+              uri: lb://comment-service
+              predicates:
+                - Path=/api/v1/comments/**
+            - id: interaction-service
+              uri: lb://interaction-service
+              predicates:
+                - Path=/api/v1/interactions/**
+            - id: follower-service
+              uri: lb://follower-service
+              predicates:
+                - Path=/api/v1/follows/**,/api/v1/followers/**
 
 security:
   jwt:

@@ -34,6 +34,9 @@
         <module>common/common-web</module>
         <module>services/user-service</module>
         <module>services/article-service</module>
+        <module>services/comment-service</module>
+        <module>services/interaction-service</module>
+        <module>services/follower-service</module>
     </modules>
 
     <dependencyManagement>

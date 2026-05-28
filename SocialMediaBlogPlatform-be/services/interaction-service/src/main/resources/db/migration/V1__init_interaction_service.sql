@@ -1,0 +1,1 @@
+-- Base schema marker for interaction-service. Feature tables will be added in later migrations.
