@@ -18,6 +18,8 @@ public class User {
     private final EmailAddress email;
     private final PasswordHash passwordHash;
     private final String displayName;
+    private final String bio;
+    private final String avatarUrl;
     private final UserStatus status;
     private final Set<Role> roles;
     private final Instant createdAt;
@@ -29,6 +31,8 @@ public class User {
             EmailAddress email,
             PasswordHash passwordHash,
             String displayName,
+            String bio,
+            String avatarUrl,
             UserStatus status,
             Set<Role> roles,
             Instant createdAt,
@@ -39,6 +43,8 @@ public class User {
         this.email = email;
         this.passwordHash = passwordHash;
         this.displayName = normalizeDisplayName(displayName, username.value());
+        this.bio = normalizeBio(bio);
+        this.avatarUrl = normalizeAvatarUrl(avatarUrl);
         this.status = status;
         this.roles = Set.copyOf(roles);
         this.createdAt = createdAt;
@@ -58,6 +64,8 @@ public class User {
                 email,
                 passwordHash,
                 displayName,
+                null,
+                null,
                 UserStatus.ACTIVE,
                 new LinkedHashSet<>(Set.of(Role.USER)),
                 now,
@@ -71,12 +79,14 @@ public class User {
             EmailAddress email,
             PasswordHash passwordHash,
             String displayName,
+            String bio,
+            String avatarUrl,
             UserStatus status,
             Set<Role> roles,
             Instant createdAt,
             Instant updatedAt
     ) {
-        return new User(id, username, email, passwordHash, displayName, status, roles, createdAt, updatedAt);
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, createdAt, updatedAt);
     }
 
     public UserRegisteredEvent registeredEvent(Instant occurredAt) {
@@ -87,18 +97,40 @@ public class User {
         return status == UserStatus.ACTIVE;
     }
 
-    public User updateProfile(String displayName, Instant now) {
-        return new User(id, username, email, passwordHash, displayName, status, roles, createdAt, now);
+    public User updateProfile(String displayName, String bio, String avatarUrl, Instant now) {
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, createdAt, now);
     }
 
     public User changePassword(PasswordHash passwordHash, Instant now) {
-        return new User(id, username, email, passwordHash, displayName, status, roles, createdAt, now);
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, createdAt, now);
     }
 
     private static String normalizeDisplayName(String displayName, String fallback) {
         String normalized = displayName == null || displayName.isBlank() ? fallback : displayName.trim();
         if (normalized.length() > 80) {
             throw new IllegalArgumentException("Display name must not exceed 80 characters");
+        }
+        return normalized;
+    }
+
+    private static String normalizeBio(String bio) {
+        if (bio == null || bio.isBlank()) {
+            return null;
+        }
+        String normalized = bio.trim();
+        if (normalized.length() > 500) {
+            throw new IllegalArgumentException("Bio must not exceed 500 characters");
+        }
+        return normalized;
+    }
+
+    private static String normalizeAvatarUrl(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.isBlank()) {
+            return null;
+        }
+        String normalized = avatarUrl.trim();
+        if (normalized.length() > 2048) {
+            throw new IllegalArgumentException("Avatar URL must not exceed 2048 characters");
         }
         return normalized;
     }
@@ -121,6 +153,14 @@ public class User {
 
     public String displayName() {
         return displayName;
+    }
+
+    public String bio() {
+        return bio;
+    }
+
+    public String avatarUrl() {
+        return avatarUrl;
     }
 
     public UserStatus status() {

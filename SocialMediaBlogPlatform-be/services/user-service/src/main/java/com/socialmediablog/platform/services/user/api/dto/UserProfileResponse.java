@@ -10,6 +10,8 @@ public record UserProfileResponse(
         String username,
         String email,
         String displayName,
+        String bio,
+        String avatarUrl,
         Set<String> roles,
         Instant createdAt
 ) {
@@ -20,6 +22,8 @@ public record UserProfileResponse(
                 userProfile.username(),
                 userProfile.email(),
                 userProfile.displayName(),
+                userProfile.bio(),
+                userProfile.avatarUrl(),
                 userProfile.roles(),
                 userProfile.createdAt()
         );

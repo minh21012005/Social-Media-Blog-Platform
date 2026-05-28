@@ -16,4 +16,11 @@
     <description>Shared web contracts for platform services.</description>
     <packaging>jar</packaging>
 
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+        </dependency>
+    </dependencies>
+
 </project>

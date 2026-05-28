@@ -1,5 +1,6 @@
 package com.socialmediablog.platform.services.user.infrastructure.entity;
 
+import com.socialmediablog.platform.common.web.entity.BaseEntity;
 import com.socialmediablog.platform.services.user.domain.vo.EmailAddress;
 import com.socialmediablog.platform.services.user.domain.vo.PasswordHash;
 import com.socialmediablog.platform.services.user.domain.model.Role;
@@ -11,10 +12,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -22,10 +21,7 @@ import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "app_users")
-public class JpaUserEntity {
-
-    @Id
-    private UUID id;
+public class JpaUserEntity extends BaseEntity {
 
     @Column(nullable = false, unique = true, length = 30)
     private String username;
@@ -39,6 +35,12 @@ public class JpaUserEntity {
     @Column(name = "display_name", nullable = false, length = 80)
     private String displayName;
 
+    @Column(length = 500)
+    private String bio;
+
+    @Column(name = "avatar_url", length = 2048)
+    private String avatarUrl;
+
     @Column(nullable = false, length = 20)
     private String status;
 
@@ -46,12 +48,6 @@ public class JpaUserEntity {
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role", nullable = false, length = 30)
     private Set<String> roles = new LinkedHashSet<>();
-
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
 
     protected JpaUserEntity() {
     }
@@ -62,20 +58,22 @@ public class JpaUserEntity {
             String email,
             String passwordHash,
             String displayName,
+            String bio,
+            String avatarUrl,
             String status,
             Set<String> roles,
-            Instant createdAt,
-            Instant updatedAt
+            java.time.Instant createdAt,
+            java.time.Instant updatedAt
     ) {
-        this.id = id;
+        super(id, createdAt, updatedAt);
         this.username = username;
         this.email = email;
         this.passwordHash = passwordHash;
         this.displayName = displayName;
+        this.bio = bio;
+        this.avatarUrl = avatarUrl;
         this.status = status;
         this.roles = new LinkedHashSet<>(roles);
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
     }
 
     public static JpaUserEntity fromDomain(User user) {
@@ -85,6 +83,8 @@ public class JpaUserEntity {
                 user.email().value(),
                 user.passwordHash().value(),
                 user.displayName(),
+                user.bio(),
+                user.avatarUrl(),
                 user.status().name(),
                 user.roles().stream().map(Role::name).collect(Collectors.toCollection(LinkedHashSet::new)),
                 user.createdAt(),
@@ -99,6 +99,8 @@ public class JpaUserEntity {
                 EmailAddress.of(email),
                 PasswordHash.of(passwordHash),
                 displayName,
+                bio,
+                avatarUrl,
                 UserStatus.valueOf(status),
                 roles.stream().map(Role::valueOf).collect(Collectors.toCollection(LinkedHashSet::new)),
                 createdAt,

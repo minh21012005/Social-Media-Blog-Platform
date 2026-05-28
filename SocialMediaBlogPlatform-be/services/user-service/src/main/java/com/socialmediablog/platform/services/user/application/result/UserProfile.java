@@ -12,6 +12,8 @@ public record UserProfile(
         String username,
         String email,
         String displayName,
+        String bio,
+        String avatarUrl,
         Set<String> roles,
         Instant createdAt
 ) {
@@ -22,6 +24,8 @@ public record UserProfile(
                 user.username().value(),
                 user.email().value(),
                 user.displayName(),
+                user.bio(),
+                user.avatarUrl(),
                 user.roles().stream().map(Role::name).collect(Collectors.toUnmodifiableSet()),
                 user.createdAt()
         );

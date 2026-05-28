@@ -165,7 +165,12 @@ public class AuthApplicationService implements
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new UserNotFoundException("User was not found"));
         ensureActive(user);
-        return UserProfile.from(userRepository.save(user.updateProfile(command.displayName(), clock.instant())));
+        return UserProfile.from(userRepository.save(user.updateProfile(
+                command.displayName(),
+                command.bio(),
+                command.avatarUrl(),
+                clock.instant()
+        )));
     }
 
     @Override

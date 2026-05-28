@@ -62,7 +62,9 @@ public class UserController {
                 "Profile updated successfully",
                 UserProfileResponse.from(updateCurrentUserUseCase.execute(new UpdateUserProfileCommand(
                         userId,
-                        request.displayName()
+                        request.displayName(),
+                        request.bio(),
+                        request.avatarUrl()
                 )))
         );
     }
