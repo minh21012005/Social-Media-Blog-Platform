@@ -12,13 +12,14 @@ Spring Boot and Spring Cloud microservices base for a Medium-like social bloggin
 - `services/comment-service`: comment bounded context base.
 - `services/interaction-service`: likes/claps bounded context base.
 - `services/follower-service`: social graph bounded context base.
+- `services/notification-service`: notification bounded context for event-driven notifications.
 - `common/common-events`: shared event contracts.
 - `common/common-security`: shared JWT, gateway header, and current-user contracts.
 - `common/common-web`: shared API response contracts.
 
 ## Local Runtime
 
-Start PostgreSQL:
+Start PostgreSQL. The local compose file creates one PostgreSQL instance with separate databases per service:
 
 ```powershell
 docker compose up -d
@@ -35,6 +36,7 @@ Run infrastructure and services:
 .\mvnw.cmd -pl services/comment-service -am spring-boot:run
 .\mvnw.cmd -pl services/interaction-service -am spring-boot:run
 .\mvnw.cmd -pl services/follower-service -am spring-boot:run
+.\mvnw.cmd -pl services/notification-service -am spring-boot:run
 ```
 
 Local development values are provided in `.env`. Spring Boot imports this file automatically when services are started with Maven from this repository. The checked-in RSA keys under `config/jwt/` are for local development only.
@@ -49,7 +51,8 @@ Default ports:
 - Comment Service: `8083`
 - Interaction Service: `8084`
 - Follower Service: `8085`
-- User PostgreSQL: `5432`
+- Notification Service: `8086`
+- PostgreSQL: `5432`
 
 ## Auth Endpoints
 
@@ -82,6 +85,10 @@ Register, login, and refresh return the access token in the response body and se
 - `COMMENT_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_comments`.
 - `INTERACTION_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_interactions`.
 - `FOLLOWER_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_followers`.
+- `NOTIFICATION_SERVICE_DB_URL`: default `jdbc:postgresql://localhost:5432/social_blog_notifications`.
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Cloudinary credentials used by user/article media storage adapters.
+- `CLOUDINARY_AVATAR_FOLDER`: default `social-blog/avatars`.
+- `CLOUDINARY_ARTICLE_FOLDER`: default `social-blog/articles`.
 - `CORS_ALLOWED_ORIGINS`: default `http://localhost:5173`.
 
 ## Checks

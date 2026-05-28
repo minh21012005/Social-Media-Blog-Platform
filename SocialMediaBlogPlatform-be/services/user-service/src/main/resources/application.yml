@@ -44,3 +44,9 @@ management:
     web:
       exposure:
         include: health,info
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  avatar-folder: ${CLOUDINARY_AVATAR_FOLDER:social-blog/avatars}

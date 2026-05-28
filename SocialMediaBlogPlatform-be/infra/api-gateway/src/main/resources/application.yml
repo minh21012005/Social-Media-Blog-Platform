@@ -31,6 +31,10 @@ spring:
               uri: lb://follower-service
               predicates:
                 - Path=/api/v1/follows/**,/api/v1/followers/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/v1/notifications/**
 
 security:
   jwt:

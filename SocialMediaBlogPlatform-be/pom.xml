@@ -37,6 +37,7 @@
         <module>services/comment-service</module>
         <module>services/interaction-service</module>
         <module>services/follower-service</module>
+        <module>services/notification-service</module>
     </modules>
 
     <dependencyManagement>

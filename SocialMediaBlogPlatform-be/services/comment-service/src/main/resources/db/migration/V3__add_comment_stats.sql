@@ -1,0 +1,9 @@
+CREATE TABLE comment_stats (
+    id UUID PRIMARY KEY,
+    comment_id UUID NOT NULL UNIQUE REFERENCES comments(id) ON DELETE CASCADE,
+    clap_count BIGINT NOT NULL DEFAULT 0,
+    reply_count BIGINT NOT NULL DEFAULT 0,
+    last_interaction_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);

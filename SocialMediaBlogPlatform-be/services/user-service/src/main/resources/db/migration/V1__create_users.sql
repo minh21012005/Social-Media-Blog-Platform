@@ -5,8 +5,8 @@ CREATE TABLE app_users (
     password_hash VARCHAR(100) NOT NULL,
     display_name VARCHAR(80) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE TABLE user_roles (
