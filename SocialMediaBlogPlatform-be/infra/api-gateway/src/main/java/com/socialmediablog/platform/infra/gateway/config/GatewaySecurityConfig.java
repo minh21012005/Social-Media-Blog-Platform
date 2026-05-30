@@ -2,6 +2,8 @@ package com.socialmediablog.platform.infra.gateway.config;
 
 import com.socialmediablog.platform.common.security.JwtProperties;
 import com.socialmediablog.platform.common.security.JwtSupport;
+import com.socialmediablog.platform.common.security.error.ReactiveSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.error.ErrorCode;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -30,6 +33,22 @@ public class GatewaySecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.UNAUTHORIZED,
+                                        ErrorCode.UNAUTHORIZED,
+                                        "Authentication is required"
+                                ))
+                        .accessDeniedHandler((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.FORBIDDEN,
+                                        ErrorCode.FORBIDDEN,
+                                        "Access is denied"
+                                ))
+                )
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()

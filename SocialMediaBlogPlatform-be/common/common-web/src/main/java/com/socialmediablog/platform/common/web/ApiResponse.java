@@ -1,16 +1,31 @@
 package com.socialmediablog.platform.common.web;
 
-public record ApiResponse<T>(boolean success, String message, T data) {
+import com.socialmediablog.platform.common.web.error.ErrorCode;
+
+public record ApiResponse<T>(boolean success, int status, String message, T data) {
 
     public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(true, null, data);
+        return success(200, null, data);
     }
 
     public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(true, message, data);
+        return success(200, message, data);
+    }
+
+    public static <T> ApiResponse<T> success(int status, String message, T data) {
+        return new ApiResponse<>(true, status, message, data);
     }
 
     public static ApiResponse<Void> failure(String message) {
-        return new ApiResponse<>(false, message, null);
+        return failure(ErrorCode.BAD_REQUEST, message);
+    }
+
+    public static ApiResponse<Void> failure(ErrorCode code, String message) {
+        return failure(code.defaultStatus(), code, message);
+    }
+
+    public static ApiResponse<Void> failure(int status, ErrorCode code, String message) {
+        String responseMessage = message == null || message.isBlank() ? code.defaultMessage() : message;
+        return new ApiResponse<>(false, status, responseMessage, null);
     }
 }
