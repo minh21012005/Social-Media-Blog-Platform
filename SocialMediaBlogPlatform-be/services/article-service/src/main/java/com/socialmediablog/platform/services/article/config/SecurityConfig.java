@@ -1,6 +1,7 @@
 package com.socialmediablog.platform.services.article.config;
 
 import com.socialmediablog.platform.common.security.GatewayHeaderAuthenticationFilter;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -25,6 +26,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(gatewayHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -34,5 +37,10 @@ public class SecurityConfig {
     @Bean
     GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter() {
         return new GatewayHeaderAuthenticationFilter();
+    }
+
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
     }
 }

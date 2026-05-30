@@ -58,6 +58,21 @@ public class JpaArticleRevisionEntity extends BaseEntity {
         this.createdBy = createdBy;
     }
 
+    public static JpaArticleRevisionEntity fromDomain(ArticleRevision revision) {
+        return new JpaArticleRevisionEntity(
+                revision.id(),
+                revision.articleId().value(),
+                revision.title(),
+                revision.summary(),
+                revision.content(),
+                revision.coverImageUrl(),
+                revision.version(),
+                revision.createdBy().value(),
+                revision.createdAt(),
+                revision.updatedAt()
+        );
+    }
+
     public ArticleRevision toDomain() {
         return ArticleRevision.restore(
                 id,

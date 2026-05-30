@@ -1,5 +1,6 @@
 package com.socialmediablog.platform.services.article.domain.aggregate;
 
+import com.socialmediablog.platform.services.article.domain.model.ArticleCategory;
 import com.socialmediablog.platform.services.article.domain.model.ArticleStatus;
 import com.socialmediablog.platform.services.article.domain.vo.ArticleId;
 import com.socialmediablog.platform.services.article.domain.vo.ArticleTitle;
@@ -16,6 +17,7 @@ public class Article {
     private final AuthorId authorId;
     private final ArticleTitle title;
     private final Slug slug;
+    private final ArticleCategory category;
     private final String summary;
     private final String content;
     private final String coverImageUrl;
@@ -30,6 +32,7 @@ public class Article {
             AuthorId authorId,
             ArticleTitle title,
             Slug slug,
+            ArticleCategory category,
             String summary,
             String content,
             String coverImageUrl,
@@ -43,6 +46,7 @@ public class Article {
         this.authorId = authorId;
         this.title = title;
         this.slug = slug;
+        this.category = category;
         this.summary = normalizeSummary(summary);
         this.content = normalizeContent(content);
         this.coverImageUrl = normalizeCoverImageUrl(coverImageUrl);
@@ -57,6 +61,7 @@ public class Article {
             AuthorId authorId,
             ArticleTitle title,
             Slug slug,
+            ArticleCategory category,
             String summary,
             String content,
             String coverImageUrl,
@@ -68,6 +73,7 @@ public class Article {
                 authorId,
                 title,
                 slug,
+                category,
                 summary,
                 content,
                 coverImageUrl,
@@ -84,6 +90,7 @@ public class Article {
             UUID authorId,
             String title,
             String slug,
+            ArticleCategory category,
             String summary,
             String content,
             String coverImageUrl,
@@ -98,6 +105,7 @@ public class Article {
                 AuthorId.of(authorId),
                 ArticleTitle.of(title),
                 Slug.of(slug),
+                category,
                 summary,
                 content,
                 coverImageUrl,
@@ -107,6 +115,60 @@ public class Article {
                 createdAt,
                 updatedAt
         );
+    }
+
+    public Article update(
+            AuthorId actorId,
+            ArticleTitle title,
+            Slug slug,
+            ArticleCategory category,
+            String summary,
+            String content,
+            String coverImageUrl,
+            Set<String> tags,
+            Instant now
+    ) {
+        ensureOwner(actorId);
+        if (status == ArticleStatus.ARCHIVED) {
+            throw new IllegalStateException("Archived articles cannot be updated");
+        }
+        return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl, status, publishedAt,
+                normalizedTags(tags), createdAt, now);
+    }
+
+    public Article publish(AuthorId actorId, Instant now) {
+        ensureOwner(actorId);
+        if (status == ArticleStatus.ARCHIVED) {
+            throw new IllegalStateException("Archived articles cannot be published");
+        }
+        validatePublishable();
+        return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
+                ArticleStatus.PUBLISHED, now, tags, createdAt, now);
+    }
+
+    public Article archive(AuthorId actorId, Instant now) {
+        ensureOwner(actorId);
+        if (status == ArticleStatus.ARCHIVED) {
+            return this;
+        }
+        return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
+                ArticleStatus.ARCHIVED, publishedAt, tags, createdAt, now);
+    }
+
+    public boolean isPublished() {
+        return status == ArticleStatus.PUBLISHED;
+    }
+
+    public void ensureOwner(AuthorId actorId) {
+        if (actorId == null || !authorId.equals(actorId)) {
+            throw new IllegalStateException("Only the article author can perform this action");
+        }
+    }
+
+    private void validatePublishable() {
+        if (summary == null || summary.isBlank()) {
+            throw new IllegalStateException("Published article summary is required");
+        }
     }
 
     private static String normalizeSummary(String summary) {
@@ -169,6 +231,10 @@ public class Article {
 
     public Slug slug() {
         return slug;
+    }
+
+    public ArticleCategory category() {
+        return category;
     }
 
     public String summary() {
