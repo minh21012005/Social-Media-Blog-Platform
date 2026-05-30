@@ -6,10 +6,13 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.socialmediablog.platform.common.security.JwtProperties;
 import com.socialmediablog.platform.common.security.JwtSupport;
 import com.socialmediablog.platform.common.security.GatewayHeaderAuthenticationFilter;
+import com.socialmediablog.platform.common.security.error.ServletSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.error.ErrorCode;
 import java.time.Clock;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -35,8 +38,24 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) ->
+                                ServletSecurityErrorResponseWriter.write(
+                                        response,
+                                        HttpStatus.UNAUTHORIZED,
+                                        ErrorCode.UNAUTHORIZED,
+                                        "Authentication is required"
+                                ))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                ServletSecurityErrorResponseWriter.write(
+                                        response,
+                                        HttpStatus.FORBIDDEN,
+                                        ErrorCode.FORBIDDEN,
+                                        "Access is denied"
+                                ))
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info", "/error").permitAll()
                         .requestMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/users/{userId}", "/api/v1/users/by-username/{username}", "/api/v1/users/public").permitAll()
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
