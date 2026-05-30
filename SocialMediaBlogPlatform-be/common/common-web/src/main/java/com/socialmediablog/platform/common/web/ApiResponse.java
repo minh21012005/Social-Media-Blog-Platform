@@ -2,7 +2,7 @@ package com.socialmediablog.platform.common.web;
 
 import com.socialmediablog.platform.common.web.error.ErrorCode;
 
-public record ApiResponse<T>(boolean success, int status, String message, T data) {
+public record ApiResponse<T>(int status, String message, T data) {
 
     public static <T> ApiResponse<T> success(T data) {
         return success(200, null, data);
@@ -13,7 +13,7 @@ public record ApiResponse<T>(boolean success, int status, String message, T data
     }
 
     public static <T> ApiResponse<T> success(int status, String message, T data) {
-        return new ApiResponse<>(true, status, message, data);
+        return new ApiResponse<>(status, message, data);
     }
 
     public static ApiResponse<Void> failure(String message) {
@@ -26,6 +26,6 @@ public record ApiResponse<T>(boolean success, int status, String message, T data
 
     public static ApiResponse<Void> failure(int status, ErrorCode code, String message) {
         String responseMessage = message == null || message.isBlank() ? code.defaultMessage() : message;
-        return new ApiResponse<>(false, status, responseMessage, null);
+        return new ApiResponse<>(status, responseMessage, null);
     }
 }

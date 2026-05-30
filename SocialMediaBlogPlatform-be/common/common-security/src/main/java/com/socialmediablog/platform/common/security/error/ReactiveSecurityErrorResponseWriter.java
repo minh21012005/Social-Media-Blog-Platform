@@ -31,7 +31,7 @@ public final class ReactiveSecurityErrorResponseWriter {
             return OBJECT_MAPPER.writeValueAsBytes(ApiResponse.failure(status, code, message));
         } catch (JsonProcessingException exception) {
             String fallback = """
-                    {"success":false,"status":%d,"message":"%s","data":null}
+                    {"status":%d,"message":"%s","data":null}
                     """.formatted(status, message);
             return fallback.getBytes(StandardCharsets.UTF_8);
         }
