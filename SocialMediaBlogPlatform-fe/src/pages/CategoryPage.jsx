@@ -1,12 +1,33 @@
-import { articles, categories } from '../data/editorial'
-import { ArticleCard } from '../components/ArticleCard'
+import { useEffect, useState } from 'react'
+import { ArticleList } from '../components/ArticleList'
 import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
+import { categories } from '../data/editorial'
+import { listPublishedArticles } from '../services/articles'
 
-export function CategoryPage({ slug }) {
+export function CategoryPage({ slug, navigate }) {
   const category = categories.find((item) => item.slug === slug) ?? categories[0]
-  const filtered = articles.filter((article) => article.categorySlug === category.slug)
-  const repeated = filtered.length > 1 ? [...filtered, ...filtered] : [...filtered, ...filtered]
+  const [state, setState] = useState({ loading: true, articles: [], error: '' })
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      try {
+        const page = await listPublishedArticles({ category: category.slug, size: 12 })
+        if (active) {
+          setState({ loading: false, articles: page.items, error: '' })
+        }
+      } catch (error) {
+        if (active) {
+          setState({ loading: false, articles: [], error: error.message })
+        }
+      }
+    }
+    load()
+    return () => {
+      active = false
+    }
+  }, [category.slug])
 
   return (
     <main>
@@ -16,12 +37,18 @@ export function CategoryPage({ slug }) {
       </section>
 
       <section className="category-grid page-container">
-        {repeated.map((article, index) => (
-          <ArticleCard article={article} key={`${article.id}-${index}`} />
-        ))}
+        {state.loading && <div className="loading-state">Loading {category.label.toLowerCase()} stories...</div>}
+        {state.error && <div className="empty-state"><h2>Could not load this category.</h2><p>{state.error}</p></div>}
+        {!state.loading && !state.error && (
+          <ArticleList
+            articles={state.articles}
+            emptyText="Once published, articles in this category will appear here."
+            navigate={navigate}
+          />
+        )}
       </section>
 
-      <Pagination />
+      {state.articles.length > 0 && <Pagination />}
       <SiteFooter />
     </main>
   )

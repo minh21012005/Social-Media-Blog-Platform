@@ -6,6 +6,7 @@ import com.socialmediablog.platform.services.user.application.command.RefreshSes
 import com.socialmediablog.platform.services.user.application.command.RegisterUserCommand;
 import com.socialmediablog.platform.services.user.application.command.ChangePasswordCommand;
 import com.socialmediablog.platform.services.user.application.command.UpdateUserProfileCommand;
+import com.socialmediablog.platform.services.user.application.command.UploadAvatarCommand;
 import com.socialmediablog.platform.services.user.application.exception.DuplicateUserException;
 import com.socialmediablog.platform.services.user.application.exception.InactiveUserException;
 import com.socialmediablog.platform.services.user.application.exception.InvalidCredentialsException;
@@ -13,21 +14,31 @@ import com.socialmediablog.platform.services.user.application.exception.InvalidR
 import com.socialmediablog.platform.services.user.application.exception.UserNotFoundException;
 import com.socialmediablog.platform.services.user.application.port.in.ChangePasswordUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.GetCurrentUserUseCase;
+import com.socialmediablog.platform.services.user.application.port.in.GetPublicUserByUsernameUseCase;
+import com.socialmediablog.platform.services.user.application.port.in.GetPublicUserProfileUseCase;
+import com.socialmediablog.platform.services.user.application.port.in.ListPublicUsersUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.LoginUserUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.LogoutUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.RefreshSessionUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.RegisterUserUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.UpdateCurrentUserUseCase;
+import com.socialmediablog.platform.services.user.application.port.in.UploadCurrentUserAvatarUseCase;
 import com.socialmediablog.platform.services.user.application.port.out.AccessTokenIssuer;
 import com.socialmediablog.platform.services.user.application.port.out.DomainEventPublisher;
 import com.socialmediablog.platform.services.user.application.port.out.PasswordHasher;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenGenerator;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenHasher;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenRepository;
+import com.socialmediablog.platform.services.user.application.port.out.UserMediaStorage;
 import com.socialmediablog.platform.services.user.application.result.AuthenticatedUser;
 import com.socialmediablog.platform.services.user.application.result.IssuedRefreshToken;
+import com.socialmediablog.platform.services.user.application.result.PublicUserProfile;
+import com.socialmediablog.platform.services.user.application.result.StoredUserMedia;
+import com.socialmediablog.platform.services.user.application.result.UploadedAvatar;
 import com.socialmediablog.platform.services.user.application.result.UserProfile;
 import com.socialmediablog.platform.services.user.domain.aggregate.RefreshToken;
+import com.socialmediablog.platform.services.user.domain.aggregate.UserMediaAsset;
+import com.socialmediablog.platform.services.user.domain.repository.UserMediaAssetRepository;
 import com.socialmediablog.platform.services.user.domain.repository.UserRepository;
 import com.socialmediablog.platform.services.user.domain.vo.EmailAddress;
 import com.socialmediablog.platform.services.user.domain.vo.PasswordHash;
@@ -37,6 +48,7 @@ import com.socialmediablog.platform.services.user.domain.vo.Username;
 import com.socialmediablog.platform.common.security.JwtProperties;
 import java.time.Instant;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +61,11 @@ public class AuthApplicationService implements
         LogoutUseCase,
         GetCurrentUserUseCase,
         UpdateCurrentUserUseCase,
-        ChangePasswordUseCase {
+        ChangePasswordUseCase,
+        GetPublicUserProfileUseCase,
+        GetPublicUserByUsernameUseCase,
+        ListPublicUsersUseCase,
+        UploadCurrentUserAvatarUseCase {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
@@ -57,6 +73,8 @@ public class AuthApplicationService implements
     private final AccessTokenIssuer accessTokenIssuer;
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final RefreshTokenHasher refreshTokenHasher;
+    private final UserMediaStorage userMediaStorage;
+    private final UserMediaAssetRepository userMediaAssetRepository;
     private final DomainEventPublisher domainEventPublisher;
     private final JwtProperties jwtProperties;
     private final Clock clock;
@@ -68,6 +86,8 @@ public class AuthApplicationService implements
             AccessTokenIssuer accessTokenIssuer,
             RefreshTokenGenerator refreshTokenGenerator,
             RefreshTokenHasher refreshTokenHasher,
+            UserMediaStorage userMediaStorage,
+            UserMediaAssetRepository userMediaAssetRepository,
             DomainEventPublisher domainEventPublisher,
             JwtProperties jwtProperties,
             Clock clock
@@ -78,6 +98,8 @@ public class AuthApplicationService implements
         this.accessTokenIssuer = accessTokenIssuer;
         this.refreshTokenGenerator = refreshTokenGenerator;
         this.refreshTokenHasher = refreshTokenHasher;
+        this.userMediaStorage = userMediaStorage;
+        this.userMediaAssetRepository = userMediaAssetRepository;
         this.domainEventPublisher = domainEventPublisher;
         this.jwtProperties = jwtProperties;
         this.clock = clock;
@@ -160,6 +182,36 @@ public class AuthApplicationService implements
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PublicUserProfile executePublic(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User was not found"));
+        ensureActive(user);
+        return PublicUserProfile.from(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicUserProfile executeByUsername(String username) {
+        User user = userRepository.findByUsername(Username.of(username))
+                .orElseThrow(() -> new UserNotFoundException("User was not found"));
+        ensureActive(user);
+        return PublicUserProfile.from(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PublicUserProfile> executeBatch(List<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        return userRepository.findAllById(userIds).stream()
+                .filter(User::isActive)
+                .map(PublicUserProfile::from)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public UserProfile execute(UpdateUserProfileCommand command) {
         User user = userRepository.findById(command.userId())
@@ -171,6 +223,39 @@ public class AuthApplicationService implements
                 command.avatarUrl(),
                 clock.instant()
         )));
+    }
+
+    @Override
+    @Transactional
+    public UploadedAvatar execute(UploadAvatarCommand command) {
+        User user = userRepository.findById(command.userId())
+                .orElseThrow(() -> new UserNotFoundException("User was not found"));
+        ensureActive(user);
+        validateAvatar(command);
+
+        StoredUserMedia storedMedia = userMediaStorage.uploadAvatar(
+                command.originalFilename(),
+                command.mimeType(),
+                command.content()
+        );
+        userMediaAssetRepository.save(UserMediaAsset.avatarUploaded(
+                user.id(),
+                storedMedia.providerPublicId(),
+                storedMedia.secureUrl(),
+                storedMedia.originalFilename(),
+                storedMedia.mimeType(),
+                storedMedia.sizeBytes(),
+                storedMedia.width(),
+                storedMedia.height(),
+                clock.instant()
+        ));
+        User updatedUser = userRepository.save(user.updateProfile(
+                user.displayName(),
+                user.bio(),
+                storedMedia.secureUrl(),
+                clock.instant()
+        ));
+        return new UploadedAvatar(UserProfile.from(updatedUser), storedMedia);
     }
 
     @Override
@@ -213,6 +298,19 @@ public class AuthApplicationService implements
     private void ensureActive(User user) {
         if (!user.isActive()) {
             throw new InactiveUserException("User account is not active");
+        }
+    }
+
+    private void validateAvatar(UploadAvatarCommand command) {
+        if (command.content() == null || command.content().length == 0) {
+            throw new IllegalArgumentException("Avatar file is required");
+        }
+        if (command.content().length > 5 * 1024 * 1024) {
+            throw new IllegalArgumentException("Avatar file must not exceed 5MB");
+        }
+        String mimeType = command.mimeType();
+        if (mimeType == null || !mimeType.startsWith("image/")) {
+            throw new IllegalArgumentException("Avatar file must be an image");
         }
     }
 }

@@ -68,6 +68,21 @@ public class ArticleRevision {
         );
     }
 
+    public static ArticleRevision snapshot(Article article, int version, AuthorId createdBy, Instant now) {
+        return new ArticleRevision(
+                UUID.randomUUID(),
+                article.id(),
+                article.title().value(),
+                article.summary(),
+                article.content(),
+                article.coverImageUrl(),
+                version,
+                createdBy,
+                now,
+                now
+        );
+    }
+
     public UUID id() {
         return id;
     }

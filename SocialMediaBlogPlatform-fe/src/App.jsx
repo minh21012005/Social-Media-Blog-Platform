@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { clearAuth, loadAuth, refreshAuth, saveAuth } from './services/auth'
 import { apiRequest } from './services/api'
 import { useRoute } from './hooks/useRoute'
@@ -7,6 +7,11 @@ import { HomePage } from './pages/HomePage'
 import { CategoryPage } from './pages/CategoryPage'
 import { AuthorPage } from './pages/AuthorPage'
 import { AuthPage } from './pages/AuthPage'
+import { ArticleDetailPage } from './pages/ArticleDetailPage'
+import { EditArticlePage } from './pages/EditArticlePage'
+import { MyArticlesPage } from './pages/MyArticlesPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { WritePage } from './pages/WritePage'
 import './App.css'
 
 function App() {
@@ -68,6 +73,25 @@ function App() {
     navigate('/')
   }
 
+  const requestWithAuth = useCallback(async (request) => {
+    if (!auth?.accessToken) {
+      navigate('/login')
+      throw new Error('Please log in first')
+    }
+
+    try {
+      return await request(auth.accessToken)
+    } catch (error) {
+      if (error.status !== 401) {
+        throw error
+      }
+      const refreshed = await refreshAuth()
+      saveAuth(refreshed)
+      setAuth(refreshed)
+      return request(refreshed.accessToken)
+    }
+  }, [auth, navigate])
+
   const handleLogout = async () => {
     await apiRequest('/api/v1/auth/logout', {
       method: 'POST',
@@ -80,6 +104,19 @@ function App() {
     navigate('/')
   }
 
+  const handleProfileUpdated = (user) => {
+    const updatedAuth = { ...auth, user }
+    saveAuth(updatedAuth)
+    setAuth(updatedAuth)
+  }
+
+  const protectedPage = (element) => {
+    if (!session) {
+      return <AuthPage mode="login" onDone={handleAuthenticated} navigate={navigate} />
+    }
+    return element
+  }
+
   if (route === '/login') {
     return <AuthPage mode="login" onDone={handleAuthenticated} navigate={navigate} />
   }
@@ -89,12 +126,41 @@ function App() {
   }
 
   const renderPage = () => {
-    if (route === '/author/sarah-jenkins') {
-      return <AuthorPage />
+    if (route === '/write') {
+      return protectedPage(<WritePage session={session} requestWithAuth={requestWithAuth} navigate={navigate} />)
+    }
+
+    if (route === '/articles/me') {
+      return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} />)
+    }
+
+    if (route === '/profile') {
+      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} />)
+    }
+
+    const editMatch = route.match(/^\/articles\/([^/]+)\/edit$/)
+    if (editMatch) {
+      return protectedPage(
+        <EditArticlePage
+          articleId={editMatch[1]}
+          session={session}
+          requestWithAuth={requestWithAuth}
+          navigate={navigate}
+        />
+      )
+    }
+
+    const articleMatch = route.match(/^\/articles\/([^/]+)$/)
+    if (articleMatch) {
+      return <ArticleDetailPage slug={articleMatch[1]} navigate={navigate} />
+    }
+
+    if (route.startsWith('/author/')) {
+      return <AuthorPage username={route.replace('/author/', '')} navigate={navigate} />
     }
 
     if (route.startsWith('/category/')) {
-      return <CategoryPage slug={route.replace('/category/', '')} />
+      return <CategoryPage slug={route.replace('/category/', '')} navigate={navigate} />
     }
 
     return <HomePage navigate={navigate} />

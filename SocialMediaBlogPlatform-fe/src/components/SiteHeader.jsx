@@ -27,7 +27,9 @@ export function SiteHeader({ session, navigate, onLogout }) {
         </button>
         {session ? (
           <>
-            <button className="pill-button" type="button" onClick={() => navigate('/author/sarah-jenkins')}>
+            <button className="text-button" type="button" onClick={() => navigate('/articles/me')}>My articles</button>
+            <button className="text-button" type="button" onClick={() => navigate('/write')}>Write</button>
+            <button className="pill-button" type="button" onClick={() => navigate('/profile')}>
               {session.user.displayName}
             </button>
             <button className="text-button" type="button" onClick={onLogout}>Log out</button>

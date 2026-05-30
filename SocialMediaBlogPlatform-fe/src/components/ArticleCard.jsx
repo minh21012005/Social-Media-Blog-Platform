@@ -1,10 +1,22 @@
-export function ArticleCard({ article, variant = 'grid' }) {
+export function ArticleCard({ article, variant = 'grid', navigate }) {
+  const open = (event) => {
+    if (!navigate || !article.path) {
+      return
+    }
+    event.preventDefault()
+    navigate(article.path)
+  }
+
   return (
     <article className={`article-card article-card-${variant}`}>
-      <img alt="" className="article-image" src={article.image} />
+      <a href={article.path || '#'} onClick={open}>
+        <img alt="" className="article-image" src={article.image} />
+      </a>
       <div className="article-body">
         <span className="article-category">{article.category}</span>
-        <h3>{article.title}</h3>
+        <h3>
+          <a href={article.path || '#'} onClick={open}>{article.title}</a>
+        </h3>
         <p>{article.summary}</p>
         <ArticleMeta article={article} />
       </div>
@@ -16,11 +28,11 @@ export function ArticleMeta({ article, withReadTime = false }) {
   return (
     <div className="article-meta">
       <strong>{article.author.name}</strong>
-      <span aria-hidden="true">•</span>
+      <span aria-hidden="true">&middot;</span>
       <span>{article.date}</span>
       {withReadTime && (
         <>
-          <span aria-hidden="true">•</span>
+          <span aria-hidden="true">&middot;</span>
           <span>{article.readTime}</span>
         </>
       )}

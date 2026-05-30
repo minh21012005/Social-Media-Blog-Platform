@@ -45,7 +45,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(exception.getMessage()));
     }
 
-    @ExceptionHandler({JwtException.class, UserNotFoundException.class})
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> notFound(UserNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.failure(exception.getMessage()));
+    }
+
+    @ExceptionHandler(JwtException.class)
     public ResponseEntity<ApiResponse<Void>> unauthorized(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure(exception.getMessage()));
     }

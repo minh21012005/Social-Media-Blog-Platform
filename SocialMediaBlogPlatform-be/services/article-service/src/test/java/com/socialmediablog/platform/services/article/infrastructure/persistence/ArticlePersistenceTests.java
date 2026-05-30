@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.socialmediablog.platform.services.article.domain.aggregate.Article;
+import com.socialmediablog.platform.services.article.domain.model.ArticleCategory;
 import com.socialmediablog.platform.services.article.domain.vo.ArticleTitle;
 import com.socialmediablog.platform.services.article.domain.vo.AuthorId;
 import com.socialmediablog.platform.services.article.domain.vo.Slug;
@@ -59,6 +60,7 @@ class ArticlePersistenceTests {
                 AuthorId.of(UUID.randomUUID()),
                 ArticleTitle.of("Clean DDD Base"),
                 Slug.of(slug),
+                ArticleCategory.DESIGN,
                 "Persistence mapping",
                 "Article content for persistence mapping.",
                 "https://cdn.example.com/cover.png",

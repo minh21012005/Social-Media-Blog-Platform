@@ -2,6 +2,7 @@ package com.socialmediablog.platform.services.article.infrastructure.entity;
 
 import com.socialmediablog.platform.common.web.entity.BaseEntity;
 import com.socialmediablog.platform.services.article.domain.aggregate.Article;
+import com.socialmediablog.platform.services.article.domain.model.ArticleCategory;
 import com.socialmediablog.platform.services.article.domain.model.ArticleStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -27,6 +28,9 @@ public class JpaArticleEntity extends BaseEntity {
 
     @Column(nullable = false, unique = true, length = 220)
     private String slug;
+
+    @Column(nullable = false, length = 30)
+    private String category;
 
     @Column(length = 500)
     private String summary;
@@ -56,6 +60,7 @@ public class JpaArticleEntity extends BaseEntity {
             UUID authorId,
             String title,
             String slug,
+            String category,
             String summary,
             String content,
             String coverImageUrl,
@@ -69,6 +74,7 @@ public class JpaArticleEntity extends BaseEntity {
         this.authorId = authorId;
         this.title = title;
         this.slug = slug;
+        this.category = category;
         this.summary = summary;
         this.content = content;
         this.coverImageUrl = coverImageUrl;
@@ -83,6 +89,7 @@ public class JpaArticleEntity extends BaseEntity {
                 article.authorId().value(),
                 article.title().value(),
                 article.slug().value(),
+                article.category().slug(),
                 article.summary(),
                 article.content(),
                 article.coverImageUrl(),
@@ -100,6 +107,7 @@ public class JpaArticleEntity extends BaseEntity {
                 authorId,
                 title,
                 slug,
+                ArticleCategory.fromSlug(category),
                 summary,
                 content,
                 coverImageUrl,

@@ -37,6 +37,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/users/{userId}", "/api/v1/users/by-username/{username}", "/api/v1/users/public").permitAll()
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .anyRequest().authenticated()
                 )
