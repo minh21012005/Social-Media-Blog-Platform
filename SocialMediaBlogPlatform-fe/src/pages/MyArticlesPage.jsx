@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { SiteFooter } from '../components/SiteFooter'
-import { archiveArticle, listMyArticles, publishArticle } from '../services/articles'
+import { archiveArticle, formatCount, listMyArticles, publishArticle } from '../services/articles'
 
-export function MyArticlesPage({ requestWithAuth, navigate }) {
+export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
   const [status, setStatus] = useState('')
   const [state, setState] = useState({ loading: true, articles: [], error: '' })
 
@@ -28,9 +28,13 @@ export function MyArticlesPage({ requestWithAuth, navigate }) {
   }, [requestWithAuth, status])
 
   const runAction = async (action) => {
-    await requestWithAuth(action)
-    const page = await requestWithAuth((token) => listMyArticles({ status }, token))
-    setState({ loading: false, articles: page.items, error: '' })
+    try {
+      await requestWithAuth(action)
+      const page = await requestWithAuth((token) => listMyArticles({ status }, token))
+      setState({ loading: false, articles: page.items, error: '' })
+    } catch (error) {
+      notify?.(friendlyArticleError(error.message), { title: 'Could not update article' })
+    }
   }
 
   return (
@@ -72,6 +76,7 @@ export function MyArticlesPage({ requestWithAuth, navigate }) {
                 <span className="article-category">{article.status}</span>
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
+                <span className="dashboard-stat">{formatCount(article.stats?.viewCount)} views</span>
               </div>
               <div className="row-actions">
                 <button type="button" onClick={() => navigate(`/articles/${article.id}/edit`)}>Edit</button>
@@ -89,4 +94,14 @@ export function MyArticlesPage({ requestWithAuth, navigate }) {
       <SiteFooter />
     </main>
   )
+}
+
+function friendlyArticleError(message) {
+  if (!message) {
+    return 'Please review the article and try again.'
+  }
+  if (message.toLowerCase().includes('cover image')) {
+    return 'Add a cover image before publishing this story.'
+  }
+  return message
 }

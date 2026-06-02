@@ -3,6 +3,7 @@ import { clearAuth, loadAuth, refreshAuth, saveAuth } from './services/auth'
 import { apiRequest } from './services/api'
 import { useRoute } from './hooks/useRoute'
 import { SiteHeader } from './components/SiteHeader'
+import { ToastStack } from './components/ToastStack'
 import { HomePage } from './pages/HomePage'
 import { CategoryPage } from './pages/CategoryPage'
 import { AuthorPage } from './pages/AuthorPage'
@@ -18,6 +19,7 @@ function App() {
   const [route, navigate] = useRoute()
   const [auth, setAuth] = useState(loadAuth)
   const [authChecking, setAuthChecking] = useState(() => Boolean(loadAuth()?.accessToken))
+  const [toasts, setToasts] = useState([])
 
   const session = useMemo(() => {
     if (!auth?.accessToken || !auth?.user) {
@@ -77,6 +79,26 @@ function App() {
     setAuth(authResponse)
     navigate('/')
   }
+
+  const notify = useCallback((message, options = {}) => {
+    const id = crypto.randomUUID()
+    setToasts((current) => [
+      ...current,
+      {
+        id,
+        message,
+        title: options.title,
+        type: options.type || 'error',
+      },
+    ])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, options.duration || 5200)
+  }, [])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id))
+  }, [])
 
   const requestWithAuth = useCallback(async (request) => {
     if (!auth?.accessToken) {
@@ -142,15 +164,15 @@ function App() {
 
   const renderPage = () => {
     if (route === '/write') {
-      return protectedPage(<WritePage session={session} requestWithAuth={requestWithAuth} navigate={navigate} />)
+      return protectedPage(<WritePage session={session} requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
     if (route === '/articles/me') {
-      return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} />)
+      return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
     if (route === '/profile') {
-      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} />)
+      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
     }
 
     const editMatch = route.match(/^\/articles\/([^/]+)\/edit$/)
@@ -161,6 +183,7 @@ function App() {
           session={session}
           requestWithAuth={requestWithAuth}
           navigate={navigate}
+          notify={notify}
         />
       )
     }
@@ -184,6 +207,7 @@ function App() {
   return (
     <>
       <SiteHeader session={session} navigate={navigate} onLogout={handleLogout} />
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
       {renderPage()}
     </>
   )

@@ -7,13 +7,15 @@ import { listPublishedArticles } from '../services/articles'
 
 export function CategoryPage({ slug, navigate }) {
   const category = categories.find((item) => item.slug === slug) ?? categories[0]
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState('latest')
   const [state, setState] = useState({ loading: true, articles: [], error: '' })
 
   useEffect(() => {
     let active = true
     async function load() {
       try {
-        const page = await listPublishedArticles({ category: category.slug, size: 12 })
+        const page = await listPublishedArticles({ category: category.slug, q: query, sort, size: 12 })
         if (active) {
           setState({ loading: false, articles: page.items, error: '' })
         }
@@ -27,13 +29,28 @@ export function CategoryPage({ slug, navigate }) {
     return () => {
       active = false
     }
-  }, [category.slug])
+  }, [category.slug, query, sort])
 
   return (
     <main>
       <section className="category-hero">
         <h1>{category.label}</h1>
         <p>Exploring the latest trends, deep dives, and expert perspectives in {category.label.toLowerCase()}.</p>
+      </section>
+
+      <section className="category-controls page-container">
+        <input
+          aria-label={`Search ${category.label} stories`}
+          placeholder={`Search ${category.label.toLowerCase()} stories`}
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <select aria-label="Sort stories" value={sort} onChange={(event) => setSort(event.target.value)}>
+          <option value="latest">Latest</option>
+          <option value="views">Most viewed</option>
+          <option value="popular">Popular</option>
+        </select>
       </section>
 
       <section className="category-grid page-container">
