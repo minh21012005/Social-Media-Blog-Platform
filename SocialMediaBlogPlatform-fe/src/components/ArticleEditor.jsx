@@ -32,6 +32,10 @@ export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave,
   const [fieldErrors, setFieldErrors] = useState({})
 
   const tags = useMemo(() => parseTags(form.tags), [form.tags])
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.slug === form.category),
+    [form.category],
+  )
 
   const payload = useMemo(() => ({
     title: form.title,
@@ -184,20 +188,35 @@ export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave,
           {fieldErrors.title && <span className="field-error">{fieldErrors.title}</span>}
         </label>
         <div className="editor-row">
-          <label>
-            Category
-            <select aria-invalid={Boolean(fieldErrors.category)} value={form.category} onChange={update('category')}>
+          <div className="editor-field">
+            <div className="editor-label-row">
+              <label htmlFor="article-category">Category</label>
+              {selectedCategory?.description && (
+                <span className="category-info">
+                  <button aria-label={`About ${selectedCategory.label}`} type="button">?</button>
+                  <span className="category-tooltip" role="tooltip">
+                    {selectedCategory.description}
+                  </span>
+                </span>
+              )}
+            </div>
+            <select
+              aria-invalid={Boolean(fieldErrors.category)}
+              id="article-category"
+              value={form.category}
+              onChange={update('category')}
+            >
               {categories.map((category) => (
                 <option key={category.slug} value={category.slug}>{category.label}</option>
               ))}
             </select>
             {fieldErrors.category && <span className="field-error">{fieldErrors.category}</span>}
-          </label>
+          </div>
           <label>
             Tags
             <input
               aria-invalid={Boolean(fieldErrors.tags)}
-              placeholder="microservices, spring boot"
+              placeholder="ai, writing, productivity"
               value={form.tags}
               onChange={update('tags')}
             />

@@ -5,10 +5,10 @@ import slowCoffee from '../assets/editorial/slow-coffee.png'
 import sarahJenkins from '../assets/editorial/sarah-jenkins.png'
 
 export const categories = [
-  { label: 'Design', slug: 'design' },
-  { label: 'Culture', slug: 'culture' },
-  { label: 'Technology', slug: 'technology' },
-  { label: 'Lifestyle', slug: 'lifestyle' },
+  { label: 'Design', slug: 'design', description: 'UI, UX, typography, visual systems' },
+  { label: 'Culture', slug: 'culture', description: 'Society, media, books, internet culture' },
+  { label: 'Technology', slug: 'technology', description: 'Software, AI, engineering, digital tools' },
+  { label: 'Lifestyle', slug: 'lifestyle', description: 'Productivity, work, learning, wellness' },
 ]
 
 export const authors = {
