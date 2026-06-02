@@ -37,7 +37,13 @@ export function WritePage({ session, requestWithAuth, navigate }) {
         <strong>{session.user.displayName}</strong>
       </section>
       <section className="page-container writer-section">
-        <ArticleEditor onSave={save} onPublish={saveAndPublish} saving={saving} token={session.accessToken} />
+        <ArticleEditor
+          onSave={save}
+          onPublish={saveAndPublish}
+          requestWithAuth={requestWithAuth}
+          saving={saving}
+          token={session.accessToken}
+        />
       </section>
       <SiteFooter />
     </main>

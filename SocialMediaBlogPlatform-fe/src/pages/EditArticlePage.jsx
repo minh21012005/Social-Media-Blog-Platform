@@ -69,6 +69,7 @@ export function EditArticlePage({ articleId, session, requestWithAuth, navigate 
             initialArticle={state.article}
             onSave={save}
             onPublish={saveAndPublish}
+            requestWithAuth={requestWithAuth}
             saving={saving}
             token={session.accessToken}
           />
