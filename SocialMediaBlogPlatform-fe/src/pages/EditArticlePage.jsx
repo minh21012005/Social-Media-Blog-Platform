@@ -3,7 +3,7 @@ import { ArticleEditor } from '../components/ArticleEditor'
 import { SiteFooter } from '../components/SiteFooter'
 import { listMyArticles, publishArticle, updateArticle } from '../services/articles'
 
-export function EditArticlePage({ articleId, session, requestWithAuth, navigate, notify }) {
+export function EditArticlePage({ articleId, requestWithAuth, navigate, notify }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [saving, setSaving] = useState(false)
 
@@ -72,7 +72,6 @@ export function EditArticlePage({ articleId, session, requestWithAuth, navigate,
             requestWithAuth={requestWithAuth}
             saving={saving}
             notify={notify}
-            token={session.accessToken}
           />
         )}
       </section>

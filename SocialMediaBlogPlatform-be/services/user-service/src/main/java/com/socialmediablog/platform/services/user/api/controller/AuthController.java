@@ -15,13 +15,11 @@ import com.socialmediablog.platform.services.user.application.port.in.RefreshSes
 import com.socialmediablog.platform.services.user.application.command.RegisterUserCommand;
 import com.socialmediablog.platform.services.user.application.port.in.RegisterUserUseCase;
 import com.socialmediablog.platform.services.user.application.result.AuthenticatedUser;
-import com.socialmediablog.platform.services.user.config.RefreshTokenCookieProperties;
+import com.socialmediablog.platform.services.user.config.RefreshTokenCookieFactory;
 import jakarta.validation.Valid;
-import java.time.Duration;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -38,20 +36,20 @@ public class AuthController {
     private final LoginUserUseCase loginUserUseCase;
     private final RefreshSessionUseCase refreshSessionUseCase;
     private final LogoutUseCase logoutUseCase;
-    private final RefreshTokenCookieProperties cookieProperties;
+    private final RefreshTokenCookieFactory refreshTokenCookies;
 
     public AuthController(
             RegisterUserUseCase registerUserUseCase,
             LoginUserUseCase loginUserUseCase,
             RefreshSessionUseCase refreshSessionUseCase,
             LogoutUseCase logoutUseCase,
-            RefreshTokenCookieProperties cookieProperties
+            RefreshTokenCookieFactory refreshTokenCookies
     ) {
         this.registerUserUseCase = registerUserUseCase;
         this.loginUserUseCase = loginUserUseCase;
         this.refreshSessionUseCase = refreshSessionUseCase;
         this.logoutUseCase = logoutUseCase;
-        this.cookieProperties = cookieProperties;
+        this.refreshTokenCookies = refreshTokenCookies;
     }
 
     @PostMapping("/register")
@@ -93,7 +91,7 @@ public class AuthController {
             logoutUseCase.execute(new LogoutCommand(UUID.fromString(currentUser.id()), refreshToken));
         }
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookies.clear().toString())
                 .body(ApiResponse.success("Logged out successfully", null));
     }
 
@@ -103,28 +101,8 @@ public class AuthController {
             AuthenticatedUser authenticatedUser
     ) {
         return ResponseEntity.status(status)
-                .header(HttpHeaders.SET_COOKIE, refreshCookie(authenticatedUser).toString())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookies.issue(authenticatedUser).toString())
                 .body(ApiResponse.success(message, AuthResponse.from(authenticatedUser)));
-    }
-
-    private ResponseCookie refreshCookie(AuthenticatedUser authenticatedUser) {
-        return ResponseCookie.from(cookieProperties.name(), authenticatedUser.refreshToken().refreshToken())
-                .httpOnly(true)
-                .secure(cookieProperties.secure())
-                .sameSite(cookieProperties.sameSite())
-                .path(cookieProperties.path())
-                .maxAge(Duration.ofSeconds(authenticatedUser.refreshToken().expiresInSeconds()))
-                .build();
-    }
-
-    private ResponseCookie clearRefreshCookie() {
-        return ResponseCookie.from(cookieProperties.name(), "")
-                .httpOnly(true)
-                .secure(cookieProperties.secure())
-                .sameSite(cookieProperties.sameSite())
-                .path(cookieProperties.path())
-                .maxAge(Duration.ZERO)
-                .build();
     }
 
     private String requireRefreshToken(String refreshToken) {

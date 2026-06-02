@@ -79,11 +79,7 @@ function App() {
         setAuth(verifiedAuth)
       } catch {
         try {
-          const refreshed = await restoreSessionFromRefresh()
-          if (!active) {
-            return
-          }
-          setAuth(refreshed)
+          await restoreSessionFromRefresh()
         } catch {
           if (!active) {
             return
@@ -226,7 +222,7 @@ function App() {
 
   const renderPage = () => {
     if (route === '/write') {
-      return protectedPage(<WritePage session={session} requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
+      return protectedPage(<WritePage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
     if (route === '/articles/me') {
@@ -242,7 +238,6 @@ function App() {
       return protectedPage(
         <EditArticlePage
           articleId={editMatch[1]}
-          session={session}
           requestWithAuth={requestWithAuth}
           navigate={navigate}
           notify={notify}

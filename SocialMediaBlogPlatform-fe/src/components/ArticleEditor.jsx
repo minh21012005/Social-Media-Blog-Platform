@@ -18,7 +18,7 @@ const maxTagLength = 50
 const maxContentImages = 10
 const maxContentLength = 50000
 
-export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, onSave, onPublish, notify }) {
+export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave, onPublish, notify }) {
   const contentRef = useRef(null)
   const [form, setForm] = useState(() => ({
     ...emptyArticle,
@@ -56,9 +56,7 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
     setFieldErrors((current) => ({ ...current, coverImageUrl: '' }))
     setUploading(true)
     try {
-      const media = requestWithAuth
-        ? await requestWithAuth((accessToken) => uploadArticleMedia(file, accessToken))
-        : await uploadArticleMedia(file, token)
+      const media = await requestWithAuth((accessToken) => uploadArticleMedia(file, accessToken))
       setForm((current) => ({ ...current, coverImageUrl: media.secureUrl }))
     } catch (requestError) {
       showRequestError(requestError)
@@ -78,9 +76,7 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
     }
     setContentImageUploading(true)
     try {
-      const media = requestWithAuth
-        ? await requestWithAuth((accessToken) => uploadArticleMedia(file, accessToken))
-        : await uploadArticleMedia(file, token)
+      const media = await requestWithAuth((accessToken) => uploadArticleMedia(file, accessToken))
       const imageMarkdown = `![Article image](${media.secureUrl})`
       const textarea = contentRef.current
       const start = textarea?.selectionStart ?? form.content.length

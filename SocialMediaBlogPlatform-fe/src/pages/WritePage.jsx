@@ -3,7 +3,7 @@ import { ArticleEditor } from '../components/ArticleEditor'
 import { SiteFooter } from '../components/SiteFooter'
 import { createArticle, publishArticle } from '../services/articles'
 
-export function WritePage({ session, requestWithAuth, navigate, notify }) {
+export function WritePage({ requestWithAuth, navigate, notify }) {
   const [saving, setSaving] = useState(false)
 
   const save = async (payload) => {
@@ -42,7 +42,6 @@ export function WritePage({ session, requestWithAuth, navigate, notify }) {
           requestWithAuth={requestWithAuth}
           saving={saving}
           notify={notify}
-          token={session.accessToken}
         />
       </section>
       <SiteFooter />
