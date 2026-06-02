@@ -3,7 +3,7 @@ import { ArticleMeta } from '../components/ArticleCard'
 import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
-import { getArticleBySlug, recordArticleView } from '../services/articles'
+import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
 
 export function ArticleDetailPage({ slug, navigate }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
@@ -56,6 +56,8 @@ export function ArticleDetailPage({ slug, navigate }) {
             <span>{article.category}</span>
             <span aria-hidden="true">&middot;</span>
             <span>{article.readTime}</span>
+            <span aria-hidden="true">&middot;</span>
+            <span>{formatCount(article.stats?.viewCount)} views</span>
           </div>
           <h1>{article.title}</h1>
           <p>{article.summary}</p>

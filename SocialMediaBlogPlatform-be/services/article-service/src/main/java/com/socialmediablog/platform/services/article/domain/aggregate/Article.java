@@ -10,8 +10,14 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Article {
+
+    private static final int MAX_CONTENT_IMAGES = 10;
+    private static final int MAX_CONTENT_LENGTH = 50_000;
+    private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*]\\([^\\s)]+\\)");
 
     private final ArticleId id;
     private final AuthorId authorId;
@@ -23,6 +29,8 @@ public class Article {
     private final String coverImageUrl;
     private final ArticleStatus status;
     private final Instant publishedAt;
+    private final Integer featuredRank;
+    private final Integer editorPickRank;
     private final Set<String> tags;
     private final Instant createdAt;
     private final Instant updatedAt;
@@ -38,6 +46,8 @@ public class Article {
             String coverImageUrl,
             ArticleStatus status,
             Instant publishedAt,
+            Integer featuredRank,
+            Integer editorPickRank,
             Set<String> tags,
             Instant createdAt,
             Instant updatedAt
@@ -52,6 +62,8 @@ public class Article {
         this.coverImageUrl = normalizeCoverImageUrl(coverImageUrl);
         this.status = status;
         this.publishedAt = publishedAt;
+        this.featuredRank = normalizeRank(featuredRank, "featured rank");
+        this.editorPickRank = normalizeRank(editorPickRank, "editor pick rank");
         this.tags = Set.copyOf(tags == null ? Set.of() : tags);
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -79,6 +91,8 @@ public class Article {
                 coverImageUrl,
                 ArticleStatus.DRAFT,
                 null,
+                null,
+                null,
                 normalizedTags(tags),
                 now,
                 now
@@ -96,6 +110,8 @@ public class Article {
             String coverImageUrl,
             ArticleStatus status,
             Instant publishedAt,
+            Integer featuredRank,
+            Integer editorPickRank,
             Set<String> tags,
             Instant createdAt,
             Instant updatedAt
@@ -111,6 +127,8 @@ public class Article {
                 coverImageUrl,
                 status,
                 publishedAt,
+                featuredRank,
+                editorPickRank,
                 normalizedTags(tags),
                 createdAt,
                 updatedAt
@@ -133,6 +151,7 @@ public class Article {
             throw new IllegalStateException("Archived articles cannot be updated");
         }
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl, status, publishedAt,
+                featuredRank, editorPickRank,
                 normalizedTags(tags), createdAt, now);
     }
 
@@ -143,7 +162,7 @@ public class Article {
         }
         validatePublishable();
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
-                ArticleStatus.PUBLISHED, now, tags, createdAt, now);
+                ArticleStatus.PUBLISHED, now, featuredRank, editorPickRank, tags, createdAt, now);
     }
 
     public Article archive(AuthorId actorId, Instant now) {
@@ -152,7 +171,12 @@ public class Article {
             return this;
         }
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
-                ArticleStatus.ARCHIVED, publishedAt, tags, createdAt, now);
+                ArticleStatus.ARCHIVED, publishedAt, null, null, tags, createdAt, now);
+    }
+
+    public Article curate(Integer featuredRank, Integer editorPickRank, Instant now) {
+        return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
+                status, publishedAt, featuredRank, editorPickRank, tags, createdAt, now);
     }
 
     public boolean isPublished() {
@@ -168,6 +192,9 @@ public class Article {
     private void validatePublishable() {
         if (summary == null || summary.isBlank()) {
             throw new IllegalStateException("Published article summary is required");
+        }
+        if (coverImageUrl == null || coverImageUrl.isBlank()) {
+            throw new IllegalStateException("Published article cover image is required");
         }
     }
 
@@ -186,7 +213,24 @@ public class Article {
         if (content == null || content.isBlank()) {
             throw new IllegalArgumentException("Article content is required");
         }
-        return content.trim();
+        String normalized = content.trim();
+        if (normalized.length() > MAX_CONTENT_LENGTH) {
+            throw new IllegalArgumentException("Article content must not exceed " + MAX_CONTENT_LENGTH + " characters");
+        }
+        int imageCount = markdownImageCount(normalized);
+        if (imageCount > MAX_CONTENT_IMAGES) {
+            throw new IllegalArgumentException("Article content can include up to " + MAX_CONTENT_IMAGES + " images");
+        }
+        return normalized;
+    }
+
+    private static int markdownImageCount(String content) {
+        Matcher matcher = MARKDOWN_IMAGE_PATTERN.matcher(content);
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
     }
 
     private static String normalizeCoverImageUrl(String coverImageUrl) {
@@ -215,6 +259,16 @@ public class Article {
             }
         }
         return normalized;
+    }
+
+    private static Integer normalizeRank(Integer rank, String field) {
+        if (rank == null) {
+            return null;
+        }
+        if (rank < 1) {
+            throw new IllegalArgumentException("Article " + field + " must be at least 1");
+        }
+        return rank;
     }
 
     public ArticleId id() {
@@ -255,6 +309,14 @@ public class Article {
 
     public Instant publishedAt() {
         return publishedAt;
+    }
+
+    public Integer featuredRank() {
+        return featuredRank;
+    }
+
+    public Integer editorPickRank() {
+        return editorPickRank;
     }
 
     public Set<String> tags() {

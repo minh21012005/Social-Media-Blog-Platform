@@ -12,6 +12,10 @@ spring:
     password: ${USER_SERVICE_DB_PASSWORD:social_blog}
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: ${USER_AVATAR_MAX_FILE_SIZE:5MB}
+      max-request-size: ${USER_AVATAR_MAX_REQUEST_SIZE:5MB}
   jpa:
     open-in-view: false
     hibernate:

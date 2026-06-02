@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { clearAuth, loadAuth, refreshAuth, saveAuth } from './services/auth'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { clearAuth, isAccessTokenExpiring, loadAuth, refreshAuth, saveAuth } from './services/auth'
 import { apiRequest } from './services/api'
 import { useRoute } from './hooks/useRoute'
 import { SiteHeader } from './components/SiteHeader'
+import { ToastStack } from './components/ToastStack'
 import { HomePage } from './pages/HomePage'
 import { CategoryPage } from './pages/CategoryPage'
 import { AuthorPage } from './pages/AuthorPage'
@@ -14,9 +15,19 @@ import { ProfilePage } from './pages/ProfilePage'
 import { WritePage } from './pages/WritePage'
 import './App.css'
 
+function isProtectedRoute(route) {
+  return route === '/write'
+    || route === '/articles/me'
+    || route === '/profile'
+    || /^\/articles\/[^/]+\/edit$/.test(route)
+}
+
 function App() {
   const [route, navigate] = useRoute()
   const [auth, setAuth] = useState(loadAuth)
+  const [authChecking, setAuthChecking] = useState(() => Boolean(loadAuth()?.accessToken || isProtectedRoute(window.location.pathname)))
+  const [toasts, setToasts] = useState([])
+  const authRestoreInFlight = useRef(null)
 
   const session = useMemo(() => {
     if (!auth?.accessToken || !auth?.user) {
@@ -25,37 +36,60 @@ function App() {
     return auth
   }, [auth])
 
-  useEffect(() => {
-    const storedAuth = loadAuth()
-    if (!storedAuth?.accessToken) {
-      return
+  const restoreSessionFromRefresh = useCallback(async () => {
+    if (!authRestoreInFlight.current) {
+      authRestoreInFlight.current = refreshAuth()
+        .then((refreshed) => {
+          setAuth(refreshed)
+          return refreshed
+        })
+        .catch((error) => {
+          clearAuth()
+          setAuth(null)
+          throw error
+        })
+        .finally(() => {
+          authRestoreInFlight.current = null
+        })
     }
+    return authRestoreInFlight.current
+  }, [])
 
+  useEffect(() => {
     let active = true
 
     async function verifySession() {
+      const storedAuth = loadAuth()
+      if (!storedAuth?.accessToken) {
+        if (isProtectedRoute(window.location.pathname) && !authRestoreInFlight.current) {
+          await restoreSessionFromRefresh().catch(() => null)
+        }
+        if (active) {
+          setAuthChecking(false)
+        }
+        return
+      }
+
       try {
         const user = await apiRequest('/api/v1/users/me', { token: storedAuth.accessToken })
         if (!active) {
           return
         }
-        const verifiedAuth = { ...storedAuth, user }
-        saveAuth(verifiedAuth)
+        const verifiedAuth = saveAuth({ ...storedAuth, user })
         setAuth(verifiedAuth)
       } catch {
         try {
-          const refreshed = await refreshAuth()
-          if (!active) {
-            return
-          }
-          saveAuth(refreshed)
-          setAuth(refreshed)
+          await restoreSessionFromRefresh()
         } catch {
           if (!active) {
             return
           }
           clearAuth()
           setAuth(null)
+        }
+      } finally {
+        if (active) {
+          setAuthChecking(false)
         }
       }
     }
@@ -65,32 +99,91 @@ function App() {
     return () => {
       active = false
     }
-  }, [])
+  }, [restoreSessionFromRefresh])
+
+  useEffect(() => {
+    if (!isProtectedRoute(route) || session || authChecking || authRestoreInFlight.current) {
+      return
+    }
+
+    let active = true
+    setAuthChecking(true)
+
+    restoreSessionFromRefresh()
+      .catch(() => null)
+      .finally(() => {
+        if (active) {
+          setAuthChecking(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [authChecking, restoreSessionFromRefresh, route, session])
 
   const handleAuthenticated = (authResponse) => {
-    saveAuth(authResponse)
-    setAuth(authResponse)
+    const savedAuth = saveAuth(authResponse)
+    setAuth(savedAuth)
     navigate('/')
   }
 
+  const notify = useCallback((message, options = {}) => {
+    const id = crypto.randomUUID()
+    setToasts((current) => [
+      ...current,
+      {
+        id,
+        message,
+        title: options.title,
+        type: options.type || 'error',
+      },
+    ])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, options.duration || 5200)
+  }, [])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id))
+  }, [])
+
   const requestWithAuth = useCallback(async (request) => {
-    if (!auth?.accessToken) {
-      navigate('/login')
-      throw new Error('Please log in first')
+    let activeAuth = auth
+
+    if (!activeAuth?.accessToken) {
+      try {
+        activeAuth = await restoreSessionFromRefresh()
+      } catch (refreshError) {
+        navigate('/login')
+        throw refreshError
+      }
+    }
+
+    if (isAccessTokenExpiring(activeAuth)) {
+      try {
+        activeAuth = await restoreSessionFromRefresh()
+      } catch (refreshError) {
+        navigate('/login')
+        throw refreshError
+      }
     }
 
     try {
-      return await request(auth.accessToken)
+      return await request(activeAuth.accessToken)
     } catch (error) {
       if (error.status !== 401) {
         throw error
       }
-      const refreshed = await refreshAuth()
-      saveAuth(refreshed)
-      setAuth(refreshed)
-      return request(refreshed.accessToken)
+      try {
+        const refreshed = await restoreSessionFromRefresh()
+        return request(refreshed.accessToken)
+      } catch (refreshError) {
+        navigate('/login')
+        throw refreshError
+      }
     }
-  }, [auth, navigate])
+  }, [auth, navigate, restoreSessionFromRefresh])
 
   const handleLogout = async () => {
     await apiRequest('/api/v1/auth/logout', {
@@ -105,12 +198,14 @@ function App() {
   }
 
   const handleProfileUpdated = (user) => {
-    const updatedAuth = { ...auth, user }
-    saveAuth(updatedAuth)
+    const updatedAuth = saveAuth({ ...auth, user })
     setAuth(updatedAuth)
   }
 
   const protectedPage = (element) => {
+    if (authChecking) {
+      return <div className="loading-state page-container">Restoring your session...</div>
+    }
     if (!session) {
       return <AuthPage mode="login" onDone={handleAuthenticated} navigate={navigate} />
     }
@@ -127,15 +222,15 @@ function App() {
 
   const renderPage = () => {
     if (route === '/write') {
-      return protectedPage(<WritePage session={session} requestWithAuth={requestWithAuth} navigate={navigate} />)
+      return protectedPage(<WritePage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
     if (route === '/articles/me') {
-      return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} />)
+      return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
     if (route === '/profile') {
-      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} />)
+      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
     }
 
     const editMatch = route.match(/^\/articles\/([^/]+)\/edit$/)
@@ -143,9 +238,9 @@ function App() {
       return protectedPage(
         <EditArticlePage
           articleId={editMatch[1]}
-          session={session}
           requestWithAuth={requestWithAuth}
           navigate={navigate}
+          notify={notify}
         />
       )
     }
@@ -169,6 +264,7 @@ function App() {
   return (
     <>
       <SiteHeader session={session} navigate={navigate} onLogout={handleLogout} />
+      <ToastStack onDismiss={dismissToast} toasts={toasts} />
       {renderPage()}
     </>
   )

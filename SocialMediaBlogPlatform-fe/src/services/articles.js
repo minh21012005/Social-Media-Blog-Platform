@@ -26,6 +26,14 @@ export function estimateReadTime(content) {
   return `${Math.max(1, Math.ceil(words / 220))} min read`
 }
 
+export function formatCount(value) {
+  const count = Number(value || 0)
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`
+  }
+  return String(count)
+}
+
 export function articlePath(article) {
   return article?.slug ? `/articles/${article.slug}` : '/'
 }
@@ -76,6 +84,14 @@ export async function listPublishedArticles(params = {}) {
     ...page,
     items: await enrichArticles(page?.items || []),
   }
+}
+
+export async function listFeaturedArticles({ size = 1 } = {}) {
+  return enrichArticles(await apiRequest(`/api/v1/articles/featured?size=${size}`))
+}
+
+export async function listEditorPicks({ size = 2 } = {}) {
+  return enrichArticles(await apiRequest(`/api/v1/articles/editor-picks?size=${size}`))
 }
 
 export async function getArticleBySlug(slug) {

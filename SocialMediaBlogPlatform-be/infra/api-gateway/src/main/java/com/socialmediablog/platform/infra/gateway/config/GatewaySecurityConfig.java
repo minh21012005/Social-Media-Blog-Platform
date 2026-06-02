@@ -55,12 +55,27 @@ public class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .pathMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
                         .pathMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/by-username/*", "/api/v1/users/public").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()
                 )
-                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.UNAUTHORIZED,
+                                        ErrorCode.UNAUTHORIZED,
+                                        "Authentication is required"
+                                ))
+                        .accessDeniedHandler((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.FORBIDDEN,
+                                        ErrorCode.FORBIDDEN,
+                                        "Access is denied"
+                                ))
+                        .jwt(Customizer.withDefaults()))
                 .build();
     }
 

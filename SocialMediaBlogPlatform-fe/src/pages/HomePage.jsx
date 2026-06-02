@@ -1,25 +1,34 @@
 import { useEffect, useState } from 'react'
 import { categories } from '../data/editorial'
-import { listPublishedArticles } from '../services/articles'
+import { listEditorPicks, listFeaturedArticles, listPublishedArticles } from '../services/articles'
 import { ArrowRightIcon } from '../components/icons'
 import { ArticleCard } from '../components/ArticleCard'
 import { Newsletter } from '../components/Newsletter'
 import { SiteFooter } from '../components/SiteFooter'
 
 export function HomePage({ navigate }) {
-  const [state, setState] = useState({ loading: true, articles: [], error: '' })
+  const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], latest: [], error: '' })
 
   useEffect(() => {
     let active = true
     async function load() {
       try {
-        const page = await listPublishedArticles({ size: 8 })
+        const [featuredArticles, editorPickArticles, latestPage] = await Promise.all([
+          listFeaturedArticles({ size: 1 }),
+          listEditorPicks({ size: 2 }),
+          listPublishedArticles({ size: 8, sort: 'latest' }),
+        ])
         if (active) {
-          setState({ loading: false, articles: page.items, error: '' })
+          const [featured] = featuredArticles
+          const usedIds = new Set(featured ? [featured.id] : [])
+          const editorPicks = editorPickArticles.filter((article) => !usedIds.has(article.id)).slice(0, 2)
+          editorPicks.forEach((article) => usedIds.add(article.id))
+          const latest = latestPage.items.filter((article) => !usedIds.has(article.id)).slice(0, 4)
+          setState({ loading: false, featured, editorPicks, latest, error: '' })
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, articles: [], error: error.message })
+          setState({ loading: false, featured: null, editorPicks: [], latest: [], error: error.message })
         }
       }
     }
@@ -34,9 +43,7 @@ export function HomePage({ navigate }) {
     navigate(path)
   }
 
-  const [featured, ...rest] = state.articles
-  const editorPicks = rest.slice(0, 2)
-  const latest = rest.slice(2, 6)
+  const { featured, editorPicks, latest } = state
 
   return (
     <main>

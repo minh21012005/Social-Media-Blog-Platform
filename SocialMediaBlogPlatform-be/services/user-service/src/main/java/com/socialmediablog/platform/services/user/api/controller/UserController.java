@@ -17,14 +17,12 @@ import com.socialmediablog.platform.services.user.application.port.in.GetPublicU
 import com.socialmediablog.platform.services.user.application.port.in.ListPublicUsersUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.UpdateCurrentUserUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.UploadCurrentUserAvatarUseCase;
-import com.socialmediablog.platform.services.user.config.RefreshTokenCookieProperties;
+import com.socialmediablog.platform.services.user.config.RefreshTokenCookieFactory;
 import jakarta.validation.Valid;
-import java.time.Duration;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,7 +46,7 @@ public class UserController {
     private final UpdateCurrentUserUseCase updateCurrentUserUseCase;
     private final ChangePasswordUseCase changePasswordUseCase;
     private final UploadCurrentUserAvatarUseCase uploadCurrentUserAvatarUseCase;
-    private final RefreshTokenCookieProperties cookieProperties;
+    private final RefreshTokenCookieFactory refreshTokenCookies;
 
     public UserController(
             GetCurrentUserUseCase getCurrentUserUseCase,
@@ -58,7 +56,7 @@ public class UserController {
             UpdateCurrentUserUseCase updateCurrentUserUseCase,
             ChangePasswordUseCase changePasswordUseCase,
             UploadCurrentUserAvatarUseCase uploadCurrentUserAvatarUseCase,
-            RefreshTokenCookieProperties cookieProperties
+            RefreshTokenCookieFactory refreshTokenCookies
     ) {
         this.getCurrentUserUseCase = getCurrentUserUseCase;
         this.getPublicUserProfileUseCase = getPublicUserProfileUseCase;
@@ -67,7 +65,7 @@ public class UserController {
         this.updateCurrentUserUseCase = updateCurrentUserUseCase;
         this.changePasswordUseCase = changePasswordUseCase;
         this.uploadCurrentUserAvatarUseCase = uploadCurrentUserAvatarUseCase;
-        this.cookieProperties = cookieProperties;
+        this.refreshTokenCookies = refreshTokenCookies;
     }
 
     @GetMapping("/{userId}")
@@ -139,21 +137,11 @@ public class UserController {
                 request.newPassword()
         ));
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookies.clear().toString())
                 .body(ApiResponse.success("Password changed successfully", null));
     }
 
     private UUID currentUserId(CurrentUser currentUser) {
         return UUID.fromString(currentUser.id());
-    }
-
-    private ResponseCookie clearRefreshCookie() {
-        return ResponseCookie.from(cookieProperties.name(), "")
-                .httpOnly(true)
-                .secure(cookieProperties.secure())
-                .sameSite(cookieProperties.sameSite())
-                .path(cookieProperties.path())
-                .maxAge(Duration.ZERO)
-                .build();
     }
 }

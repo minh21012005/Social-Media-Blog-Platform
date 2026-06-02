@@ -132,7 +132,7 @@ public class AuthApplicationService implements
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthenticatedUser execute(LoginUserCommand command) {
         User user = userRepository.findByEmailOrUsername(command.identifier())
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid username/email or password"));

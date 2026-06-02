@@ -3,7 +3,7 @@ import { ArticleEditor } from '../components/ArticleEditor'
 import { SiteFooter } from '../components/SiteFooter'
 import { createArticle, publishArticle } from '../services/articles'
 
-export function WritePage({ session, requestWithAuth, navigate }) {
+export function WritePage({ requestWithAuth, navigate, notify }) {
   const [saving, setSaving] = useState(false)
 
   const save = async (payload) => {
@@ -34,10 +34,15 @@ export function WritePage({ session, requestWithAuth, navigate }) {
         <span className="form-eyebrow">Writer desk</span>
         <h1>Draft a new story.</h1>
         <p>Write in Markdown, upload a cover image, and publish when the article is ready.</p>
-        <strong>{session.user.displayName}</strong>
       </section>
       <section className="page-container writer-section">
-        <ArticleEditor onSave={save} onPublish={saveAndPublish} saving={saving} token={session.accessToken} />
+        <ArticleEditor
+          onSave={save}
+          onPublish={saveAndPublish}
+          requestWithAuth={requestWithAuth}
+          saving={saving}
+          notify={notify}
+        />
       </section>
       <SiteFooter />
     </main>
