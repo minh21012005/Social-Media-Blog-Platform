@@ -1,11 +1,18 @@
+import { useState } from 'react'
 import { categories } from '../data/editorial'
 import { SearchIcon } from './icons'
 
 export function SiteHeader({ session, navigate, onLogout }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   const open = (path) => (event) => {
     event.preventDefault()
+    setMenuOpen(false)
     navigate(path)
   }
+
+  const displayName = session?.user?.displayName || session?.user?.username || 'Profile'
+  const initial = displayName.charAt(0).toUpperCase()
 
   return (
     <header className="site-header">
@@ -27,12 +34,35 @@ export function SiteHeader({ session, navigate, onLogout }) {
         </button>
         {session ? (
           <>
-            <button className="text-button" type="button" onClick={() => navigate('/articles/me')}>My articles</button>
-            <button className="text-button" type="button" onClick={() => navigate('/write')}>Write</button>
-            <button className="pill-button" type="button" onClick={() => navigate('/profile')}>
-              {session.user.displayName}
-            </button>
-            <button className="text-button" type="button" onClick={onLogout}>Log out</button>
+            <button className="header-link-button" type="button" onClick={() => navigate('/articles/me')}>My articles</button>
+            <button className="header-write-button" type="button" onClick={() => navigate('/write')}>Write</button>
+            <div className="header-user-menu">
+              <button
+                aria-expanded={menuOpen}
+                className="header-user-button"
+                type="button"
+                onClick={() => setMenuOpen((current) => !current)}
+              >
+                <span>{initial}</span>
+                {displayName}
+              </button>
+              {menuOpen && (
+                <div className="header-dropdown">
+                  <button type="button" onClick={() => {
+                    setMenuOpen(false)
+                    navigate('/profile')
+                  }}>
+                    Profile
+                  </button>
+                  <button type="button" onClick={() => {
+                    setMenuOpen(false)
+                    onLogout()
+                  }}>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <button className="pill-button" type="button" onClick={() => navigate('/register')}>

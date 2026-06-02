@@ -17,6 +17,7 @@ import './App.css'
 function App() {
   const [route, navigate] = useRoute()
   const [auth, setAuth] = useState(loadAuth)
+  const [authChecking, setAuthChecking] = useState(() => Boolean(loadAuth()?.accessToken))
 
   const session = useMemo(() => {
     if (!auth?.accessToken || !auth?.user) {
@@ -57,6 +58,10 @@ function App() {
           clearAuth()
           setAuth(null)
         }
+      } finally {
+        if (active) {
+          setAuthChecking(false)
+        }
       }
     }
 
@@ -85,10 +90,17 @@ function App() {
       if (error.status !== 401) {
         throw error
       }
-      const refreshed = await refreshAuth()
-      saveAuth(refreshed)
-      setAuth(refreshed)
-      return request(refreshed.accessToken)
+      try {
+        const refreshed = await refreshAuth()
+        saveAuth(refreshed)
+        setAuth(refreshed)
+        return request(refreshed.accessToken)
+      } catch (refreshError) {
+        clearAuth()
+        setAuth(null)
+        navigate('/login')
+        throw refreshError
+      }
     }
   }, [auth, navigate])
 
@@ -111,6 +123,9 @@ function App() {
   }
 
   const protectedPage = (element) => {
+    if (authChecking) {
+      return <div className="loading-state page-container">Restoring your session...</div>
+    }
     if (!session) {
       return <AuthPage mode="login" onDone={handleAuthenticated} navigate={navigate} />
     }
