@@ -11,11 +11,11 @@ spring:
     username: ${INTERACTION_SERVICE_DB_USERNAME:social_blog}
     password: ${INTERACTION_SERVICE_DB_PASSWORD:social_blog}
   flyway:
-    enabled: false
+    enabled: true
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
