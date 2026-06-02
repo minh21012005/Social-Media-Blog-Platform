@@ -4,7 +4,7 @@ import { SiteFooter } from '../components/SiteFooter'
 import { authors } from '../data/editorial'
 import { updateProfile, uploadAvatar } from '../services/users'
 
-export function ProfilePage({ session, requestWithAuth, onProfileUpdated }) {
+export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify }) {
   const [form, setForm] = useState({
     displayName: session.user.displayName || '',
     bio: session.user.bio || '',
@@ -12,22 +12,23 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated }) {
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
 
   const update = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }))
+    setError('')
   }
 
   const upload = async (file) => {
     setError('')
-    setMessage('')
     setUploading(true)
     try {
       const response = await requestWithAuth((token) => uploadAvatar(file, token))
       onProfileUpdated(response.user)
-      setMessage('Avatar updated.')
+      notify?.('Your avatar has been updated.', { title: 'Profile saved', type: 'success' })
     } catch (requestError) {
-      setError(requestError.message)
+      const message = requestError.message || 'Could not upload avatar.'
+      setError(message)
+      notify?.(message, { title: 'Upload failed' })
     } finally {
       setUploading(false)
     }
@@ -36,7 +37,6 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated }) {
   const save = async (event) => {
     event.preventDefault()
     setError('')
-    setMessage('')
     setSaving(true)
     try {
       const user = await requestWithAuth((token) => updateProfile({
@@ -45,9 +45,11 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated }) {
         avatarUrl: session.user.avatarUrl,
       }, token))
       onProfileUpdated(user)
-      setMessage('Profile updated.')
+      notify?.('Your public profile has been updated.', { title: 'Profile saved', type: 'success' })
     } catch (requestError) {
-      setError(requestError.message)
+      const message = requestError.message || 'Could not update profile.'
+      setError(message)
+      notify?.(message, { title: 'Save failed' })
     } finally {
       setSaving(false)
     }
@@ -55,14 +57,23 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated }) {
 
   return (
     <main>
-      <section className="author-hero">
-        <div className="page-container author-inner">
-          <img alt="" src={session.user.avatarUrl || authors.sarah.avatar} />
-          <div>
-            <span className="form-eyebrow">Profile</span>
+      <section className="profile-page">
+        <div className="page-container profile-shell">
+          <aside className="profile-card">
+            <span className="form-eyebrow">Public profile</span>
+            <img alt="" className="profile-avatar" src={session.user.avatarUrl || authors.sarah.avatar} />
             <h1>{session.user.displayName}</h1>
-            <p>{session.user.bio || 'Add a distinct editorial identity through your avatar and profile metadata.'}</p>
-            <MediaUploader busy={uploading} label="Upload avatar" onUpload={upload} />
+            <p>{session.user.bio || 'Add a short bio so readers can recognize your voice across Chronicle.'}</p>
+            <MediaUploader busy={uploading} label={session.user.avatarUrl ? 'Change avatar' : 'Upload avatar'} onUpload={upload} />
+          </aside>
+
+          <section className="profile-panel" aria-labelledby="profile-settings-title">
+            <div className="profile-panel-header">
+              <div>
+                <span className="form-eyebrow">Account settings</span>
+              </div>
+            </div>
+
             <form className="profile-form" onSubmit={save}>
               <label>
                 Display name
@@ -70,15 +81,16 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated }) {
               </label>
               <label>
                 Bio
-                <textarea maxLength="500" rows="4" value={form.bio} onChange={update('bio')} />
+                <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
               </label>
-              <button className="submit-button" disabled={saving} type="submit">
-                {saving ? 'Saving...' : 'Save profile'}
-              </button>
+              {error && <p className="form-error">{error}</p>}
+              <div className="profile-actions">
+                <button className="submit-button" disabled={saving} type="submit">
+                  {saving ? 'Saving...' : 'Save profile'}
+                </button>
+              </div>
             </form>
-            {error && <p className="form-error">{error}</p>}
-            {message && <p className="form-success">{message}</p>}
-          </div>
+          </section>
         </div>
       </section>
       <SiteFooter />

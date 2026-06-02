@@ -16,6 +16,7 @@ import com.socialmediablog.platform.services.article.application.exception.Forbi
 import com.socialmediablog.platform.services.article.application.port.in.ArchiveArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.CreateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.CurateArticleUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.DeleteArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleBySlugUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListEditorPicksUseCase;
@@ -39,6 +40,7 @@ import com.socialmediablog.platform.services.article.domain.aggregate.ArticleMed
 import com.socialmediablog.platform.services.article.domain.aggregate.ArticleRevision;
 import com.socialmediablog.platform.services.article.domain.aggregate.ArticleStats;
 import com.socialmediablog.platform.services.article.domain.event.ArticleArchivedEvent;
+import com.socialmediablog.platform.services.article.domain.event.ArticleDeletedEvent;
 import com.socialmediablog.platform.services.article.domain.event.ArticleDraftCreatedEvent;
 import com.socialmediablog.platform.services.article.domain.event.ArticlePublishedEvent;
 import com.socialmediablog.platform.services.article.domain.event.ArticleUpdatedEvent;
@@ -71,6 +73,7 @@ public class ArticleApplicationService implements
         UpdateArticleUseCase,
         PublishArticleUseCase,
         ArchiveArticleUseCase,
+        DeleteArticleUseCase,
         GetArticleBySlugUseCase,
         ListPublishedArticlesUseCase,
         ListMyArticlesUseCase,
@@ -220,6 +223,22 @@ public class ArticleApplicationService implements
                 now
         ));
         return view(archived);
+    }
+
+    @Override
+    @Transactional
+    public void delete(ArticleActionCommand command) {
+        Instant now = clock.instant();
+        Article article = findRequired(command.articleId());
+        AuthorId actorId = AuthorId.of(command.actorId());
+        ensureOwner(article, actorId);
+        Article deleted = articleRepository.save(article.delete(actorId, now));
+        articleEventPublisher.publish(deleted.id().value(), new ArticleDeletedEvent(
+                UUID.randomUUID(),
+                deleted.id().value(),
+                deleted.authorId().value(),
+                now
+        ));
     }
 
     @Override

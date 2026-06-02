@@ -1,23 +1,32 @@
 import { useEffect, useState } from 'react'
+import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
-import { archiveArticle, formatCount, listMyArticles, publishArticle } from '../services/articles'
+import { archiveArticle, deleteArticle, formatCount, listMyArticles, publishArticle } from '../services/articles'
 
 export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
   const [status, setStatus] = useState('')
-  const [state, setState] = useState({ loading: true, articles: [], error: '' })
+  const [page, setPage] = useState(0)
+  const [state, setState] = useState({ loading: true, articles: [], error: '', page: 0, totalPages: 0 })
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   useEffect(() => {
     let active = true
     async function load() {
       setState((current) => ({ ...current, loading: true, error: '' }))
       try {
-        const page = await requestWithAuth((token) => listMyArticles({ status }, token))
+        const result = await requestWithAuth((token) => listMyArticles({ status, page }, token))
         if (active) {
-          setState({ loading: false, articles: page.items, error: '' })
+          setState({
+            loading: false,
+            articles: result.items,
+            error: '',
+            page: result.page || 0,
+            totalPages: result.totalPages || 0,
+          })
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, articles: [], error: error.message })
+          setState({ loading: false, articles: [], error: error.message, page: 0, totalPages: 0 })
         }
       }
     }
@@ -25,16 +34,37 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
     return () => {
       active = false
     }
-  }, [requestWithAuth, status])
+  }, [page, requestWithAuth, status])
 
-  const runAction = async (action) => {
+  const runAction = async (action, options = {}) => {
     try {
       await requestWithAuth(action)
-      const page = await requestWithAuth((token) => listMyArticles({ status }, token))
-      setState({ loading: false, articles: page.items, error: '' })
+      const result = await requestWithAuth((token) => listMyArticles({ status, page }, token))
+      if (result.items.length === 0 && page > 0) {
+        setPage(page - 1)
+      } else {
+        setState({
+          loading: false,
+          articles: result.items,
+          error: '',
+          page: result.page || 0,
+          totalPages: result.totalPages || 0,
+        })
+      }
+      if (options.successMessage) {
+        notify?.(options.successMessage, { title: options.successTitle || 'Article updated', type: 'success' })
+      }
     } catch (error) {
-      notify?.(friendlyArticleError(error.message), { title: 'Could not update article' })
+      notify?.(friendlyArticleError(error.message), { title: options.errorTitle || 'Could not update article' })
     }
+  }
+
+  const deleteDraftOrArchived = (article) => {
+    setPendingDelete(null)
+    runAction((token) => deleteArticle(article.id, token), {
+      successMessage: 'Article deleted.',
+      errorTitle: 'Could not delete article',
+    })
   }
 
   return (
@@ -53,7 +83,10 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
               className={status === item ? 'active' : ''}
               key={item || 'all'}
               type="button"
-              onClick={() => setStatus(item)}
+              onClick={() => {
+                setStatus(item)
+                setPage(0)
+              }}
             >
               {item || 'ALL'}
             </button>
@@ -86,11 +119,37 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                 {article.status !== 'ARCHIVED' && (
                   <button type="button" onClick={() => runAction((token) => archiveArticle(article.id, token))}>Archive</button>
                 )}
+                {['DRAFT', 'ARCHIVED'].includes(article.status) && (
+                  <button className="danger-action" type="button" onClick={() => setPendingDelete(article)}>Delete</button>
+                )}
               </div>
             </article>
           ))}
         </div>
+        <Pagination page={state.page} totalPages={state.totalPages} onPageChange={setPage} />
       </section>
+      {pendingDelete && (
+        <div className="confirm-backdrop" role="presentation" onMouseDown={() => setPendingDelete(null)}>
+          <section
+            aria-labelledby="delete-article-title"
+            aria-modal="true"
+            className="confirm-dialog"
+            role="dialog"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <span className="form-eyebrow">Delete article</span>
+            <h2 id="delete-article-title">Remove this story?</h2>
+            <p>
+              This will remove <strong>{pendingDelete.title}</strong> from your dashboard.
+              Audit history and internal records are kept.
+            </p>
+            <div className="confirm-actions">
+              <button className="text-button" type="button" onClick={() => setPendingDelete(null)}>Cancel</button>
+              <button className="danger-submit" type="button" onClick={() => deleteDraftOrArchived(pendingDelete)}>Delete article</button>
+            </div>
+          </section>
+        </div>
+      )}
       <SiteFooter />
     </main>
   )

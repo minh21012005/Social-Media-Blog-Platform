@@ -22,6 +22,7 @@ import com.socialmediablog.platform.services.article.application.command.UploadA
 import com.socialmediablog.platform.services.article.application.port.in.ArchiveArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.CreateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.CurateArticleUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.DeleteArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleBySlugUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListEditorPicksUseCase;
@@ -39,6 +40,7 @@ import java.util.UUID;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -59,6 +61,7 @@ public class ArticleController {
     private final UpdateArticleUseCase updateArticleUseCase;
     private final PublishArticleUseCase publishArticleUseCase;
     private final ArchiveArticleUseCase archiveArticleUseCase;
+    private final DeleteArticleUseCase deleteArticleUseCase;
     private final GetArticleBySlugUseCase getArticleBySlugUseCase;
     private final ListPublishedArticlesUseCase listPublishedArticlesUseCase;
     private final ListMyArticlesUseCase listMyArticlesUseCase;
@@ -74,6 +77,7 @@ public class ArticleController {
             UpdateArticleUseCase updateArticleUseCase,
             PublishArticleUseCase publishArticleUseCase,
             ArchiveArticleUseCase archiveArticleUseCase,
+            DeleteArticleUseCase deleteArticleUseCase,
             GetArticleBySlugUseCase getArticleBySlugUseCase,
             ListPublishedArticlesUseCase listPublishedArticlesUseCase,
             ListMyArticlesUseCase listMyArticlesUseCase,
@@ -88,6 +92,7 @@ public class ArticleController {
         this.updateArticleUseCase = updateArticleUseCase;
         this.publishArticleUseCase = publishArticleUseCase;
         this.archiveArticleUseCase = archiveArticleUseCase;
+        this.deleteArticleUseCase = deleteArticleUseCase;
         this.getArticleBySlugUseCase = getArticleBySlugUseCase;
         this.listPublishedArticlesUseCase = listPublishedArticlesUseCase;
         this.listMyArticlesUseCase = listMyArticlesUseCase;
@@ -211,6 +216,15 @@ public class ArticleController {
         return ApiResponse.success("Article archived", ArticleResponse.from(archiveArticleUseCase.archive(
                 new ArticleActionCommand(articleId, currentUserId(currentUser))
         )));
+    }
+
+    @DeleteMapping("/{articleId}")
+    public ApiResponse<Void> delete(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID articleId
+    ) {
+        deleteArticleUseCase.delete(new ArticleActionCommand(articleId, currentUserId(currentUser)));
+        return ApiResponse.success("Article deleted", null);
     }
 
     @PatchMapping("/{articleId}/curation")

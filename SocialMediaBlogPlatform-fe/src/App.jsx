@@ -251,11 +251,13 @@ function App() {
     }
 
     if (route.startsWith('/author/')) {
-      return <AuthorPage username={route.replace('/author/', '')} navigate={navigate} />
+      const username = route.replace('/author/', '')
+      return <AuthorPage key={username} username={username} navigate={navigate} />
     }
 
     if (route.startsWith('/category/')) {
-      return <CategoryPage slug={route.replace('/category/', '')} navigate={navigate} />
+      const categorySlug = route.replace('/category/', '')
+      return <CategoryPage key={categorySlug} slug={categorySlug} navigate={navigate} />
     }
 
     return <HomePage navigate={navigate} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArticleList } from '../components/ArticleList'
+import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
 import { SocialIcon } from '../components/icons'
 import { authors } from '../data/editorial'
@@ -7,20 +8,29 @@ import { listPublishedArticles } from '../services/articles'
 import { getPublicUserByUsername } from '../services/users'
 
 export function AuthorPage({ username, navigate }) {
-  const [state, setState] = useState({ loading: true, author: null, articles: [], error: '' })
+  const [page, setPage] = useState(0)
+  const [state, setState] = useState({ loading: true, author: null, articles: [], error: '', page: 0, totalPages: 0 })
 
   useEffect(() => {
     let active = true
     async function load() {
+      setState((current) => ({ ...current, loading: true, error: '' }))
       try {
         const author = await getPublicUserByUsername(username)
-        const page = await listPublishedArticles({ authorId: author.id, size: 12 })
+        const result = await listPublishedArticles({ authorId: author.id, page, size: 12 })
         if (active) {
-          setState({ loading: false, author, articles: page.items, error: '' })
+          setState({
+            loading: false,
+            author,
+            articles: result.items,
+            error: '',
+            page: result.page || 0,
+            totalPages: result.totalPages || 0,
+          })
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, author: null, articles: [], error: error.message })
+          setState({ loading: false, author: null, articles: [], error: error.message, page: 0, totalPages: 0 })
         }
       }
     }
@@ -28,7 +38,7 @@ export function AuthorPage({ username, navigate }) {
     return () => {
       active = false
     }
-  }, [username])
+  }, [page, username])
 
   const author = state.author
 
@@ -57,6 +67,7 @@ export function AuthorPage({ username, navigate }) {
         {!state.loading && !state.error && (
           <ArticleList articles={state.articles} emptyText="This author has not published an article yet." navigate={navigate} />
         )}
+        <Pagination page={state.page} totalPages={state.totalPages} onPageChange={setPage} />
       </section>
 
       <SiteFooter />
