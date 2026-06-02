@@ -7,12 +7,8 @@ import com.socialmediablog.platform.services.user.application.exception.Inactive
 import com.socialmediablog.platform.services.user.application.exception.InvalidCredentialsException;
 import com.socialmediablog.platform.services.user.application.exception.InvalidRefreshTokenException;
 import com.socialmediablog.platform.services.user.application.exception.UserNotFoundException;
-import com.socialmediablog.platform.services.user.config.RefreshTokenCookieProperties;
-import java.time.Duration;
 import java.util.stream.Collectors;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -22,12 +18,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    private final RefreshTokenCookieProperties cookieProperties;
-
-    public GlobalExceptionHandler(RefreshTokenCookieProperties cookieProperties) {
-        this.cookieProperties = cookieProperties;
-    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> validation(MethodArgumentNotValidException exception) {
@@ -63,7 +53,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidRefreshTokenException.class)
     public ResponseEntity<ApiResponse<Void>> invalidRefreshToken(InvalidRefreshTokenException exception) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString())
                 .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, exception.getMessage()));
     }
 
@@ -85,13 +74,4 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, exception.getMessage()));
     }
 
-    private ResponseCookie clearRefreshCookie() {
-        return ResponseCookie.from(cookieProperties.name(), "")
-                .httpOnly(true)
-                .secure(cookieProperties.secure())
-                .sameSite(cookieProperties.sameSite())
-                .path(cookieProperties.path())
-                .maxAge(Duration.ZERO)
-                .build();
-    }
 }

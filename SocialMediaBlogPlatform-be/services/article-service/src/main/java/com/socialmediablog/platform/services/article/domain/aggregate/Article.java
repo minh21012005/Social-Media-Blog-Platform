@@ -10,8 +10,14 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Article {
+
+    private static final int MAX_CONTENT_IMAGES = 10;
+    private static final int MAX_CONTENT_LENGTH = 50_000;
+    private static final Pattern MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*]\\([^\\s)]+\\)");
 
     private final ArticleId id;
     private final AuthorId authorId;
@@ -207,7 +213,24 @@ public class Article {
         if (content == null || content.isBlank()) {
             throw new IllegalArgumentException("Article content is required");
         }
-        return content.trim();
+        String normalized = content.trim();
+        if (normalized.length() > MAX_CONTENT_LENGTH) {
+            throw new IllegalArgumentException("Article content must not exceed " + MAX_CONTENT_LENGTH + " characters");
+        }
+        int imageCount = markdownImageCount(normalized);
+        if (imageCount > MAX_CONTENT_IMAGES) {
+            throw new IllegalArgumentException("Article content can include up to " + MAX_CONTENT_IMAGES + " images");
+        }
+        return normalized;
+    }
+
+    private static int markdownImageCount(String content) {
+        Matcher matcher = MARKDOWN_IMAGE_PATTERN.matcher(content);
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
     }
 
     private static String normalizeCoverImageUrl(String coverImageUrl) {

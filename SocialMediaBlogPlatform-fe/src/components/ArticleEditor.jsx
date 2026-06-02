@@ -13,6 +13,11 @@ const emptyArticle = {
   tags: '',
 }
 
+const maxTags = 5
+const maxTagLength = 50
+const maxContentImages = 10
+const maxContentLength = 50000
+
 export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, onSave, onPublish, notify }) {
   const contentRef = useRef(null)
   const [form, setForm] = useState(() => ({
@@ -26,14 +31,16 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
 
+  const tags = useMemo(() => parseTags(form.tags), [form.tags])
+
   const payload = useMemo(() => ({
     title: form.title,
     category: form.category,
     summary: form.summary,
     content: form.content,
     coverImageUrl: form.coverImageUrl,
-    tags: form.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-  }), [form])
+    tags,
+  }), [form, tags])
 
   const update = (field) => (event) => {
     const value = event.target.value
@@ -62,6 +69,13 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
 
   const insertContentImage = async (file) => {
     setError('')
+    if (markdownImageCount(form.content) >= maxContentImages) {
+      const message = `Articles can include up to ${maxContentImages} images.`
+      setFieldErrors((current) => ({ ...current, content: message }))
+      setError(message)
+      notify?.(message, { title: 'Image limit reached' })
+      return
+    }
     setContentImageUploading(true)
     try {
       const media = requestWithAuth
@@ -123,11 +137,21 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
     if (!form.category) {
       nextErrors.category = 'Choose a category.'
     }
+    const invalidTag = tags.find((tag) => tag.length > maxTagLength)
+    if (tags.length > maxTags) {
+      nextErrors.tags = `Use up to ${maxTags} focused tags.`
+    } else if (invalidTag) {
+      nextErrors.tags = `Tags must be ${maxTagLength} characters or fewer.`
+    }
     if (mode === 'publish' && !form.summary.trim()) {
       nextErrors.summary = 'Summary is required before publishing.'
     }
     if (!form.content.trim()) {
       nextErrors.content = 'Write some Markdown content before saving.'
+    } else if (form.content.trim().length > maxContentLength) {
+      nextErrors.content = `Content must be ${maxContentLength.toLocaleString()} characters or fewer.`
+    } else if (markdownImageCount(form.content) > maxContentImages) {
+      nextErrors.content = `Articles can include up to ${maxContentImages} images.`
     }
     if (mode === 'publish' && !form.coverImageUrl.trim()) {
       nextErrors.coverImageUrl = 'Add a cover image before publishing.'
@@ -156,7 +180,11 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
       <section className="editor-form">
         <label>
           Title
-          <input aria-invalid={Boolean(fieldErrors.title)} value={form.title} onChange={update('title')} />
+          <input
+            aria-invalid={Boolean(fieldErrors.title)}
+            value={form.title}
+            onChange={update('title')}
+          />
           {fieldErrors.title && <span className="field-error">{fieldErrors.title}</span>}
         </label>
         <div className="editor-row">
@@ -169,10 +197,26 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
             </select>
             {fieldErrors.category && <span className="field-error">{fieldErrors.category}</span>}
           </label>
+          <label>
+            Tags
+            <input
+              aria-invalid={Boolean(fieldErrors.tags)}
+              placeholder="microservices, spring boot"
+              value={form.tags}
+              onChange={update('tags')}
+            />
+            {fieldErrors.tags && <span className="field-error">{fieldErrors.tags}</span>}
+          </label>
         </div>
         <label>
           Summary
-          <textarea aria-invalid={Boolean(fieldErrors.summary)} maxLength="500" rows="3" value={form.summary} onChange={update('summary')} />
+          <textarea
+            aria-invalid={Boolean(fieldErrors.summary)}
+            maxLength="500"
+            rows="3"
+            value={form.summary}
+            onChange={update('summary')}
+          />
           {fieldErrors.summary && <span className="field-error">{fieldErrors.summary}</span>}
         </label>
         <div className="editor-cover-control">
@@ -210,10 +254,6 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
             </label>
           )}
         </div>
-        <label>
-          Tags
-          <input placeholder="design, web, culture" value={form.tags} onChange={update('tags')} />
-        </label>
         <label>
           Markdown content
           <textarea
@@ -278,8 +318,27 @@ function fieldErrorFromMessage(message) {
   if (normalized.includes('content') || normalized.includes('markdown')) {
     return { content: message }
   }
+  if (normalized.includes('image')) {
+    return { content: message }
+  }
   if (normalized.includes('category')) {
     return { category: message }
   }
+  if (normalized.includes('tag')) {
+    return { tags: message }
+  }
   return {}
+}
+
+function parseTags(value) {
+  return [...new Set(
+    (value || '')
+      .split(',')
+      .map((tag) => tag.trim().toLowerCase())
+      .filter(Boolean),
+  )]
+}
+
+function markdownImageCount(content) {
+  return ((content || '').match(/!\[[^\]]*]\([^\s)]+\)/g) || []).length
 }

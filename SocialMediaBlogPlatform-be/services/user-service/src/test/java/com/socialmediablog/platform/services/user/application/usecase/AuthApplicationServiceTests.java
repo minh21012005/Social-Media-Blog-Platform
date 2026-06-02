@@ -33,6 +33,7 @@ import com.socialmediablog.platform.services.user.domain.vo.Username;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Locale;
@@ -41,6 +42,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Transactional;
 
 class AuthApplicationServiceTests {
 
@@ -120,6 +122,16 @@ class AuthApplicationServiceTests {
 
         assertThatThrownBy(() -> authApplicationService.execute(new LoginUserCommand("reader", "wrongpass")))
                 .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
+    void loginUsesWritableTransactionBecauseItIssuesRefreshToken() throws NoSuchMethodException {
+        Method loginUseCase = AuthApplicationService.class.getMethod("execute", LoginUserCommand.class);
+
+        Transactional transactional = loginUseCase.getAnnotation(Transactional.class);
+
+        assertThat(transactional).isNotNull();
+        assertThat(transactional.readOnly()).isFalse();
     }
 
     @Test
