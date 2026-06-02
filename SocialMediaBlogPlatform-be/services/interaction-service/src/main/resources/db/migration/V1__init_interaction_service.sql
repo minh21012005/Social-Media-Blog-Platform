@@ -1,8 +1,7 @@
 -- Base schema marker for interaction-service. Feature tables will be added in later migrations.
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE likes (
-                       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                       id UUID PRIMARY KEY,
                        user_id UUID NOT NULL,
                        target_id UUID NOT NULL,
                        target_type VARCHAR(30) NOT NULL,
@@ -13,7 +12,7 @@ CREATE TABLE likes (
 );
 
 CREATE TABLE claps (
-                       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                       id UUID PRIMARY KEY,
                        user_id UUID NOT NULL,
                        article_id UUID NOT NULL,
                        clap_count INT NOT NULL DEFAULT 1,
@@ -29,3 +28,8 @@ CREATE INDEX idx_likes_user ON likes(user_id);
 
 CREATE INDEX idx_claps_article ON claps(article_id);
 CREATE INDEX idx_claps_user ON claps(user_id);
+
+
+
+
+

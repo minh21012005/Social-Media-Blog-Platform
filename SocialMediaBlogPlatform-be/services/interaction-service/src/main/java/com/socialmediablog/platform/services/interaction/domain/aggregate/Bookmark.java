@@ -42,6 +42,20 @@ public class Bookmark {
         return new Bookmark(BookmarkId.of(UUID.randomUUID()), userId, articleId, BookmarkStatus.ACTIVE, now, null, now, now);
     }
 
+    public Bookmark bookmark(Instant now) {
+        if (status == BookmarkStatus.ACTIVE) {
+            return this;
+        }
+        return new Bookmark(id, userId, articleId, BookmarkStatus.ACTIVE, now, null, createdAt, now);
+    }
+
+    public Bookmark remove(Instant now) {
+        if (status == BookmarkStatus.REMOVED) {
+            return this;
+        }
+        return new Bookmark(id, userId, articleId, BookmarkStatus.REMOVED, bookmarkedAt, now, createdAt, now);
+    }
+
     public static Bookmark restore(
             UUID id,
             UUID userId,
