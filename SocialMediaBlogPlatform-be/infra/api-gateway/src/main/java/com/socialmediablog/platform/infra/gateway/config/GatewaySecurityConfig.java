@@ -60,7 +60,22 @@ public class GatewaySecurityConfig {
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()
                 )
-                .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()))
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .authenticationEntryPoint((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.UNAUTHORIZED,
+                                        ErrorCode.UNAUTHORIZED,
+                                        "Authentication is required"
+                                ))
+                        .accessDeniedHandler((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.FORBIDDEN,
+                                        ErrorCode.FORBIDDEN,
+                                        "Access is denied"
+                                ))
+                        .jwt(Customizer.withDefaults()))
                 .build();
     }
 

@@ -1068,7 +1068,7 @@
 .editor-row {
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-columns: minmax(0, 0.84fr) minmax(260px, 1.16fr);
 }
 
 .editor-cover-preview {
@@ -1278,13 +1278,6 @@
 
 .markdown-inline-image {
   margin: 18px 0;
-}
-
-.markdown-image figcaption {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 10px;
-  text-align: center;
 }
 
 .preview-list-item::before {

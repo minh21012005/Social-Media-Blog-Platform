@@ -40,7 +40,6 @@ function renderLine(line, index) {
     return (
       <figure className="markdown-image" key={index}>
         <img alt={image.alt} loading="lazy" src={image.src} />
-        {image.alt && <figcaption>{image.alt}</figcaption>}
       </figure>
     )
   }
