@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/SocialMediaBlogPlatform-be/services/interaction-service/src/main/java/com/socialmediablog/platform/services/interaction/InteractionServiceApplication.java">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/SocialMediaBlogPlatform-be/services/interaction-service/src/main/java/com/socialmediablog/platform/services/interaction/InteractionServiceApplication.java" />
+              <option name="originalContent" value="package com.socialmediablog.platform.services.interaction;&#10;&#10;import org.springframework.boot.SpringApplication;&#10;import org.springframework.boot.autoconfigure.SpringBootApplication;&#10;&#10;@SpringBootApplication&#10;public class InteractionServiceApplication {&#10;&#10;    public static void main(String[] args) {&#10;        SpringApplication.run(InteractionServiceApplication.class, args);&#10;    }&#10;}&#10;" />
+              <option name="updatedContent" value="package com.socialmediablog.platform.services.interaction;&#13;&#10;&#13;&#10;import org.springframework.boot.SpringApplication;&#13;&#10;import org.springframework.boot.autoconfigure.SpringBootApplication;&#13;&#10;&#10;import java.util.TimeZone;&#10;&#13;&#10;@SpringBootApplication&#13;&#10;public class InteractionServiceApplication {&#13;&#10;&#13;&#10;    public static void main(String[] args) {&#13;&#10;        normalizeJvmTimezone();&#10;        SpringApplication.run(InteractionServiceApplication.class, args);&#13;&#10;    }&#13;&#10;&#10;    private static void normalizeJvmTimezone() {&#10;        TimeZone current = TimeZone.getDefault();&#10;        if (&quot;Asia/Saigon&quot;.equals(current.getID())) {&#10;            // PostgreSQL rejects this deprecated alias in some environments.&#10;            TimeZone.setDefault(TimeZone.getTimeZone(&quot;Asia/Ho_Chi_Minh&quot;));&#10;        }&#10;    }&#10;}&#13;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
