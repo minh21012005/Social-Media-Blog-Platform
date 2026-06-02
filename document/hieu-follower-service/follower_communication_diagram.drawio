@@ -1,0 +1,173 @@
+<mxfile host="65bd71144e">
+    <diagram id="communication" name="Follower Communication Diagram">
+        <mxGraphModel dx="828" dy="455" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="Social Media Blog — Communication Diagram" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1F3864;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="20" width="900" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" value="Use Case: User follows another user — Sync (REST/Feign solid) vs Async (Kafka/RabbitMQ dashed)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="56" width="900" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="client1" value="User&#10;(Web App)" style="shape=actor;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;verticalLabelPosition=bottom;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="83" width="40" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="client2" value="User&#10;(Mobile App)" style="shape=actor;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;verticalLabelPosition=bottom;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="143" width="40" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="client3" value="Admin&lt;br&gt;(Portal)" style="shape=actor;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;verticalLabelPosition=bottom;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="143" width="40" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="gateway" value="API GATEWAY&#10;Spring Cloud Gateway&#10;:8080&#10;&#10;Routing · JWT · CORS · RateLimit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1F3864;strokeColor=#0D1F3C;fontColor=#FFFFFF;fontSize=14;fontStyle=1;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="100" width="280" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_clients_gw" style="endArrow=block;html=1;rounded=0;strokeColor=#1F3864;strokeWidth=2;exitX=1;exitY=0.75;entryX=0;entryY=0.25;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" parent="1" source="client1" target="gateway" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="lbl_clients" value="HTTPS" style="edgeLabel;html=1;align=center;fontSize=11;fontStyle=1;" parent="1" connectable="0" vertex="1">
+                    <mxGeometry x="350" y="125" width="50" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="infra_box" value="Cross-cutting Infrastructure" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=none;strokeColor=#9673A6;strokeWidth=2;verticalAlign=top;fontSize=12;fontStyle=1;fontColor=#6B21A8;" parent="1" vertex="1">
+                    <mxGeometry x="900" y="100" width="700" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="eureka" value="Eureka&#10;:8761&#10;Service Registry&#10;(L7)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="920" y="130" width="100" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="config" value="Config Server&#10;:8888&#10;Externalized&#10;(L9)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1040" y="130" width="100" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="keycloak" value="Keycloak&#10;:8180&#10;Auth IDP&#10;(L12)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1160" y="130" width="100" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="zipkin" value="Zipkin&#10;:9411&#10;Tracing&#10;(L18)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1280" y="130" width="100" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="grafana" value="Loki + Grafana&#10;:3000&#10;Log + Metrics&#10;(L18)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=11;arcSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="130" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc_candidate" value="user-service&#10;:8082&#10;&#10;Aggregate: User&#10;Sub-entity: Profile&#10;VO: AvatarData" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;fontStyle=1;arcSize=10;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="290" width="180" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc_application" value="follower-service&#10;:8083&#10;&#10;Aggregate: FollowRelation&#10;Outbox Pattern&#10;(Core domain)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;fontSize=12;fontStyle=1;arcSize=10;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="290" width="200" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc_notification" value="notification-service&#10;:8084&#10;&#10;Aggregate: EmailLog,&#10;Notification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;fontSize=12;fontStyle=1;arcSize=10;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="290" width="180" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="svc_cvparser" value="article-service&#10;:8085&#10;&#10;Aggregate: Article&#10;Manage user feeds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;fontStyle=1;arcSize=10;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="290" width="180" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_gw_candidate" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;exitX=0.4;exitY=1;entryX=0.5;entryY=0;" parent="1" source="gateway" target="svc_candidate" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_gw_application" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="gateway" target="svc_application" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_gw_notification" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;exitX=0.7;exitY=1;entryX=0.5;entryY=0;" parent="1" source="gateway" target="svc_notification" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_gw_cvparser" style="endArrow=block;html=1;rounded=0;strokeColor=#000000;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;exitX=0.85;exitY=1;entryX=0.5;entryY=0;" parent="1" source="gateway" target="svc_cvparser" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_app_can" style="endArrow=classic;startArrow=none;html=1;rounded=0;strokeColor=#0066CC;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" parent="1" source="svc_application" target="svc_candidate" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="lbl_app_can" value="(3) Feign Sync&#10;GET /users/{id}&#10;Check user exists" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=1;fontColor=#0066CC;labelBackgroundColor=#FFFFFF;" parent="1" connectable="0" vertex="1">
+                    <mxGeometry x="500" y="360" width="140" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="kafka" value="Apache Kafka :9092&#10;Event Stream (1-to-many Pub/Sub) — L16&#10;&#10;Topics:&#10;• user.followed · user.unfollowed&#10;• article.published · feed.updated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#231F20;strokeColor=#000;fontColor=#FFFFFF;fontSize=12;fontStyle=1;arcSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="540" width="380" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_app_kafka" style="endArrow=classic;startArrow=none;dashed=1;dashPattern=8 6;html=1;rounded=0;strokeColor=#9333EA;strokeWidth=2;exitX=0;exitY=1;entryX=0.5;entryY=0;exitDx=0;exitDy=0;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;" parent="1" source="svc_application" target="kafka" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="510" y="430"/>
+                            <mxPoint x="510" y="460"/>
+                            <mxPoint x="430" y="460"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="lbl_app_kafka" value="(5) Kafka publish&#10;UserFollowed&#10;FollowRelationCreated" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=1;fontColor=#9333EA;labelBackgroundColor=#FFFFFF;" parent="1" connectable="0" vertex="1">
+                    <mxGeometry x="415" y="464" width="120" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_kafka_cvparser" style="endArrow=classic;startArrow=none;dashed=1;dashPattern=8 6;html=1;rounded=0;strokeColor=#9333EA;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;exitX=1;exitY=0.75;entryX=0.5;entryY=1;exitDx=0;exitDy=0;" parent="1" source="kafka" target="svc_cvparser" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="lbl_kafka_cvparser" value="(6) consume&#10;UserFollowed" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=1;fontColor=#9333EA;labelBackgroundColor=#FFFFFF;" parent="1" connectable="0" vertex="1">
+                    <mxGeometry x="1020" y="515" width="100" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="db_candidate" value="user_db&#10;PostgreSQL&#10;&#10;users, profiles,&#10;avatars" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="700" width="140" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="db_application" value="follower_db&#10;PostgreSQL&#10;&#10;follow_relations,&#10;outbox_events" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="590" y="700" width="140" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="db_notification" value="notification_db&#10;PostgreSQL&#10;&#10;email_logs,&#10;notifications" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="840" y="700" width="140" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="db_cvparser" value="article_db&#10;PostgreSQL&#10;&#10;articles, feeds,&#10;tags" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1130" y="700" width="140" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="minio" value="MinIO&#10;:9000&#10;&#10;S3-compatible&#10;Avatar storage" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#C2185B;strokeColor=#7B1B43;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="435" y="850" width="140" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_db_candidate" style="endArrow=none;html=1;strokeColor=#666;strokeWidth=1.5;" parent="1" source="svc_candidate" target="db_candidate" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_db_application" style="endArrow=none;html=1;strokeColor=#666;strokeWidth=1.5;" parent="1" source="svc_application" target="db_application" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_db_notification" style="endArrow=none;html=1;strokeColor=#666;strokeWidth=1.5;" parent="1" source="svc_notification" target="db_notification" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_db_cvparser" style="endArrow=none;html=1;strokeColor=#666;strokeWidth=1.5;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" parent="1" source="svc_cvparser" target="db_cvparser" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_can_minio" style="endArrow=block;html=1;strokeColor=#C2185B;strokeWidth=1.5;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="svc_candidate" target="minio" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="lbl_can_minio" value="upload/download Avatar" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=1;fontColor=#C2185B;labelBackgroundColor=#FFFFFF;" parent="1" connectable="0" vertex="1">
+                    <mxGeometry x="455" y="820" width="120" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend_box" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F7FA;strokeColor=#E5E7EB;strokeWidth=2;verticalAlign=top;align=left;fontSize=12;fontStyle=1;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1277" y="258" width="320" height="320" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend_sync" value="━━━━► &lt;b&gt;Sync REST/Feign&lt;/b&gt; — caller chờ response&#10;Vd: validate deadline, check duplicate" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1292" y="293" width="295" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend_kafka" value="┄┄┄┄► &lt;b&gt;Async Kafka (Event)&lt;/b&gt; — fire-and-forget, 1-to-many&#10;Vd: ApplicationCreated, CvParsed" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#9333EA;" parent="1" vertex="1">
+                    <mxGeometry x="1292" y="338" width="295" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend_db" value="━━━ &lt;b&gt;Service ↔ DB&lt;/b&gt; — Database-per-Service&#10;Mỗi service sở hữu 1 DB riêng, KHÔNG share" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1292" y="428" width="295" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend_color" value="&lt;b&gt;Màu service&lt;/b&gt;:&#10;Xanh dương = interaction · Xanh lá = user&#10;Tím = follower (Core) · Cam = notification · Đỏ = article" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1292" y="478" width="295" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow_box" value="Use Case Flow: User follows another user" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#B45309;strokeWidth=2;verticalAlign=top;align=left;fontSize=12;fontStyle=1;fontColor=#7C4A00;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="990" width="1540" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow_steps" value="(1) User POST /api/v1/followers via API Gateway (HTTPS)&amp;nbsp;&lt;div&gt;(2) Gateway routes to follower-service (validates JWT from Keycloak)&amp;nbsp;&lt;/div&gt;&lt;div&gt;(3) follower-service → user-service [Sync Feign]: GET /users/{id} — check target user exists&amp;nbsp;&lt;/div&gt;&lt;div&gt;(4) follower-service saves FollowRelation → publishes 'UserFollowed' to Kafka [Async pub/sub] (via Outbox)&amp;nbsp;&lt;/div&gt;&lt;div&gt;(5) article-service consumes 'UserFollowed' → updates user feed&lt;br/&gt;(6) notification-service consumes 'UserFollowed' from Kafka&amp;nbsp;&lt;/div&gt;&lt;div&gt;(7) notification-service → user-service [Sync Feign]: check recipient ACTIVE &amp;amp; preferences&amp;nbsp;&lt;/div&gt;&lt;div&gt;(8) notification-service sends notification via Provider&lt;/div&gt;" style="text;html=1;align=left;verticalAlign=top;fontSize=11;spacing=10;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="1015" width="1520" height="155" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_kafka_noti" style="endArrow=classic;startArrow=none;dashed=1;dashPattern=8 6;html=1;rounded=0;strokeColor=#9333EA;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;exitX=0.85;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="1" source="kafka" target="svc_notification">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="lbl_kafka_noti" value="(7) consume&amp;#xa;UserFollowed" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=1;fontColor=#9333EA;labelBackgroundColor=#FFFFFF;" connectable="0" parent="e_kafka_noti">
+                    <mxGeometry x="-0.2" width="100" height="36" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_noti_user" style="endArrow=classic;startArrow=none;html=1;rounded=0;strokeColor=#0066CC;strokeWidth=2;edgeStyle=orthogonalEdgeStyle;exitX=0;exitY=0.75;entryX=1;entryY=0.75;" edge="1" parent="1" source="svc_notification" target="svc_candidate">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="lbl_noti_user" value="(8) Feign Sync&amp;#xa;check preferences" style="edgeLabel;html=1;align=center;fontSize=10;fontStyle=1;fontColor=#0066CC;labelBackgroundColor=#FFFFFF;" connectable="0" parent="e_noti_user">
+                    <mxGeometry width="120" height="36" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
