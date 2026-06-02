@@ -40,11 +40,14 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
     }
 
     @Override
-    public List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, int page, int size) {
-        Specification<JpaArticleEntity> specification = publishedSpecification(category, authorId, tag, query);
-        return repository.findAll(
-                        specification,
-                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "publishedAt", "createdAt"))
+    public List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, String sort, int page, int size) {
+        return repository.findPublished(
+                        category == null ? null : category.slug(),
+                        authorId,
+                        normalizeNullable(tag),
+                        normalizeNullable(query),
+                        normalizeSort(sort),
+                        PageRequest.of(page, size)
                 )
                 .stream()
                 .map(JpaArticleEntity::toDomain)
@@ -54,6 +57,22 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
     @Override
     public long countPublished(ArticleCategory category, UUID authorId, String tag, String query) {
         return repository.count(publishedSpecification(category, authorId, tag, query));
+    }
+
+    @Override
+    public List<Article> findFeatured(int size) {
+        return repository.findFeatured(PageRequest.of(0, Math.max(size, 1)))
+                .stream()
+                .map(JpaArticleEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Article> findEditorPicks(int size) {
+        return repository.findEditorPicks(PageRequest.of(0, Math.max(size, 1)))
+                .stream()
+                .map(JpaArticleEntity::toDomain)
+                .toList();
     }
 
     @Override
@@ -92,6 +111,14 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
             return null;
         }
         return value.trim().toLowerCase();
+    }
+
+    private String normalizeSort(String sort) {
+        String normalized = normalizeNullable(sort);
+        if ("views".equals(normalized) || "popular".equals(normalized)) {
+            return normalized;
+        }
+        return "latest";
     }
 
     private Specification<JpaArticleEntity> publishedSpecification(

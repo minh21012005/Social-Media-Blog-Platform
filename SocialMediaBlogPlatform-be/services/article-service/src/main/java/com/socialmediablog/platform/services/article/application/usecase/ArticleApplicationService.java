@@ -1,8 +1,10 @@
 package com.socialmediablog.platform.services.article.application.usecase;
 
 import com.socialmediablog.platform.services.article.application.command.ArticleActionCommand;
+import com.socialmediablog.platform.services.article.application.command.CurateArticleCommand;
 import com.socialmediablog.platform.services.article.application.command.CreateArticleCommand;
 import com.socialmediablog.platform.services.article.application.command.GetServiceStatusCommand;
+import com.socialmediablog.platform.services.article.application.command.ListCuratedArticlesCommand;
 import com.socialmediablog.platform.services.article.application.command.ListMyArticlesCommand;
 import com.socialmediablog.platform.services.article.application.command.ListPublishedArticlesCommand;
 import com.socialmediablog.platform.services.article.application.command.RecordArticleViewCommand;
@@ -13,8 +15,11 @@ import com.socialmediablog.platform.services.article.application.exception.Dupli
 import com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException;
 import com.socialmediablog.platform.services.article.application.port.in.ArchiveArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.CreateArticleUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.CurateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleBySlugUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetServiceStatusUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.ListEditorPicksUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.ListFeaturedArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListMyArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListPublishedArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.PublishArticleUseCase;
@@ -49,9 +54,11 @@ import com.socialmediablog.platform.services.article.domain.vo.ArticleId;
 import com.socialmediablog.platform.services.article.domain.vo.ArticleTitle;
 import com.socialmediablog.platform.services.article.domain.vo.AuthorId;
 import com.socialmediablog.platform.services.article.domain.vo.Slug;
+import java.text.Normalizer;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -67,6 +74,9 @@ public class ArticleApplicationService implements
         GetArticleBySlugUseCase,
         ListPublishedArticlesUseCase,
         ListMyArticlesUseCase,
+        ListFeaturedArticlesUseCase,
+        ListEditorPicksUseCase,
+        CurateArticleUseCase,
         UploadArticleMediaUseCase,
         RecordArticleViewUseCase {
 
@@ -111,10 +121,7 @@ public class ArticleApplicationService implements
     @Transactional
     public ArticleView execute(CreateArticleCommand command) {
         Instant now = clock.instant();
-        Slug slug = Slug.of(command.slug());
-        if (articleRepository.existsBySlug(slug)) {
-            throw new DuplicateArticleSlugException("Article slug is already taken");
-        }
+        Slug slug = Slug.of(uniqueSlug(command.slug(), command.title()));
         Article article = Article.draft(
                 AuthorId.of(command.authorId()),
                 ArticleTitle.of(command.title()),
@@ -148,9 +155,12 @@ public class ArticleApplicationService implements
         } catch (IllegalStateException exception) {
             throw new ForbiddenArticleActionException(exception.getMessage());
         }
-        Slug slug = Slug.of(command.slug());
-        if (articleRepository.existsBySlugAndIdNot(slug, existingArticle.id())) {
-            throw new DuplicateArticleSlugException("Article slug is already taken");
+        Slug slug = existingArticle.slug();
+        if (command.slug() != null && !command.slug().isBlank()) {
+            slug = Slug.of(command.slug());
+            if (articleRepository.existsBySlugAndIdNot(slug, existingArticle.id())) {
+                throw new DuplicateArticleSlugException("Article slug is already taken");
+            }
         }
         articleRevisionRepository.save(ArticleRevision.snapshot(
                 existingArticle,
@@ -232,11 +242,52 @@ public class ArticleApplicationService implements
                 command.authorId(),
                 command.tag(),
                 command.query(),
+                command.sort(),
                 page,
                 size
         );
         long totalItems = articleRepository.countPublished(category, command.authorId(), command.tag(), command.query());
         return PageResult.of(articles.stream().map(this::view).toList(), page, size, totalItems);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ArticleView> executeFeatured(ListCuratedArticlesCommand command) {
+        int size = size(command.size());
+        List<Article> featured = articleRepository.findFeatured(size);
+        if (featured.isEmpty()) {
+            featured = articleRepository.findPublished(null, null, null, null, "latest", 0, size);
+        }
+        return featured.stream().map(this::view).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ArticleView> executeEditorPicks(ListCuratedArticlesCommand command) {
+        int size = size(command.size());
+        List<Article> editorPicks = articleRepository.findEditorPicks(size);
+        if (editorPicks.size() < size) {
+            Set<UUID> selectedIds = editorPicks.stream()
+                    .map(article -> article.id().value())
+                    .collect(java.util.stream.Collectors.toSet());
+            List<Article> fallback = articleRepository.findPublished(null, null, null, null, "latest", 0, size * 2).stream()
+                    .filter(article -> !selectedIds.contains(article.id().value()))
+                    .limit(size - editorPicks.size())
+                    .toList();
+            editorPicks = java.util.stream.Stream.concat(editorPicks.stream(), fallback.stream()).toList();
+        }
+        return editorPicks.stream().map(this::view).toList();
+    }
+
+    @Override
+    @Transactional
+    public ArticleView curate(CurateArticleCommand command) {
+        Article article = findRequired(command.articleId());
+        return view(articleRepository.save(article.curate(
+                command.featuredRank(),
+                command.editorPickRank(),
+                clock.instant()
+        )));
     }
 
     @Override
@@ -359,5 +410,43 @@ public class ArticleApplicationService implements
         if (mimeType == null || !mimeType.startsWith("image/")) {
             throw new IllegalArgumentException("Article media file must be an image");
         }
+    }
+
+    private String uniqueSlug(String requestedSlug, String title) {
+        String baseSlug = normalizeSlug(requestedSlug);
+        if (baseSlug.isBlank()) {
+            baseSlug = normalizeSlug(title);
+        }
+        if (baseSlug.isBlank()) {
+            baseSlug = "article";
+        }
+
+        baseSlug = trimSlug(baseSlug, 210);
+        String candidate = baseSlug;
+        int suffix = 2;
+        while (articleRepository.existsBySlug(Slug.of(candidate))) {
+            String suffixText = "-" + suffix++;
+            candidate = trimSlug(baseSlug, 220 - suffixText.length()) + suffixText;
+        }
+        return candidate;
+    }
+
+    private String normalizeSlug(String value) {
+        if (value == null) {
+            return "";
+        }
+        String withoutAccents = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return withoutAccents
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+    }
+
+    private String trimSlug(String slug, int maxLength) {
+        if (slug.length() <= maxLength) {
+            return slug;
+        }
+        return slug.substring(0, maxLength).replaceAll("-+$", "");
     }
 }

@@ -48,3 +48,11 @@ export async function uploadAvatar(file, token) {
     token,
   })
 }
+
+export async function updateProfile(payload, token) {
+  return normalizeProfile(await apiRequest('/api/v1/users/me', {
+    method: 'PATCH',
+    body: payload,
+    token,
+  }))
+}

@@ -1,6 +1,7 @@
 import { apiRequest } from './api'
 
 const AUTH_STORAGE_KEY = 'social-blog-auth'
+let refreshInFlight = null
 
 export function loadAuth() {
   try {
@@ -25,8 +26,13 @@ export function clearAuth() {
 }
 
 export function refreshAuth() {
-  return apiRequest('/api/v1/auth/refresh', {
-    method: 'POST',
-    credentials: 'include',
-  })
+  if (!refreshInFlight) {
+    refreshInFlight = apiRequest('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    }).finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
 }

@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,6 +36,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<Void>> illegalState(IllegalStateException exception) {
         return ResponseEntity.badRequest().body(ApiResponse.failure(ErrorCode.BAD_REQUEST, exception.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> maxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.failure(ErrorCode.BAD_REQUEST, "Article image must not exceed 10MB"));
     }
 
     @ExceptionHandler(ArticleNotFoundException.class)

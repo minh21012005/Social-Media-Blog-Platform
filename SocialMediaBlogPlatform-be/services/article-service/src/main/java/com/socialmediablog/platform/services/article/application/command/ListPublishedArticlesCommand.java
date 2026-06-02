@@ -7,6 +7,7 @@ public record ListPublishedArticlesCommand(
         UUID authorId,
         String tag,
         String query,
+        String sort,
         int page,
         int size
 ) {

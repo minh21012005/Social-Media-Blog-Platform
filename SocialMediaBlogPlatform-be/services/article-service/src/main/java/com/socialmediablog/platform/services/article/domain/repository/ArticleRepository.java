@@ -16,9 +16,13 @@ public interface ArticleRepository {
 
     Optional<Article> findBySlug(Slug slug);
 
-    List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, int page, int size);
+    List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, String sort, int page, int size);
 
     long countPublished(ArticleCategory category, UUID authorId, String tag, String query);
+
+    List<Article> findFeatured(int size);
+
+    List<Article> findEditorPicks(int size);
 
     List<Article> findByAuthor(AuthorId authorId, ArticleStatus status, int page, int size);
 

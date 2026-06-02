@@ -47,6 +47,12 @@ public class JpaArticleEntity extends BaseEntity {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(name = "featured_rank")
+    private Integer featuredRank;
+
+    @Column(name = "editor_pick_rank")
+    private Integer editorPickRank;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "article_tags", joinColumns = @JoinColumn(name = "article_id"))
     @Column(name = "tag", nullable = false, length = 50)
@@ -66,6 +72,8 @@ public class JpaArticleEntity extends BaseEntity {
             String coverImageUrl,
             String status,
             Instant publishedAt,
+            Integer featuredRank,
+            Integer editorPickRank,
             Set<String> tags,
             Instant createdAt,
             Instant updatedAt
@@ -80,6 +88,8 @@ public class JpaArticleEntity extends BaseEntity {
         this.coverImageUrl = coverImageUrl;
         this.status = status;
         this.publishedAt = publishedAt;
+        this.featuredRank = featuredRank;
+        this.editorPickRank = editorPickRank;
         this.tags = new LinkedHashSet<>(tags);
     }
 
@@ -95,6 +105,8 @@ public class JpaArticleEntity extends BaseEntity {
                 article.coverImageUrl(),
                 article.status().name(),
                 article.publishedAt(),
+                article.featuredRank(),
+                article.editorPickRank(),
                 article.tags(),
                 article.createdAt(),
                 article.updatedAt()
@@ -113,6 +125,8 @@ public class JpaArticleEntity extends BaseEntity {
                 coverImageUrl,
                 ArticleStatus.valueOf(status),
                 publishedAt,
+                featuredRank,
+                editorPickRank,
                 tags,
                 createdAt,
                 updatedAt
