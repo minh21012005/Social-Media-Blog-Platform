@@ -801,6 +801,12 @@
   gap: 9px;
 }
 
+.editor-field-label {
+  color: var(--ink);
+  display: block;
+  font-weight: 750;
+}
+
 .editor-form input,
 .editor-form textarea,
 .editor-form select {
@@ -835,6 +841,32 @@
   display: block;
   object-fit: cover;
   width: 100%;
+}
+
+.editor-cover-control {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-cover-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.text-button {
+  background: transparent;
+  border: 0;
+  color: var(--copper);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+  padding: 0;
+}
+
+.text-button.muted {
+  color: var(--muted);
 }
 
 .editor-content {

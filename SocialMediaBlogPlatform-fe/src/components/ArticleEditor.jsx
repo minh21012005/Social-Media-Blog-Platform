@@ -14,12 +14,13 @@ const emptyArticle = {
   tags: '',
 }
 
-export function ArticleEditor({ initialArticle, token, saving, onSave, onPublish }) {
+export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, onSave, onPublish }) {
   const [form, setForm] = useState(() => ({
     ...emptyArticle,
     ...initialArticle,
     tags: Array.isArray(initialArticle?.tags) ? initialArticle.tags.join(', ') : initialArticle?.tags || '',
   }))
+  const [showCoverUrlInput, setShowCoverUrlInput] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
 
@@ -46,7 +47,9 @@ export function ArticleEditor({ initialArticle, token, saving, onSave, onPublish
     setError('')
     setUploading(true)
     try {
-      const media = await uploadArticleMedia(file, token)
+      const media = requestWithAuth
+        ? await requestWithAuth((accessToken) => uploadArticleMedia(file, accessToken))
+        : await uploadArticleMedia(file, token)
       setForm((current) => ({ ...current, coverImageUrl: media.secureUrl }))
     } catch (requestError) {
       setError(requestError.message)
@@ -99,12 +102,39 @@ export function ArticleEditor({ initialArticle, token, saving, onSave, onPublish
           Summary
           <textarea maxLength="500" required rows="3" value={form.summary} onChange={update('summary')} />
         </label>
-        <label>
-          Cover image URL
-          <input value={form.coverImageUrl} onChange={update('coverImageUrl')} />
-        </label>
-        {form.coverImageUrl && <img alt="" className="editor-cover-preview" src={form.coverImageUrl} />}
-        <MediaUploader busy={uploading} label="Upload cover image" onUpload={upload} />
+        <div className="editor-cover-control">
+          <span className="editor-field-label">Cover image</span>
+          {form.coverImageUrl && <img alt="" className="editor-cover-preview" src={form.coverImageUrl} />}
+          <div className="editor-cover-actions">
+            <MediaUploader busy={uploading} label={form.coverImageUrl ? 'Replace cover image' : 'Upload cover image'} onUpload={upload} />
+            <button
+              className="text-button"
+              type="button"
+              onClick={() => setShowCoverUrlInput((current) => !current)}
+            >
+              {showCoverUrlInput ? 'Hide image URL' : 'Use image URL instead'}
+            </button>
+            {form.coverImageUrl && (
+              <button
+                className="text-button muted"
+                type="button"
+                onClick={() => setForm((current) => ({ ...current, coverImageUrl: '' }))}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          {showCoverUrlInput && (
+            <label>
+              Image URL
+              <input
+                placeholder="https://res.cloudinary.com/..."
+                value={form.coverImageUrl}
+                onChange={update('coverImageUrl')}
+              />
+            </label>
+          )}
+        </div>
         <label>
           Tags
           <input placeholder="design, web, culture" value={form.tags} onChange={update('tags')} />
