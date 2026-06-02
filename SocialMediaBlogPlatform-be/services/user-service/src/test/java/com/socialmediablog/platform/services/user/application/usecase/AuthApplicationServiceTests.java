@@ -18,16 +18,22 @@ import com.socialmediablog.platform.services.user.application.port.out.PasswordH
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenGenerator;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenHasher;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenRepository;
+import com.socialmediablog.platform.services.user.application.port.out.UserMediaStorage;
 import com.socialmediablog.platform.services.user.application.result.AuthenticatedUser;
 import com.socialmediablog.platform.services.user.application.result.IssuedToken;
+import com.socialmediablog.platform.services.user.application.result.StoredUserMedia;
 import com.socialmediablog.platform.services.user.domain.aggregate.RefreshToken;
+import com.socialmediablog.platform.services.user.domain.aggregate.UserMediaAsset;
+import com.socialmediablog.platform.services.user.domain.repository.UserMediaAssetRepository;
 import com.socialmediablog.platform.services.user.domain.repository.UserRepository;
 import com.socialmediablog.platform.services.user.domain.vo.EmailAddress;
 import com.socialmediablog.platform.services.user.domain.aggregate.User;
+import com.socialmediablog.platform.services.user.domain.vo.UserMediaAssetId;
 import com.socialmediablog.platform.services.user.domain.vo.Username;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -49,6 +55,8 @@ class AuthApplicationServiceTests {
         AccessTokenIssuer accessTokenIssuer = user -> new IssuedToken("token-" + user.username().value(), "Bearer", 3600);
         RefreshTokenGenerator refreshTokenGenerator = new TestRefreshTokenGenerator();
         RefreshTokenHasher refreshTokenHasher = refreshToken -> "hash:" + refreshToken;
+        UserMediaStorage userMediaStorage = new TestUserMediaStorage();
+        UserMediaAssetRepository userMediaAssetRepository = new InMemoryUserMediaAssetRepository();
         DomainEventPublisher domainEventPublisher = event -> {
         };
         JwtProperties jwtProperties = new JwtProperties();
@@ -60,6 +68,8 @@ class AuthApplicationServiceTests {
                 accessTokenIssuer,
                 refreshTokenGenerator,
                 refreshTokenHasher,
+                userMediaStorage,
+                userMediaAssetRepository,
                 domainEventPublisher,
                 jwtProperties,
                 clock
@@ -168,10 +178,25 @@ class AuthApplicationServiceTests {
         }
 
         @Override
+        public List<User> findAllById(List<UUID> ids) {
+            return ids.stream()
+                    .map(users::get)
+                    .filter(user -> user != null)
+                    .toList();
+        }
+
+        @Override
         public Optional<User> findByEmailOrUsername(String identifier) {
             String normalized = identifier.trim().toLowerCase(Locale.ROOT);
             return users.values().stream()
                     .filter(user -> user.email().value().equals(normalized) || user.username().value().equals(normalized))
+                    .findFirst();
+        }
+
+        @Override
+        public Optional<User> findByUsername(Username username) {
+            return users.values().stream()
+                    .filter(user -> user.username().equals(username))
                     .findFirst();
         }
 
@@ -225,6 +250,45 @@ class AuthApplicationServiceTests {
         @Override
         public String generate() {
             return "refresh-token-" + current++;
+        }
+    }
+
+    private static class TestUserMediaStorage implements UserMediaStorage {
+
+        @Override
+        public StoredUserMedia uploadAvatar(String originalFilename, String mimeType, byte[] content) {
+            return new StoredUserMedia(
+                    "avatar/test",
+                    "https://cdn.example.com/avatar/test.png",
+                    originalFilename,
+                    mimeType,
+                    content == null ? 0 : content.length,
+                    256,
+                    256
+            );
+        }
+    }
+
+    private static class InMemoryUserMediaAssetRepository implements UserMediaAssetRepository {
+
+        private final Map<UUID, UserMediaAsset> mediaAssets = new HashMap<>();
+
+        @Override
+        public Optional<UserMediaAsset> findById(UserMediaAssetId id) {
+            return Optional.ofNullable(mediaAssets.get(id.value()));
+        }
+
+        @Override
+        public List<UserMediaAsset> findByUserId(UUID userId) {
+            return mediaAssets.values().stream()
+                    .filter(mediaAsset -> mediaAsset.userId().equals(userId))
+                    .toList();
+        }
+
+        @Override
+        public UserMediaAsset save(UserMediaAsset mediaAsset) {
+            mediaAssets.put(mediaAsset.id().value(), mediaAsset);
+            return mediaAsset;
         }
     }
 }

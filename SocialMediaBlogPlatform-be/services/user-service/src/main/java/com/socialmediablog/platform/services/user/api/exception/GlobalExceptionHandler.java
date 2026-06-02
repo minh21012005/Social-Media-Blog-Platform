@@ -1,6 +1,7 @@
 package com.socialmediablog.platform.services.user.api.exception;
 
 import com.socialmediablog.platform.common.web.ApiResponse;
+import com.socialmediablog.platform.common.web.error.ErrorCode;
 import com.socialmediablog.platform.services.user.application.exception.DuplicateUserException;
 import com.socialmediablog.platform.services.user.application.exception.InactiveUserException;
 import com.socialmediablog.platform.services.user.application.exception.InvalidCredentialsException;
@@ -22,31 +23,41 @@ public class GlobalExceptionHandler {
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
-        return ResponseEntity.badRequest().body(ApiResponse.failure(message));
+        return ResponseEntity.badRequest().body(ApiResponse.failure(ErrorCode.VALIDATION_ERROR, message));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> illegalArgument(IllegalArgumentException exception) {
-        return ResponseEntity.badRequest().body(ApiResponse.failure(exception.getMessage()));
+        return ResponseEntity.badRequest().body(ApiResponse.failure(ErrorCode.BAD_REQUEST, exception.getMessage()));
     }
 
     @ExceptionHandler(DuplicateUserException.class)
     public ResponseEntity<ApiResponse<Void>> duplicateUser(DuplicateUserException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.failure(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.failure(ErrorCode.CONFLICT, exception.getMessage()));
     }
 
     @ExceptionHandler({InvalidCredentialsException.class, InvalidRefreshTokenException.class})
     public ResponseEntity<ApiResponse<Void>> invalidCredentials(RuntimeException exception) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, exception.getMessage()));
     }
 
     @ExceptionHandler(InactiveUserException.class)
     public ResponseEntity<ApiResponse<Void>> inactiveUser(InactiveUserException exception) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiResponse.failure(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.failure(ErrorCode.FORBIDDEN, exception.getMessage()));
     }
 
-    @ExceptionHandler({JwtException.class, UserNotFoundException.class})
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> notFound(UserNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.failure(ErrorCode.NOT_FOUND, exception.getMessage()));
+    }
+
+    @ExceptionHandler(JwtException.class)
     public ResponseEntity<ApiResponse<Void>> unauthorized(RuntimeException exception) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.failure(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.failure(ErrorCode.UNAUTHORIZED, exception.getMessage()));
     }
 }

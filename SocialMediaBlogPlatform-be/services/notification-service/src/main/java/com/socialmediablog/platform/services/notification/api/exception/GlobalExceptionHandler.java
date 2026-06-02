@@ -1,6 +1,7 @@
 package com.socialmediablog.platform.services.notification.api.exception;
 
 import com.socialmediablog.platform.common.web.ApiResponse;
+import com.socialmediablog.platform.common.web.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -12,6 +13,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleIllegalArgument(IllegalArgumentException ex) {
-        return ApiResponse.failure(ex.getMessage());
+        return ApiResponse.failure(ErrorCode.BAD_REQUEST, ex.getMessage());
     }
 }

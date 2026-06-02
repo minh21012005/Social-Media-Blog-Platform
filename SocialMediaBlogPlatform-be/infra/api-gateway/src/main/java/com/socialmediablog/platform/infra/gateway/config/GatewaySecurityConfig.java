@@ -2,6 +2,8 @@ package com.socialmediablog.platform.infra.gateway.config;
 
 import com.socialmediablog.platform.common.security.JwtProperties;
 import com.socialmediablog.platform.common.security.JwtSupport;
+import com.socialmediablog.platform.common.security.error.ReactiveSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.error.ErrorCode;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -30,10 +33,30 @@ public class GatewaySecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(Customizer.withDefaults())
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.UNAUTHORIZED,
+                                        ErrorCode.UNAUTHORIZED,
+                                        "Authentication is required"
+                                ))
+                        .accessDeniedHandler((exchange, exceptionCause) ->
+                                ReactiveSecurityErrorResponseWriter.write(
+                                        exchange,
+                                        HttpStatus.FORBIDDEN,
+                                        ErrorCode.FORBIDDEN,
+                                        "Access is denied"
+                                ))
+                )
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                        .pathMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/by-username/*", "/api/v1/users/public").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()
                 )

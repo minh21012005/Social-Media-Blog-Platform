@@ -1,12 +1,23 @@
 package com.socialmediablog.platform.services.article.infrastructure.adapter;
 
 import com.socialmediablog.platform.services.article.domain.aggregate.Article;
+import com.socialmediablog.platform.services.article.domain.model.ArticleCategory;
+import com.socialmediablog.platform.services.article.domain.model.ArticleStatus;
 import com.socialmediablog.platform.services.article.domain.repository.ArticleRepository;
 import com.socialmediablog.platform.services.article.domain.vo.ArticleId;
+import com.socialmediablog.platform.services.article.domain.vo.AuthorId;
 import com.socialmediablog.platform.services.article.domain.vo.Slug;
 import com.socialmediablog.platform.services.article.infrastructure.entity.JpaArticleEntity;
 import com.socialmediablog.platform.services.article.infrastructure.persistence.SpringDataJpaArticleRepository;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -29,12 +40,104 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
     }
 
     @Override
+    public List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, int page, int size) {
+        Specification<JpaArticleEntity> specification = publishedSpecification(category, authorId, tag, query);
+        return repository.findAll(
+                        specification,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "publishedAt", "createdAt"))
+                )
+                .stream()
+                .map(JpaArticleEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countPublished(ArticleCategory category, UUID authorId, String tag, String query) {
+        return repository.count(publishedSpecification(category, authorId, tag, query));
+    }
+
+    @Override
+    public List<Article> findByAuthor(AuthorId authorId, ArticleStatus status, int page, int size) {
+        return repository.findAll(
+                        authorSpecification(authorId, status),
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"))
+                )
+                .stream()
+                .map(JpaArticleEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countByAuthor(AuthorId authorId, ArticleStatus status) {
+        return repository.count(authorSpecification(authorId, status));
+    }
+
+    @Override
     public boolean existsBySlug(Slug slug) {
         return repository.existsBySlug(slug.value());
     }
 
     @Override
+    public boolean existsBySlugAndIdNot(Slug slug, ArticleId id) {
+        return repository.existsBySlugAndIdNot(slug.value(), id.value());
+    }
+
+    @Override
     public Article save(Article article) {
         return repository.save(JpaArticleEntity.fromDomain(article)).toDomain();
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toLowerCase();
+    }
+
+    private Specification<JpaArticleEntity> publishedSpecification(
+            ArticleCategory category,
+            UUID authorId,
+            String tag,
+            String query
+    ) {
+        String normalizedTag = normalizeNullable(tag);
+        String normalizedQuery = normalizeNullable(query);
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("status"), ArticleStatus.PUBLISHED.name()));
+
+            if (category != null) {
+                predicates.add(criteriaBuilder.equal(root.get("category"), category.slug()));
+            }
+            if (authorId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("authorId"), authorId));
+            }
+            if (normalizedTag != null) {
+                Join<JpaArticleEntity, String> tags = root.join("tags");
+                predicates.add(criteriaBuilder.equal(tags, normalizedTag));
+                criteriaQuery.distinct(true);
+            }
+            if (normalizedQuery != null) {
+                String pattern = "%" + normalizedQuery + "%";
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("content")), pattern)
+                ));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+
+    private Specification<JpaArticleEntity> authorSpecification(AuthorId authorId, ArticleStatus status) {
+        return (root, criteriaQuery, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(criteriaBuilder.equal(root.get("authorId"), authorId.value()));
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status.name()));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 }

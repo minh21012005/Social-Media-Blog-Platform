@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import com.socialmediablog.platform.services.user.infrastructure.entity.JpaUserEntity;
 import com.socialmediablog.platform.services.user.infrastructure.persistence.SpringDataJpaUserRepository;
+import java.util.List;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -34,6 +35,18 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     @Override
     public Optional<User> findById(UUID id) {
         return repository.findById(id).map(JpaUserEntity::toDomain);
+    }
+
+    @Override
+    public List<User> findAllById(List<UUID> ids) {
+        return repository.findAllById(ids).stream()
+                .map(JpaUserEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Optional<User> findByUsername(Username username) {
+        return repository.findByUsername(username.value()).map(JpaUserEntity::toDomain);
     }
 
     @Override
