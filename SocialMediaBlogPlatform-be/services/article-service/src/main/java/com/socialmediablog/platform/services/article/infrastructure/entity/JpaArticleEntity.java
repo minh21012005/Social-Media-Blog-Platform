@@ -2,6 +2,7 @@ package com.socialmediablog.platform.services.article.infrastructure.entity;
 
 import com.socialmediablog.platform.common.web.entity.BaseEntity;
 import com.socialmediablog.platform.services.article.domain.aggregate.Article;
+import com.socialmediablog.platform.services.article.domain.model.ArticleCategory;
 import com.socialmediablog.platform.services.article.domain.model.ArticleStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -28,6 +29,9 @@ public class JpaArticleEntity extends BaseEntity {
     @Column(nullable = false, unique = true, length = 220)
     private String slug;
 
+    @Column(nullable = false, length = 30)
+    private String category;
+
     @Column(length = 500)
     private String summary;
 
@@ -43,6 +47,12 @@ public class JpaArticleEntity extends BaseEntity {
     @Column(name = "published_at")
     private Instant publishedAt;
 
+    @Column(name = "featured_rank")
+    private Integer featuredRank;
+
+    @Column(name = "editor_pick_rank")
+    private Integer editorPickRank;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "article_tags", joinColumns = @JoinColumn(name = "article_id"))
     @Column(name = "tag", nullable = false, length = 50)
@@ -56,11 +66,14 @@ public class JpaArticleEntity extends BaseEntity {
             UUID authorId,
             String title,
             String slug,
+            String category,
             String summary,
             String content,
             String coverImageUrl,
             String status,
             Instant publishedAt,
+            Integer featuredRank,
+            Integer editorPickRank,
             Set<String> tags,
             Instant createdAt,
             Instant updatedAt
@@ -69,11 +82,14 @@ public class JpaArticleEntity extends BaseEntity {
         this.authorId = authorId;
         this.title = title;
         this.slug = slug;
+        this.category = category;
         this.summary = summary;
         this.content = content;
         this.coverImageUrl = coverImageUrl;
         this.status = status;
         this.publishedAt = publishedAt;
+        this.featuredRank = featuredRank;
+        this.editorPickRank = editorPickRank;
         this.tags = new LinkedHashSet<>(tags);
     }
 
@@ -83,11 +99,14 @@ public class JpaArticleEntity extends BaseEntity {
                 article.authorId().value(),
                 article.title().value(),
                 article.slug().value(),
+                article.category().slug(),
                 article.summary(),
                 article.content(),
                 article.coverImageUrl(),
                 article.status().name(),
                 article.publishedAt(),
+                article.featuredRank(),
+                article.editorPickRank(),
                 article.tags(),
                 article.createdAt(),
                 article.updatedAt()
@@ -100,11 +119,14 @@ public class JpaArticleEntity extends BaseEntity {
                 authorId,
                 title,
                 slug,
+                ArticleCategory.fromSlug(category),
                 summary,
                 content,
                 coverImageUrl,
                 ArticleStatus.valueOf(status),
                 publishedAt,
+                featuredRank,
+                editorPickRank,
                 tags,
                 createdAt,
                 updatedAt

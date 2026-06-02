@@ -1,8 +1,12 @@
 package com.socialmediablog.platform.services.article.config;
 
 import com.socialmediablog.platform.common.security.GatewayHeaderAuthenticationFilter;
+import com.socialmediablog.platform.common.security.error.ServletSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.error.ErrorCode;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -23,8 +27,26 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) ->
+                                ServletSecurityErrorResponseWriter.write(
+                                        response,
+                                        HttpStatus.UNAUTHORIZED,
+                                        ErrorCode.UNAUTHORIZED,
+                                        "Authentication is required"
+                                ))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                ServletSecurityErrorResponseWriter.write(
+                                        response,
+                                        HttpStatus.FORBIDDEN,
+                                        ErrorCode.FORBIDDEN,
+                                        "Access is denied"
+                                ))
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/info", "/error").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(gatewayHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -34,5 +56,10 @@ public class SecurityConfig {
     @Bean
     GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter() {
         return new GatewayHeaderAuthenticationFilter();
+    }
+
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
     }
 }

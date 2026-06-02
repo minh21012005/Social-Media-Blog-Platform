@@ -67,6 +67,20 @@ public class ArticleStats {
         );
     }
 
+    public ArticleStats recordView(Instant now) {
+        return new ArticleStats(
+                id,
+                articleId,
+                clapCount,
+                commentCount,
+                viewCount + 1,
+                bookmarkCount,
+                now,
+                createdAt,
+                now
+        );
+    }
+
     private static long nonNegative(long value, String field) {
         if (value < 0) {
             throw new IllegalArgumentException("Article " + field + " must not be negative");

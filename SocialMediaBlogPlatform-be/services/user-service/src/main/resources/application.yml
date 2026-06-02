@@ -12,6 +12,10 @@ spring:
     password: ${USER_SERVICE_DB_PASSWORD:social_blog}
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: ${USER_AVATAR_MAX_FILE_SIZE:5MB}
+      max-request-size: ${USER_AVATAR_MAX_REQUEST_SIZE:5MB}
   jpa:
     open-in-view: false
     hibernate:
@@ -35,6 +39,11 @@ security:
     same-site: ${REFRESH_TOKEN_COOKIE_SAME_SITE:Lax}
 
 eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: ${EUREKA_INSTANCE_IP_ADDRESS:127.0.0.1}
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    instance-id: ${spring.application.name}:${server.port}
   client:
     service-url:
       defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}

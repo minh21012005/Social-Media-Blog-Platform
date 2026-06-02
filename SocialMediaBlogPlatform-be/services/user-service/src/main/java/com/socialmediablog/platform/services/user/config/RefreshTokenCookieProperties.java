@@ -10,20 +10,12 @@ public class RefreshTokenCookieProperties {
     private boolean secure = false;
     private String sameSite = "Lax";
 
-    public String name() {
-        return name;
-    }
-
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String path() {
-        return path;
     }
 
     public String getPath() {
@@ -34,20 +26,12 @@ public class RefreshTokenCookieProperties {
         this.path = path;
     }
 
-    public boolean secure() {
-        return secure;
-    }
-
     public boolean isSecure() {
         return secure;
     }
 
     public void setSecure(boolean secure) {
         this.secure = secure;
-    }
-
-    public String sameSite() {
-        return sameSite;
     }
 
     public String getSameSite() {
