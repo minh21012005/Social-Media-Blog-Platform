@@ -157,8 +157,8 @@ export function ArticleEditor({ initialArticle, requestWithAuth, token, saving, 
       </section>
       <aside className="editor-preview">
         <span className="form-eyebrow">Preview</span>
-        <h2>{form.title || 'Untitled article'}</h2>
-        <p>{form.summary || 'A concise summary helps readers decide where to spend their attention.'}</p>
+        <h2 className="preview-title">{form.title || 'Untitled article'}</h2>
+        <p className="preview-summary">{form.summary || 'A concise summary helps readers decide where to spend their attention.'}</p>
         <MarkdownPreview content={form.content} />
       </aside>
     </form>
