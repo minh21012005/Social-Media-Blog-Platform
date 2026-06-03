@@ -31,4 +31,45 @@ public class JpaOutboxEventEntity extends BaseEntity {
 
     protected JpaOutboxEventEntity() {
     }
+
+    private JpaOutboxEventEntity(
+            UUID id,
+            UUID aggregateId,
+            String aggregateType,
+            String eventType,
+            String payload,
+            String status,
+            Instant publishedAt,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        super(id, createdAt, updatedAt);
+        this.aggregateId = aggregateId;
+        this.aggregateType = aggregateType;
+        this.eventType = eventType;
+        this.payload = payload;
+        this.status = status;
+        this.publishedAt = publishedAt;
+    }
+
+    public static JpaOutboxEventEntity pending(
+            UUID eventId,
+            UUID aggregateId,
+            String aggregateType,
+            String eventType,
+            String payload,
+            Instant now
+    ) {
+        return new JpaOutboxEventEntity(
+                eventId,
+                aggregateId,
+                aggregateType,
+                eventType,
+                payload,
+                "PENDING",
+                null,
+                now,
+                now
+        );
+    }
 }

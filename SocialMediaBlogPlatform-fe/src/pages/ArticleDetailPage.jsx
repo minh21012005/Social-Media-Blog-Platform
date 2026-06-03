@@ -1,12 +1,161 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArticleMeta } from '../components/ArticleCard'
 import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
+import { createComment, listArticleComments } from '../services/comments'
+import { getPublicUsers } from '../services/users'
 
-export function ArticleDetailPage({ slug, navigate }) {
+const COMMENT_MAX_LENGTH = 5000
+
+function formatCommentDate(value) {
+  if (!value) {
+    return 'Just now'
+  }
+
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function CommentComposer({ articleId, session, requestWithAuth, navigate, onCreated }) {
+  const [content, setContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const remaining = COMMENT_MAX_LENGTH - content.length
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    const trimmed = content.trim()
+
+    if (!session) {
+      navigate('/login')
+      return
+    }
+
+    if (!trimmed) {
+      setError('Comment content is required.')
+      return
+    }
+
+    if (trimmed.length > COMMENT_MAX_LENGTH) {
+      setError(`Comment content must not exceed ${COMMENT_MAX_LENGTH} characters.`)
+      return
+    }
+
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const created = await requestWithAuth((token) => createComment(articleId, { content: trimmed }, token))
+      onCreated(created)
+      setContent('')
+    } catch (requestError) {
+      setError(requestError.message || 'Could not post your comment.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="comment-composer" onSubmit={handleSubmit}>
+      <div className="comment-composer-header">
+        <div>
+          <span className="form-eyebrow">Join the discussion</span>
+          <h2 id="comments-title">Comments</h2>
+        </div>
+        {!session && (
+          <button className="text-button" type="button" onClick={() => navigate('/login')}>
+            Log in to comment
+          </button>
+        )}
+      </div>
+      <label>
+        <span className="editor-field-label">Your comment</span>
+        <textarea
+          aria-invalid={Boolean(error)}
+          disabled={submitting}
+          maxLength={COMMENT_MAX_LENGTH}
+          onChange={(event) => {
+            setContent(event.target.value)
+            if (error) {
+              setError('')
+            }
+          }}
+          placeholder={session ? 'Share your thoughts...' : 'Log in before posting a comment.'}
+          rows="5"
+          value={content}
+        />
+      </label>
+      <div className="comment-composer-actions">
+        <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
+          {remaining} characters left
+        </span>
+        <button className="submit-button" disabled={submitting || !content.trim()} type="submit">
+          {submitting ? 'Posting...' : 'Post comment'}
+        </button>
+      </div>
+      {error && <p className="form-error">{error}</p>}
+    </form>
+  )
+}
+
+async function enrichComments(comments) {
+  const authorMap = await getPublicUsers((comments || []).map((comment) => comment.authorId)).catch(() => new Map())
+  return (comments || []).map((comment) => ({
+    ...comment,
+    author: authorMap.get(comment.authorId) || null,
+  }))
+}
+
+function CommentList({ comments, currentUserId }) {
+  if (!comments.length) {
+    return (
+      <div className="comment-empty">
+        <p>No comments yet. Start the conversation.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="comment-list">
+      {comments.map((comment) => {
+        const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
+        const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
+        const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
+        return (
+          <article className="comment-item" key={comment.id}>
+            {comment.author?.avatarUrl ? (
+              <img alt="" className="comment-avatar" src={comment.author.avatarUrl} />
+            ) : (
+              <div className="comment-avatar" aria-hidden="true">
+                {avatarLabel}
+              </div>
+            )}
+            <div>
+              <div className="comment-item-meta">
+                <strong>{isMine ? 'You' : authorName}</strong>
+                <span>{formatCommentDate(comment.createdAt)}</span>
+                {comment.status && <span>{comment.status.toLowerCase()}</span>}
+              </div>
+              <p>{comment.content}</p>
+            </div>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
+export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
+  const [comments, setComments] = useState([])
+  const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
 
   useEffect(() => {
     let active = true
@@ -16,6 +165,20 @@ export function ArticleDetailPage({ slug, navigate }) {
         recordArticleView(article.id, { source: 'web' }).catch(() => null)
         if (active) {
           setState({ loading: false, article, error: '' })
+          setCommentsState({ loading: true, error: '' })
+        }
+        try {
+          const articleComments = await listArticleComments(article.id)
+          const enrichedComments = await enrichComments(articleComments)
+          if (active) {
+            setComments(enrichedComments)
+            setCommentsState({ loading: false, error: '' })
+          }
+        } catch (commentsError) {
+          if (active) {
+            setComments([])
+            setCommentsState({ loading: false, error: commentsError.message || 'Could not load comments.' })
+          }
         }
       } catch (error) {
         if (active) {
@@ -28,6 +191,18 @@ export function ArticleDetailPage({ slug, navigate }) {
       active = false
     }
   }, [slug])
+
+  const currentUserId = useMemo(() => session?.user?.id, [session])
+
+  const handleCommentCreated = (comment) => {
+    setComments((current) => [
+      {
+        ...comment,
+        author: session?.user || null,
+      },
+      ...current,
+    ])
+  }
 
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
@@ -71,6 +246,20 @@ export function ArticleDetailPage({ slug, navigate }) {
           <MarkdownPreview content={article.content} />
         </section>
       </article>
+      <section className="comments-section page-container" aria-labelledby="comments-title">
+        <CommentComposer
+          articleId={article.id}
+          navigate={navigate}
+          onCreated={handleCommentCreated}
+          requestWithAuth={requestWithAuth}
+          session={session}
+        />
+        <div className="comments-panel">
+          {commentsState.loading && <p className="comment-loading">Loading comments...</p>}
+          {commentsState.error && <p className="form-error">{commentsState.error}</p>}
+          <CommentList comments={comments} currentUserId={currentUserId} />
+        </div>
+      </section>
       <SiteFooter />
     </main>
   )
