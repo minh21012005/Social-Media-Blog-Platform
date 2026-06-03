@@ -11,5 +11,5 @@ public interface SpringDataJpaCommentRepository extends JpaRepository<JpaComment
 
     List<JpaCommentEntity> findByParentCommentIdOrderByCreatedAtAsc(UUID parentCommentId);
 
-    long countByParentCommentId(UUID parentCommentId);
+    long countByParentCommentIdAndStatusIn(UUID parentCommentId, List<String> statuses);
 }

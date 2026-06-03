@@ -1941,8 +1941,14 @@ img.comment-avatar {
 
 .comment-replies {
   display: grid;
-  gap: 10px;
+  gap: 16px;
   margin-top: 20px;
+}
+
+.comment-reply-comment {
+  border-top: 0;
+  grid-template-columns: 42px minmax(0, 1fr);
+  padding-top: 0;
 }
 
 .comment-reply-item {
@@ -1976,6 +1982,52 @@ img.comment-avatar {
 
 .comment-reply-status.error {
   color: #b42318;
+}
+
+.comment-reply-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.comment-reply-form textarea {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.55;
+  outline: 0;
+  padding: 12px 14px;
+  resize: vertical;
+  width: 100%;
+}
+
+.comment-reply-form textarea:focus {
+  border-color: var(--copper);
+  box-shadow: 0 0 0 4px rgba(185, 135, 110, 0.14);
+}
+
+.comment-reply-form textarea[aria-invalid="true"] {
+  border-color: #fda29b;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
+}
+
+.comment-reply-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.comment-reply-actions .comment-count {
+  margin-right: auto;
+}
+
+.comment-reply-actions .submit-button {
+  min-height: 40px;
+  padding: 0 16px;
 }
 
 .comment-delete-backdrop {
