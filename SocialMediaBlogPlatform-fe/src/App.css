@@ -1554,11 +1554,67 @@ img.comment-avatar {
   color: var(--ink);
 }
 
+.comment-action-button {
+  background: transparent;
+  border: 0;
+  color: var(--copper);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  padding: 0;
+}
+
 .comment-item p {
   color: var(--muted);
   line-height: 1.65;
   margin: 8px 0 0;
   overflow-wrap: anywhere;
+}
+
+.comment-edit-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.comment-edit-form textarea {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.6;
+  outline: 0;
+  padding: 12px 14px;
+  resize: vertical;
+  width: 100%;
+}
+
+.comment-edit-form textarea:focus {
+  border-color: var(--copper);
+  box-shadow: 0 0 0 4px rgba(185, 135, 110, 0.14);
+}
+
+.comment-edit-form textarea[aria-invalid="true"] {
+  border-color: #fda29b;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
+}
+
+.comment-edit-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: flex-end;
+}
+
+.comment-edit-actions .comment-count {
+  margin-right: auto;
+}
+
+.comment-edit-actions .submit-button {
+  min-height: 42px;
+  padding: 0 18px;
 }
 
 @media (max-width: 980px) {

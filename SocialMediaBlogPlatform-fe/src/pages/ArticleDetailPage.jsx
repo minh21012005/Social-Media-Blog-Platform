@@ -4,7 +4,7 @@ import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
-import { createComment, listArticleComments } from '../services/comments'
+import { createComment, editComment, listArticleComments } from '../services/comments'
 import { getPublicUsers } from '../services/users'
 
 const COMMENT_MAX_LENGTH = 5000
@@ -113,7 +113,12 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ comments, currentUserId }) {
+function CommentList({ comments, currentUserId, onEdit }) {
+  const [editingId, setEditingId] = useState('')
+  const [draft, setDraft] = useState('')
+  const [savingId, setSavingId] = useState('')
+  const [error, setError] = useState('')
+
   if (!comments.length) {
     return (
       <div className="comment-empty">
@@ -128,6 +133,44 @@ function CommentList({ comments, currentUserId }) {
         const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
         const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
         const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
+        const isEditing = editingId === comment.id
+        const remaining = COMMENT_MAX_LENGTH - draft.length
+
+        const startEditing = () => {
+          setEditingId(comment.id)
+          setDraft(comment.content)
+          setError('')
+        }
+
+        const cancelEditing = () => {
+          setEditingId('')
+          setDraft('')
+          setError('')
+        }
+
+        const saveEditing = async (event) => {
+          event.preventDefault()
+          const trimmed = draft.trim()
+          if (!trimmed) {
+            setError('Comment content is required.')
+            return
+          }
+          if (trimmed.length > COMMENT_MAX_LENGTH) {
+            setError(`Comment content must not exceed ${COMMENT_MAX_LENGTH} characters.`)
+            return
+          }
+          setSavingId(comment.id)
+          setError('')
+          try {
+            await onEdit(comment, trimmed)
+            cancelEditing()
+          } catch (editError) {
+            setError(editError.message || 'Could not update your comment.')
+          } finally {
+            setSavingId('')
+          }
+        }
+
         return (
           <article className="comment-item" key={comment.id}>
             {comment.author?.avatarUrl ? (
@@ -141,9 +184,44 @@ function CommentList({ comments, currentUserId }) {
               <div className="comment-item-meta">
                 <strong>{isMine ? 'You' : authorName}</strong>
                 <span>{formatCommentDate(comment.createdAt)}</span>
-                {comment.status && <span>{comment.status.toLowerCase()}</span>}
+                {comment.editedAt && <span>edited</span>}
+                {isMine && !isEditing && (
+                  <button className="comment-action-button" type="button" onClick={startEditing}>
+                    Edit
+                  </button>
+                )}
               </div>
-              <p>{comment.content}</p>
+              {isEditing ? (
+                <form className="comment-edit-form" onSubmit={saveEditing}>
+                  <textarea
+                    aria-invalid={Boolean(error)}
+                    disabled={savingId === comment.id}
+                    maxLength={COMMENT_MAX_LENGTH}
+                    onChange={(event) => {
+                      setDraft(event.target.value)
+                      if (error) {
+                        setError('')
+                      }
+                    }}
+                    rows="4"
+                    value={draft}
+                  />
+                  <div className="comment-edit-actions">
+                    <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                      {remaining} characters left
+                    </span>
+                    <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
+                      Cancel
+                    </button>
+                    <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
+                      {savingId === comment.id ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                  {error && <p className="form-error">{error}</p>}
+                </form>
+              ) : (
+                <p>{comment.content}</p>
+              )}
             </div>
           </article>
         )
@@ -204,6 +282,15 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     ])
   }
 
+  const handleCommentEdited = async (comment, content) => {
+    const updated = await requestWithAuth((token) => editComment(comment.id, { content }, token))
+    setComments((current) => current.map((item) => (
+      item.id === comment.id
+        ? { ...updated, author: item.author }
+        : item
+    )))
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -257,7 +344,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         <div className="comments-panel">
           {commentsState.loading && <p className="comment-loading">Loading comments...</p>}
           {commentsState.error && <p className="form-error">{commentsState.error}</p>}
-          <CommentList comments={comments} currentUserId={currentUserId} />
+          <CommentList comments={comments} currentUserId={currentUserId} onEdit={handleCommentEdited} />
         </div>
       </section>
       <SiteFooter />
