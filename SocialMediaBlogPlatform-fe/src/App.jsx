@@ -14,12 +14,14 @@ import { MyArticlesPage } from './pages/MyArticlesPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
+import { FollowLabPage } from './pages/FollowLabPage'
 import './App.css'
 
 function isProtectedRoute(route) {
   return route === '/write'
     || route === '/articles/me'
     || route === '/profile'
+    || route === '/follow-lab'
     || /^\/articles\/[^/]+\/edit$/.test(route)
 }
 
@@ -236,7 +238,11 @@ function App() {
       return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
     }
 
-    const editMatch = pathname.match(/^\/articles\/([^/]+)\/edit$/)
+    if (route === '/follow-lab') {
+      return protectedPage(<FollowLabPage session={session} requestWithAuth={requestWithAuth} notify={notify} />)
+    }
+
+    const editMatch = route.match(/^\/articles\/([^/]+)\/edit$/)
     if (editMatch) {
       return protectedPage(
         <EditArticlePage
@@ -260,9 +266,16 @@ function App() {
       )
     }
 
-    if (pathname.startsWith('/author/')) {
-      const username = pathname.replace('/author/', '')
-      return <AuthorPage key={username} username={username} navigate={navigate} />
+    if (route.startsWith('/author/')) {
+      return (
+        <AuthorPage
+          username={route.replace('/author/', '')}
+          navigate={navigate}
+          session={session}
+          requestWithAuth={requestWithAuth}
+          notify={notify}
+        />
+      )
     }
 
     if (pathname.startsWith('/category/')) {
