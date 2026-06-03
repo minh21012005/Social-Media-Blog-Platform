@@ -6,7 +6,7 @@ import { ArticleCard } from '../components/ArticleCard'
 import { Newsletter } from '../components/Newsletter'
 import { SiteFooter } from '../components/SiteFooter'
 
-export function HomePage({ navigate }) {
+export function HomePage({ navigate, requestWithAuth, notify }) {
   const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], latest: [], error: '' })
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export function HomePage({ navigate }) {
             </div>
             <div className="editor-grid">
               {editorPicks.map((article) => (
-                <ArticleCard article={article} key={article.id} navigate={navigate} />
+                <ArticleCard article={article} key={article.id} navigate={navigate} requestWithAuth={requestWithAuth} notify={notify} />
               ))}
             </div>
           </div>
@@ -107,7 +107,7 @@ export function HomePage({ navigate }) {
           <h2>Latest Stories</h2>
           <div className="story-list">
             {latest.map((article) => (
-              <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
+              <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" requestWithAuth={requestWithAuth} notify={notify} />
             ))}
           </div>
           <button className="outline-pill" type="button" onClick={() => navigate('/category/design')}>Browse Stories</button>

@@ -1,4 +1,6 @@
-export function ArticleCard({ article, variant = 'grid', navigate }) {
+import { BookmarkButton } from './BookmarkButton'
+
+export function ArticleCard({ article, variant = 'grid', navigate, requestWithAuth, notify }) {
   const open = (event) => {
     if (!navigate || !article.path) {
       return
@@ -18,7 +20,10 @@ export function ArticleCard({ article, variant = 'grid', navigate }) {
           <a href={article.path || '#'} onClick={open}>{article.title}</a>
         </h3>
         <p>{article.summary}</p>
-        <ArticleMeta article={article} />
+        <div className="meta-row">
+          <ArticleMeta article={article} />
+          <BookmarkButton articleId={article.id} saved={article.bookmarked} requestWithAuth={requestWithAuth} notify={notify} />
+        </div>
       </div>
     </article>
   )

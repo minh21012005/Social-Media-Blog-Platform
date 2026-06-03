@@ -247,7 +247,7 @@ function App() {
 
     const articleMatch = route.match(/^\/articles\/([^/]+)$/)
     if (articleMatch) {
-      return <ArticleDetailPage slug={articleMatch[1]} navigate={navigate} />
+      return <ArticleDetailPage slug={articleMatch[1]} navigate={navigate} requestWithAuth={requestWithAuth} notify={notify} />
     }
 
     if (route.startsWith('/author/')) {
@@ -258,7 +258,7 @@ function App() {
       return <CategoryPage slug={route.replace('/category/', '')} navigate={navigate} />
     }
 
-    return <HomePage navigate={navigate} />
+    return <HomePage navigate={navigate} requestWithAuth={requestWithAuth} notify={notify} />
   }
 
   return (

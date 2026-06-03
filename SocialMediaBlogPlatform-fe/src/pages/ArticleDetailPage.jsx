@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ArticleMeta } from '../components/ArticleCard'
+import { BookmarkButton } from '../components/BookmarkButton'
 import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
 
-export function ArticleDetailPage({ slug, navigate }) {
+export function ArticleDetailPage({ slug, navigate, requestWithAuth, notify }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
 
   useEffect(() => {
@@ -63,7 +64,10 @@ export function ArticleDetailPage({ slug, navigate }) {
           <p>{article.summary}</p>
           <div className="article-detail-meta">
             <AuthorBadge author={article.author} navigate={navigate} />
-            <ArticleMeta article={article} />
+            <div className="meta-row">
+              <ArticleMeta article={article} />
+              <BookmarkButton articleId={article.id} saved={article.bookmarked} requestWithAuth={requestWithAuth} notify={notify} />
+            </div>
           </div>
         </header>
         <img alt="" className="article-detail-cover" src={article.image} />
