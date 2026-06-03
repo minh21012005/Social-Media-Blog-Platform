@@ -4,6 +4,7 @@ import com.socialmediablog.platform.services.comment.application.command.CreateC
 import com.socialmediablog.platform.services.comment.application.command.DeleteCommentCommand;
 import com.socialmediablog.platform.services.comment.application.command.EditCommentCommand;
 import com.socialmediablog.platform.services.comment.application.command.GetServiceStatusCommand;
+import com.socialmediablog.platform.services.comment.application.command.ReplyCommentCommand;
 import com.socialmediablog.platform.services.comment.application.exception.CommentAlreadyDeletedException;
 import com.socialmediablog.platform.services.comment.application.exception.CommentNotFoundException;
 import com.socialmediablog.platform.services.comment.application.exception.CommentPermissionDeniedException;
@@ -13,6 +14,7 @@ import com.socialmediablog.platform.services.comment.application.port.in.EditCom
 import com.socialmediablog.platform.services.comment.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListArticleCommentsUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListCommentRepliesUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.ReplyCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.out.ArticleCommentPolicyPort;
 import com.socialmediablog.platform.services.comment.application.port.out.CommentEventPublisher;
 import com.socialmediablog.platform.services.comment.application.query.ListArticleCommentsQuery;
@@ -42,7 +44,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase, ListArticleCommentsUseCase, ListCommentRepliesUseCase {
+public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase, ListArticleCommentsUseCase, ListCommentRepliesUseCase, ReplyCommentUseCase {
 
     private final CommentRepository commentRepository;
     private final CommentStatsRepository commentStatsRepository;
@@ -95,6 +97,41 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
 
     @Override
     @Transactional
+    public CommentView execute(ReplyCommentCommand command) {
+        Instant now = clock.instant();
+        Comment parentComment = commentRepository.findById(CommentId.of(command.parentCommentId()))
+                .orElseThrow(() -> new CommentNotFoundException(command.parentCommentId()));
+        if (parentComment.isDeleted()) {
+            throw new IllegalArgumentException("Deleted comment cannot be replied to");
+        }
+        if (parentComment.isReply()) {
+            throw new IllegalArgumentException("Reply-to-reply is not supported");
+        }
+
+        Comment reply = Comment.create(
+                parentComment.articleId(),
+                AuthorId.of(command.authorId()),
+                parentComment.id(),
+                CommentContent.of(command.content()),
+                now
+        );
+        Comment savedReply = commentRepository.save(reply);
+        CommentStats replyStats = commentStatsRepository.save(CommentStats.empty(savedReply.id(), now));
+        CommentStats parentStats = commentStatsRepository.findByCommentId(parentComment.id())
+                .orElseGet(() -> CommentStats.empty(parentComment.id(), now));
+        commentStatsRepository.save(parentStats.incrementReplyCount(now));
+        commentEventPublisher.publish(savedReply.id().value(), new CommentCreatedEvent(
+                UUID.randomUUID(),
+                savedReply.id().value(),
+                savedReply.articleId().value(),
+                savedReply.authorId().value(),
+                now
+        ));
+        return CommentView.from(savedReply, CommentStatsView.from(replyStats));
+    }
+
+    @Override
+    @Transactional
     public CommentView execute(EditCommentCommand command) {
         Instant now = clock.instant();
         Comment comment = commentRepository.findById(CommentId.of(command.commentId()))
@@ -138,6 +175,11 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
             throw new CommentAlreadyDeletedException();
         }
         Comment savedComment = commentRepository.save(comment.delete(requesterId, now));
+        if (comment.isReply()) {
+            commentStatsRepository.findByCommentId(comment.parentCommentId())
+                    .map(stats -> stats.decrementReplyCount(now))
+                    .ifPresent(commentStatsRepository::save);
+        }
         commentEventPublisher.publish(savedComment.id().value(), new CommentDeletedEvent(
                 UUID.randomUUID(),
                 savedComment.id().value(),
@@ -198,7 +240,7 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
         CommentStatsView storedStats = commentStatsRepository.findByCommentId(comment.id())
                 .map(CommentStatsView::from)
                 .orElseGet(CommentStatsView::empty);
-        long replyCount = Math.max(storedStats.replyCount(), commentRepository.countByParentCommentId(comment.id()));
+        long replyCount = commentRepository.countByParentCommentId(comment.id());
         return new CommentStatsView(storedStats.clapCount(), replyCount, storedStats.lastInteractionAt());
     }
 }

@@ -1,11 +1,19 @@
 import { apiRequest } from './api'
 
-export function listArticleComments(articleId) {
-  return apiRequest(`/api/v1/articles/${articleId}/comments`)
+export function listArticleComments(articleId, token) {
+  return apiRequest(`/api/v1/articles/${articleId}/comments`, { token })
 }
 
-export function listCommentReplies(commentId) {
-  return apiRequest(`/api/v1/comments/${commentId}/replies`)
+export function listCommentReplies(commentId, token) {
+  return apiRequest(`/api/v1/comments/${commentId}/replies`, { token })
+}
+
+export function createCommentReply(commentId, payload, token) {
+  return apiRequest(`/api/v1/comments/${commentId}/replies`, {
+    method: 'POST',
+    body: payload,
+    token,
+  })
 }
 
 export function createComment(articleId, payload, token) {
