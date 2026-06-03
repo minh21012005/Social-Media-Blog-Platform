@@ -54,6 +54,45 @@ public class FollowRelation {
         );
     }
 
+    public FollowRelation activate(Instant now) {
+        if (status == FollowRelationStatus.ACTIVE) {
+            return this;
+        }
+        if (status == FollowRelationStatus.BLOCKED) {
+            throw new IllegalArgumentException("Blocked follow relationship cannot be activated");
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.ACTIVE,
+                now,
+                null,
+                createdAt,
+                now
+        );
+    }
+
+    public FollowRelation unfollow(Instant now) {
+        if (status == FollowRelationStatus.UNFOLLOWED) {
+            return this;
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.UNFOLLOWED,
+                followedAt,
+                now,
+                createdAt,
+                now
+        );
+    }
+
+    public boolean isActive() {
+        return status == FollowRelationStatus.ACTIVE;
+    }
+
     public static FollowRelation restore(
             UUID id,
             UUID followerId,

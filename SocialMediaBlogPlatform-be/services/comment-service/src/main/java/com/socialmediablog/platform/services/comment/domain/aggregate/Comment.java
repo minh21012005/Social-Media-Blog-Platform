@@ -96,6 +96,57 @@ public class Comment {
         return parentCommentId != null;
     }
 
+    public boolean canBeEditedBy(AuthorId requesterId) {
+        return authorId.equals(requesterId);
+    }
+
+    public boolean canBeDeletedBy(AuthorId requesterId) {
+        return authorId.equals(requesterId);
+    }
+
+    public boolean isDeleted() {
+        return status == CommentStatus.DELETED || deletedAt != null;
+    }
+
+    public Comment edit(AuthorId requesterId, CommentContent newContent, Instant now) {
+        if (!canBeEditedBy(requesterId)) {
+            throw new IllegalArgumentException("Only the comment author can edit this comment");
+        }
+        if (isDeleted()) {
+            throw new IllegalArgumentException("Deleted comment cannot be edited");
+        }
+        return new Comment(
+                id,
+                articleId,
+                authorId,
+                parentCommentId,
+                newContent,
+                status,
+                now,
+                deletedAt,
+                createdAt,
+                now
+        );
+    }
+
+    public Comment delete(AuthorId requesterId, Instant now) {
+        if (isDeleted()) {
+            throw new IllegalArgumentException("Comment is already deleted");
+        }
+        return new Comment(
+                id,
+                articleId,
+                authorId,
+                parentCommentId,
+                content,
+                CommentStatus.DELETED,
+                editedAt,
+                now,
+                createdAt,
+                now
+        );
+    }
+
     public CommentId id() {
         return id;
     }

@@ -32,6 +32,18 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
     }
 
     @Override
+    public List<Comment> findByParentCommentId(CommentId parentCommentId) {
+        return repository.findByParentCommentIdOrderByCreatedAtAsc(parentCommentId.value()).stream()
+                .map(JpaCommentEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countByParentCommentId(CommentId parentCommentId) {
+        return repository.countByParentCommentId(parentCommentId.value());
+    }
+
+    @Override
     public Comment save(Comment comment) {
         return repository.save(JpaCommentEntity.fromDomain(comment)).toDomain();
     }

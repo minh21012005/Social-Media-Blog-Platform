@@ -250,7 +250,14 @@ function App() {
 
     const articleMatch = pathname.match(/^\/articles\/([^/]+)$/)
     if (articleMatch) {
-      return <ArticleDetailPage slug={articleMatch[1]} navigate={navigate} />
+      return (
+        <ArticleDetailPage
+          navigate={navigate}
+          requestWithAuth={requestWithAuth}
+          session={session}
+          slug={articleMatch[1]}
+        />
+      )
     }
 
     if (pathname.startsWith('/author/')) {
