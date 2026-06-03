@@ -142,6 +142,13 @@ export function archiveArticle(articleId, token) {
   })
 }
 
+export function deleteArticle(articleId, token) {
+  return apiRequest(`/api/v1/articles/${articleId}`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
 export function recordArticleView(articleId, payload = {}) {
   return apiRequest(`/api/v1/articles/${articleId}/views`, {
     method: 'POST',

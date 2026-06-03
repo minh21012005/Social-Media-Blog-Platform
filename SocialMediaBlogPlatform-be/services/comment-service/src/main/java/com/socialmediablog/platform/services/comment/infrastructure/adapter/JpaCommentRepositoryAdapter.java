@@ -2,6 +2,7 @@ package com.socialmediablog.platform.services.comment.infrastructure.adapter;
 
 import com.socialmediablog.platform.services.comment.domain.aggregate.Comment;
 import com.socialmediablog.platform.services.comment.domain.repository.CommentRepository;
+import com.socialmediablog.platform.services.comment.domain.model.CommentStatus;
 import com.socialmediablog.platform.services.comment.domain.vo.ArticleId;
 import com.socialmediablog.platform.services.comment.domain.vo.CommentId;
 import com.socialmediablog.platform.services.comment.infrastructure.entity.JpaCommentEntity;
@@ -29,6 +30,21 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
         return repository.findByArticleId(articleId.value()).stream()
                 .map(JpaCommentEntity::toDomain)
                 .toList();
+    }
+
+    @Override
+    public List<Comment> findByParentCommentId(CommentId parentCommentId) {
+        return repository.findByParentCommentIdOrderByCreatedAtAsc(parentCommentId.value()).stream()
+                .map(JpaCommentEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countByParentCommentId(CommentId parentCommentId) {
+        return repository.countByParentCommentIdAndStatusIn(
+                parentCommentId.value(),
+                List.of(CommentStatus.ACTIVE.name(), CommentStatus.EDITED.name())
+        );
     }
 
     @Override

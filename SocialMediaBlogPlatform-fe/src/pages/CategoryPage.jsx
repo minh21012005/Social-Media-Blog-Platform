@@ -9,19 +9,27 @@ export function CategoryPage({ slug, navigate }) {
   const category = categories.find((item) => item.slug === slug) ?? categories[0]
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('latest')
-  const [state, setState] = useState({ loading: true, articles: [], error: '' })
+  const [page, setPage] = useState(0)
+  const [state, setState] = useState({ loading: true, articles: [], error: '', page: 0, totalPages: 0 })
 
   useEffect(() => {
     let active = true
     async function load() {
+      setState((current) => ({ ...current, loading: true, error: '' }))
       try {
-        const page = await listPublishedArticles({ category: category.slug, q: query, sort, size: 12 })
+        const result = await listPublishedArticles({ category: category.slug, q: query, sort, page, size: 12 })
         if (active) {
-          setState({ loading: false, articles: page.items, error: '' })
+          setState({
+            loading: false,
+            articles: result.items,
+            error: '',
+            page: result.page || 0,
+            totalPages: result.totalPages || 0,
+          })
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, articles: [], error: error.message })
+          setState({ loading: false, articles: [], error: error.message, page: 0, totalPages: 0 })
         }
       }
     }
@@ -29,7 +37,7 @@ export function CategoryPage({ slug, navigate }) {
     return () => {
       active = false
     }
-  }, [category.slug, query, sort])
+  }, [category.slug, page, query, sort])
 
   return (
     <main>
@@ -44,9 +52,19 @@ export function CategoryPage({ slug, navigate }) {
           placeholder={`Search ${category.label.toLowerCase()} stories`}
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setPage(0)
+          }}
         />
-        <select aria-label="Sort stories" value={sort} onChange={(event) => setSort(event.target.value)}>
+        <select
+          aria-label="Sort stories"
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value)
+            setPage(0)
+          }}
+        >
           <option value="latest">Latest</option>
           <option value="views">Most viewed</option>
           <option value="popular">Popular</option>
@@ -65,7 +83,7 @@ export function CategoryPage({ slug, navigate }) {
         )}
       </section>
 
-      {state.articles.length > 0 && <Pagination />}
+      <Pagination page={state.page} totalPages={state.totalPages} onPageChange={setPage} />
       <SiteFooter />
     </main>
   )
