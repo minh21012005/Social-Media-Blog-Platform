@@ -12,6 +12,7 @@ import { ArticleDetailPage } from './pages/ArticleDetailPage'
 import { EditArticlePage } from './pages/EditArticlePage'
 import { MyArticlesPage } from './pages/MyArticlesPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
 import './App.css'
 
@@ -24,6 +25,8 @@ function isProtectedRoute(route) {
 
 function App() {
   const [route, navigate] = useRoute()
+  const routeUrl = useMemo(() => new URL(route, window.location.origin), [route])
+  const pathname = routeUrl.pathname
   const [auth, setAuth] = useState(loadAuth)
   const [authChecking, setAuthChecking] = useState(() => Boolean(loadAuth()?.accessToken || isProtectedRoute(window.location.pathname)))
   const [toasts, setToasts] = useState([])
@@ -221,19 +224,19 @@ function App() {
   }
 
   const renderPage = () => {
-    if (route === '/write') {
+    if (pathname === '/write') {
       return protectedPage(<WritePage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
-    if (route === '/articles/me') {
+    if (pathname === '/articles/me') {
       return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
-    if (route === '/profile') {
+    if (pathname === '/profile') {
       return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
     }
 
-    const editMatch = route.match(/^\/articles\/([^/]+)\/edit$/)
+    const editMatch = pathname.match(/^\/articles\/([^/]+)\/edit$/)
     if (editMatch) {
       return protectedPage(
         <EditArticlePage
@@ -245,7 +248,7 @@ function App() {
       )
     }
 
-    const articleMatch = route.match(/^\/articles\/([^/]+)$/)
+    const articleMatch = pathname.match(/^\/articles\/([^/]+)$/)
     if (articleMatch) {
       return (
         <ArticleDetailPage
@@ -257,12 +260,19 @@ function App() {
       )
     }
 
-    if (route.startsWith('/author/')) {
-      return <AuthorPage username={route.replace('/author/', '')} navigate={navigate} />
+    if (pathname.startsWith('/author/')) {
+      const username = pathname.replace('/author/', '')
+      return <AuthorPage key={username} username={username} navigate={navigate} />
     }
 
-    if (route.startsWith('/category/')) {
-      return <CategoryPage slug={route.replace('/category/', '')} navigate={navigate} />
+    if (pathname.startsWith('/category/')) {
+      const categorySlug = pathname.replace('/category/', '')
+      return <CategoryPage key={categorySlug} slug={categorySlug} navigate={navigate} />
+    }
+
+    if (pathname === '/search') {
+      const query = routeUrl.searchParams.get('q')?.trim() || ''
+      return <SearchPage key={query} query={query} navigate={navigate} />
     }
 
     return <HomePage navigate={navigate} />

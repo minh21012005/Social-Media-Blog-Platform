@@ -163,6 +163,8 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
             predicates.add(criteriaBuilder.equal(root.get("authorId"), authorId.value()));
             if (status != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status.name()));
+            } else {
+                predicates.add(criteriaBuilder.notEqual(root.get("status"), ArticleStatus.DELETED.name()));
             }
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
         };
