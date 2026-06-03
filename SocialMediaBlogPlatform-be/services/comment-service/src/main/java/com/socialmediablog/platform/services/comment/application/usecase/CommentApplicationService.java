@@ -1,8 +1,13 @@
 package com.socialmediablog.platform.services.comment.application.usecase;
 
 import com.socialmediablog.platform.services.comment.application.command.CreateCommentCommand;
+import com.socialmediablog.platform.services.comment.application.command.EditCommentCommand;
 import com.socialmediablog.platform.services.comment.application.command.GetServiceStatusCommand;
+import com.socialmediablog.platform.services.comment.application.exception.CommentAlreadyDeletedException;
+import com.socialmediablog.platform.services.comment.application.exception.CommentNotFoundException;
+import com.socialmediablog.platform.services.comment.application.exception.CommentPermissionDeniedException;
 import com.socialmediablog.platform.services.comment.application.port.in.CreateCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.EditCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListArticleCommentsUseCase;
 import com.socialmediablog.platform.services.comment.application.port.out.CommentEventPublisher;
@@ -13,12 +18,14 @@ import com.socialmediablog.platform.services.comment.application.result.ServiceS
 import com.socialmediablog.platform.services.comment.domain.aggregate.Comment;
 import com.socialmediablog.platform.services.comment.domain.aggregate.CommentStats;
 import com.socialmediablog.platform.services.comment.domain.event.CommentCreatedEvent;
+import com.socialmediablog.platform.services.comment.domain.event.CommentEditedEvent;
 import com.socialmediablog.platform.services.comment.domain.model.CommentStatus;
 import com.socialmediablog.platform.services.comment.domain.repository.CommentRepository;
 import com.socialmediablog.platform.services.comment.domain.repository.CommentStatsRepository;
 import com.socialmediablog.platform.services.comment.domain.vo.ArticleId;
 import com.socialmediablog.platform.services.comment.domain.vo.AuthorId;
 import com.socialmediablog.platform.services.comment.domain.vo.CommentContent;
+import com.socialmediablog.platform.services.comment.domain.vo.CommentId;
 import java.util.Comparator;
 import java.util.List;
 import java.time.Clock;
@@ -28,7 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, ListArticleCommentsUseCase {
+public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, ListArticleCommentsUseCase {
 
     private final CommentRepository commentRepository;
     private final CommentStatsRepository commentStatsRepository;
@@ -74,6 +81,37 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
                 now
         ));
         return CommentView.from(savedComment, CommentStatsView.from(stats));
+    }
+
+    @Override
+    @Transactional
+    public CommentView execute(EditCommentCommand command) {
+        Instant now = clock.instant();
+        Comment comment = commentRepository.findById(CommentId.of(command.commentId()))
+                .orElseThrow(() -> new CommentNotFoundException(command.commentId()));
+        AuthorId requesterId = AuthorId.of(command.requesterId());
+        if (!comment.canBeEditedBy(requesterId)) {
+            throw new CommentPermissionDeniedException();
+        }
+        if (comment.isDeleted()) {
+            throw new CommentAlreadyDeletedException();
+        }
+        Comment savedComment = commentRepository.save(comment.edit(
+                requesterId,
+                CommentContent.of(command.content()),
+                now
+        ));
+        commentEventPublisher.publish(savedComment.id().value(), new CommentEditedEvent(
+                UUID.randomUUID(),
+                savedComment.id().value(),
+                savedComment.articleId().value(),
+                savedComment.authorId().value(),
+                now
+        ));
+        CommentStatsView stats = commentStatsRepository.findByCommentId(savedComment.id())
+                .map(CommentStatsView::from)
+                .orElseGet(CommentStatsView::empty);
+        return CommentView.from(savedComment, stats);
     }
 
     @Override

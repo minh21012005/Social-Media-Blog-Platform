@@ -11,3 +11,11 @@ export function createComment(articleId, payload, token) {
     token,
   })
 }
+
+export function editComment(commentId, payload, token) {
+  return apiRequest(`/api/v1/comments/${commentId}`, {
+    method: 'PATCH',
+    body: payload,
+    token,
+  })
+}
