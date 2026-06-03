@@ -1565,11 +1565,181 @@ img.comment-avatar {
   padding: 0;
 }
 
+.comment-action-button.danger {
+  color: #b42318;
+}
+
+.comment-action-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .comment-item p {
   color: var(--muted);
   line-height: 1.65;
   margin: 8px 0 0;
   overflow-wrap: anywhere;
+}
+
+.comment-item-deleted {
+  display: block;
+}
+
+.deleted-comment-card {
+  background: #f7f7f8;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 20px 24px;
+}
+
+.deleted-comment-title,
+.deleted-comment-count {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
+.deleted-comment-title {
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.deleted-comment-count {
+  color: var(--ink);
+  font-size: 15px;
+  margin: 2px 0 0;
+}
+
+.comment-replies-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  margin-top: 18px;
+  padding: 0;
+}
+
+.comment-replies-toggle::before {
+  content: 'v';
+  display: inline-block;
+  margin-right: 7px;
+}
+
+.comment-replies {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.comment-reply-item {
+  align-items: start;
+  color: var(--ink);
+  display: grid;
+  font-size: 14px;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.comment-reply-item strong {
+  color: var(--ink);
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.comment-reply-item p {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.comment-reply-status {
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 750;
+  margin: 0;
+}
+
+.comment-reply-status.error {
+  color: #b42318;
+}
+
+.comment-delete-backdrop {
+  align-items: center;
+  background: rgba(22, 24, 29, 0.48);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 80;
+}
+
+.comment-delete-dialog {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(22, 24, 29, 0.22);
+  color: var(--ink);
+  display: grid;
+  gap: 14px;
+  max-width: 440px;
+  padding: 28px;
+  width: min(100%, 440px);
+}
+
+.comment-delete-kicker {
+  color: var(--copper);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.comment-delete-dialog h2 {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.12;
+  margin: 0;
+}
+
+.comment-delete-dialog p {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.comment-delete-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.comment-delete-confirm {
+  background: #b42318;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+  min-height: 44px;
+  padding: 0 20px;
+}
+
+.comment-delete-confirm:disabled,
+.comment-delete-actions .text-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .comment-edit-form {

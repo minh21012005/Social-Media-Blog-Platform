@@ -100,6 +100,10 @@ public class Comment {
         return authorId.equals(requesterId);
     }
 
+    public boolean canBeDeletedBy(AuthorId requesterId) {
+        return authorId.equals(requesterId);
+    }
+
     public boolean isDeleted() {
         return status == CommentStatus.DELETED || deletedAt != null;
     }
@@ -120,6 +124,24 @@ public class Comment {
                 status,
                 now,
                 deletedAt,
+                createdAt,
+                now
+        );
+    }
+
+    public Comment delete(AuthorId requesterId, Instant now) {
+        if (isDeleted()) {
+            throw new IllegalArgumentException("Comment is already deleted");
+        }
+        return new Comment(
+                id,
+                articleId,
+                authorId,
+                parentCommentId,
+                content,
+                CommentStatus.DELETED,
+                editedAt,
+                now,
                 createdAt,
                 now
         );

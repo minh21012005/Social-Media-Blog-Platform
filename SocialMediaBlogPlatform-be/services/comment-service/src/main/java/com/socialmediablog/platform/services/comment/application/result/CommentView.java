@@ -19,12 +19,20 @@ public record CommentView(
 ) {
 
     public static CommentView from(Comment comment, CommentStatsView stats) {
+        return from(comment, comment.content().value(), stats);
+    }
+
+    public static CommentView deletedPlaceholder(Comment comment, CommentStatsView stats) {
+        return from(comment, "Comment deleted", stats);
+    }
+
+    private static CommentView from(Comment comment, String content, CommentStatsView stats) {
         return new CommentView(
                 comment.id().value(),
                 comment.articleId().value(),
                 comment.authorId().value(),
                 comment.parentCommentId() == null ? null : comment.parentCommentId().value(),
-                comment.content().value(),
+                content,
                 comment.status().name(),
                 comment.editedAt(),
                 comment.deletedAt(),
