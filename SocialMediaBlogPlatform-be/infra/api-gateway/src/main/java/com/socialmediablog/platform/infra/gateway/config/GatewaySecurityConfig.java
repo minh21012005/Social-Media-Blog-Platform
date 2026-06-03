@@ -57,6 +57,7 @@ public class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/by-username/*", "/api/v1/users/public").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles/*/comments").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()

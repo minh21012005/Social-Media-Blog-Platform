@@ -12,5 +12,9 @@ public interface CommentRepository {
 
     List<Comment> findByArticleId(ArticleId articleId);
 
+    List<Comment> findByParentCommentId(CommentId parentCommentId);
+
+    long countByParentCommentId(CommentId parentCommentId);
+
     Comment save(Comment comment);
 }

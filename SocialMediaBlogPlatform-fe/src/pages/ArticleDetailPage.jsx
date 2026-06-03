@@ -4,7 +4,7 @@ import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
-import { createComment, editComment, listArticleComments } from '../services/comments'
+import { createComment, deleteComment, editComment, listArticleComments, listCommentReplies } from '../services/comments'
 import { getPublicUsers } from '../services/users'
 
 const COMMENT_MAX_LENGTH = 5000
@@ -113,11 +113,122 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ comments, currentUserId, onEdit }) {
+function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies }) {
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState('')
+  const [deletingId, setDeletingId] = useState('')
   const [savingId, setSavingId] = useState('')
   const [error, setError] = useState('')
+  const [expandedReplies, setExpandedReplies] = useState({})
+  const [repliesByComment, setRepliesByComment] = useState({})
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState(null)
+
+  const getReplyCount = (comment) => Number(comment.stats?.replyCount || 0)
+
+  const toggleReplies = async (comment) => {
+    const commentId = comment.id
+    const isExpanded = Boolean(expandedReplies[commentId])
+
+    if (isExpanded) {
+      setExpandedReplies((current) => ({ ...current, [commentId]: false }))
+      return
+    }
+
+    setExpandedReplies((current) => ({ ...current, [commentId]: true }))
+
+    if (repliesByComment[commentId]) {
+      return
+    }
+
+    setRepliesByComment((current) => ({
+      ...current,
+      [commentId]: { error: '', items: [], loading: true },
+    }))
+
+    try {
+      const replies = await onLoadReplies(commentId)
+      setRepliesByComment((current) => ({
+        ...current,
+        [commentId]: { error: '', items: replies, loading: false },
+      }))
+    } catch (replyError) {
+      setRepliesByComment((current) => ({
+        ...current,
+        [commentId]: { error: replyError.message || 'Could not load replies.', items: [], loading: false },
+      }))
+    }
+  }
+
+  const renderReplies = (comment) => {
+    const commentId = comment.id
+    const replyState = repliesByComment[commentId]
+
+    if (!expandedReplies[commentId]) {
+      return null
+    }
+
+    return (
+      <div className="comment-replies">
+        {replyState?.loading && <p className="comment-reply-status">Loading replies...</p>}
+        {replyState?.error && <p className="comment-reply-status error">{replyState.error}</p>}
+        {replyState?.items?.map((reply) => {
+          const replyAuthorName = reply.author?.displayName || reply.author?.username || `Reader ${String(reply.authorId || '').slice(0, 6)}`
+          return (
+            <div className="comment-reply-item" key={reply.id}>
+              <span aria-hidden="true">-&gt;</span>
+              <div>
+                <strong>{replyAuthorName}</strong>
+                <p>{reply.content}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const renderRepliesToggle = (comment) => {
+    const replyCount = getReplyCount(comment)
+    if (!replyCount) {
+      return null
+    }
+
+    const isExpanded = Boolean(expandedReplies[comment.id])
+    return (
+      <button className="comment-replies-toggle" type="button" onClick={() => toggleReplies(comment)}>
+        {isExpanded ? 'Hide replies' : 'Show replies'}
+      </button>
+    )
+  }
+
+  const closeDeleteDialog = () => {
+    if (deletingId) {
+      return
+    }
+    setConfirmDeleteComment(null)
+    setError('')
+  }
+
+  const confirmDeleteSelectedComment = async () => {
+    if (!confirmDeleteComment) {
+      return
+    }
+
+    setDeletingId(confirmDeleteComment.id)
+    setError('')
+    try {
+      await onDelete(confirmDeleteComment)
+      if (editingId === confirmDeleteComment.id) {
+        setEditingId('')
+        setDraft('')
+      }
+      setConfirmDeleteComment(null)
+    } catch (deleteError) {
+      setError(deleteError.message || 'Could not delete your comment.')
+    } finally {
+      setDeletingId('')
+    }
+  }
 
   if (!comments.length) {
     return (
@@ -128,13 +239,18 @@ function CommentList({ comments, currentUserId, onEdit }) {
   }
 
   return (
-    <div className="comment-list">
-      {comments.map((comment) => {
+    <>
+      <div className="comment-list">
+        {comments.map((comment) => {
         const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
+        const isArticleOwner = currentUserId && String(articleAuthorId) === String(currentUserId)
+        const canDelete = isMine || isArticleOwner
         const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
         const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
         const isEditing = editingId === comment.id
         const remaining = COMMENT_MAX_LENGTH - draft.length
+        const isDeleted = comment.status === 'DELETED'
+        const replyCount = getReplyCount(comment)
 
         const startEditing = () => {
           setEditingId(comment.id)
@@ -145,6 +261,11 @@ function CommentList({ comments, currentUserId, onEdit }) {
         const cancelEditing = () => {
           setEditingId('')
           setDraft('')
+          setError('')
+        }
+
+        const requestDeleteComment = () => {
+          setConfirmDeleteComment(comment)
           setError('')
         }
 
@@ -171,6 +292,27 @@ function CommentList({ comments, currentUserId, onEdit }) {
           }
         }
 
+        if (isDeleted) {
+          return (
+            <article className="comment-item comment-item-deleted" key={comment.id}>
+              <div className="deleted-comment-card">
+                <div className="deleted-comment-header">
+                  <div>
+                    <p className="deleted-comment-title">Comment deleted</p>
+                    {replyCount > 0 && (
+                      <p className="deleted-comment-count">
+                        ({replyCount} {replyCount === 1 ? 'reply' : 'replies'})
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {renderRepliesToggle(comment)}
+                {renderReplies(comment)}
+              </div>
+            </article>
+          )
+        }
+
         return (
           <article className="comment-item" key={comment.id}>
             {comment.author?.avatarUrl ? (
@@ -186,9 +328,16 @@ function CommentList({ comments, currentUserId, onEdit }) {
                 <span>{formatCommentDate(comment.createdAt)}</span>
                 {comment.editedAt && <span>edited</span>}
                 {isMine && !isEditing && (
-                  <button className="comment-action-button" type="button" onClick={startEditing}>
+                  <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={startEditing}>
                     Edit
                   </button>
+                )}
+                {canDelete && !isEditing && (
+                  <>
+                    <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={requestDeleteComment}>
+                      {deletingId === comment.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </>
                 )}
               </div>
               {isEditing ? (
@@ -220,13 +369,44 @@ function CommentList({ comments, currentUserId, onEdit }) {
                   {error && <p className="form-error">{error}</p>}
                 </form>
               ) : (
-                <p>{comment.content}</p>
+                <>
+                  <p>{comment.content}</p>
+                  {renderRepliesToggle(comment)}
+                  {renderReplies(comment)}
+                </>
               )}
             </div>
           </article>
         )
-      })}
-    </div>
+        })}
+      </div>
+      {confirmDeleteComment && (
+        <div className="comment-delete-backdrop" role="presentation" onClick={closeDeleteDialog}>
+          <div
+            aria-labelledby="delete-comment-title"
+            aria-modal="true"
+            className="comment-delete-dialog"
+            role="dialog"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="comment-delete-kicker">Delete comment</p>
+            <h2 id="delete-comment-title">Do you want to delete this comment?</h2>
+            <p>
+              This action will remove the comment from the discussion. If it has replies, it will be shown as a deleted comment.
+            </p>
+            {error && <p className="form-error">{error}</p>}
+            <div className="comment-delete-actions">
+              <button className="text-button muted" disabled={Boolean(deletingId)} type="button" onClick={closeDeleteDialog}>
+                Cancel
+              </button>
+              <button className="comment-delete-confirm" disabled={Boolean(deletingId)} type="button" onClick={confirmDeleteSelectedComment}>
+                {deletingId ? 'Deleting...' : 'Delete comment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -291,6 +471,31 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     )))
   }
 
+  const handleCommentDeleted = async (comment) => {
+    await requestWithAuth((token) => deleteComment(comment.id, token))
+    const replyCount = Number(comment.stats?.replyCount || 0)
+    if (!comment.parentCommentId && replyCount > 0) {
+      setComments((current) => current.map((item) => (
+        item.id === comment.id
+          ? {
+              ...item,
+              content: 'Comment deleted',
+              deletedAt: new Date().toISOString(),
+              editedAt: null,
+              status: 'DELETED',
+            }
+          : item
+      )))
+      return
+    }
+    setComments((current) => current.filter((item) => item.id !== comment.id))
+  }
+
+  const handleLoadReplies = async (commentId) => {
+    const replies = await listCommentReplies(commentId)
+    return enrichComments(replies)
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -344,7 +549,14 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         <div className="comments-panel">
           {commentsState.loading && <p className="comment-loading">Loading comments...</p>}
           {commentsState.error && <p className="form-error">{commentsState.error}</p>}
-          <CommentList comments={comments} currentUserId={currentUserId} onEdit={handleCommentEdited} />
+          <CommentList
+            articleAuthorId={article.author?.id}
+            comments={comments}
+            currentUserId={currentUserId}
+            onDelete={handleCommentDeleted}
+            onEdit={handleCommentEdited}
+            onLoadReplies={handleLoadReplies}
+          />
         </div>
       </section>
       <SiteFooter />

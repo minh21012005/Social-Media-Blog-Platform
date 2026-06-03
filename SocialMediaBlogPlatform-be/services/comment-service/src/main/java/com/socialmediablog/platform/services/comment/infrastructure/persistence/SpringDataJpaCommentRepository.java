@@ -8,4 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SpringDataJpaCommentRepository extends JpaRepository<JpaCommentEntity, UUID> {
 
     List<JpaCommentEntity> findByArticleId(UUID articleId);
+
+    List<JpaCommentEntity> findByParentCommentIdOrderByCreatedAtAsc(UUID parentCommentId);
+
+    long countByParentCommentId(UUID parentCommentId);
 }
