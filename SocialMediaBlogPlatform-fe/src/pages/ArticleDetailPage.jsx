@@ -7,6 +7,8 @@ import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
 import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies } from '../services/comments'
 import { getPublicUsers } from '../services/users'
+import { getArticleLikes, isArticleLiked, likeArticle, unlikeArticle } from '../services/interactions'
+import { LikeButton } from '../components/LikeButton'
 
 const COMMENT_MAX_LENGTH = 5000
 
@@ -601,6 +603,8 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [comments, setComments] = useState([])
   const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
+  const [likeCount, setLikeCount] = useState(0)
+  const [isLiked, setIsLiked] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -626,6 +630,24 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           if (active) {
             setComments([])
             setCommentsState({ loading: false, error: commentsError.message || 'Could not load comments.' })
+          }
+        }
+        try {
+          const likes = await getArticleLikes(article.id)
+          if (active) {
+            setLikeCount(likes)
+          }
+        } catch (likesError) {
+          console.error('Could not load likes.', likesError)
+        }
+        if (session) {
+          try {
+            const liked = await requestWithAuth((token) => isArticleLiked(article.id, token))
+            if (active) {
+              setIsLiked(liked)
+            }
+          } catch (likedError) {
+            console.error('Could not check if article is liked.', likedError)
           }
         }
       } catch (error) {
@@ -727,6 +749,18 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     return enrichedReply
   }
 
+  const handleLike = async (articleId) => {
+    await requestWithAuth((token) => likeArticle(articleId, token))
+    setIsLiked(true)
+    setLikeCount((count) => count + 1)
+  }
+
+  const handleUnlike = async (articleId) => {
+    await requestWithAuth((token) => unlikeArticle(articleId, token))
+    setIsLiked(false)
+    setLikeCount((count) => count - 1)
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -763,7 +797,8 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             <AuthorBadge author={article.author} navigate={navigate} />
             <div className="meta-row">
               <ArticleMeta article={article} />
-              {/* Note: notify prop was removed from ArticleDetailPage, so we pass an empty function for now or it will fail in BookmarkButton if it expects it. Alternatively, since we didn't receive it, we assume BookmarkButton can handle notify being undefined or we should have kept it. Wait, the incoming change removed notify. Let's see if BookmarkButton requires notify. In App.jsx, HomePage gets notify, WritePage gets notify. But ArticleDetailPage in incoming branch didn't. I'll pass () => {} just to be safe, or just omit it. */}
+              <LikeButton articleId={article.id} liked={isLiked} onLike={handleLike} onUnlike={handleUnlike} />
+              <span>{formatCount(likeCount)} likes</span>
               <BookmarkButton articleId={article.id} saved={article.bookmarked} requestWithAuth={requestWithAuth} />
             </div>
           </div>

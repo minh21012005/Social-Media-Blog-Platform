@@ -44,7 +44,7 @@ security:
   jwt:
     issuer: ${JWT_ISSUER:social-media-blog-platform}
     key-id: ${JWT_KEY_ID:social-blog-local-dev}
-    public-key-path: ${JWT_PUBLIC_KEY_PATH:./config/jwt/dev-public-key.pem}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:./SocialMediaBlogPlatform-be/config/jwt/dev-public-key.pem}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:15m}
     refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:7d}
 

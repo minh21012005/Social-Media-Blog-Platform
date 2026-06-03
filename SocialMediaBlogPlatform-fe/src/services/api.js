@@ -14,7 +14,7 @@ export async function apiRequest(path, { method = 'GET', body, token, credential
   const payload = await response.json().catch(() => null)
 
   if (!response.ok) {
-    const error = new Error(payload?.message ?? 'Request failed')
+    const error = new Error(payload?.message ?? payload?.error ?? 'Request failed')
     error.status = payload?.status ?? response.status
     error.payload = payload
     throw error
