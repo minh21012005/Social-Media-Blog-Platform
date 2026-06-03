@@ -1,0 +1,8 @@
+# IDE / editor
+.idea/
+.ai/
+
+# Optional common junk
+.vscode/
+.DS_Store
+
