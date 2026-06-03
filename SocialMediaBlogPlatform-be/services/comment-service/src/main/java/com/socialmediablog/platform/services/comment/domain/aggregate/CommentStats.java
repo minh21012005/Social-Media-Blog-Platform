@@ -64,6 +64,30 @@ public class CommentStats {
         return value;
     }
 
+    public CommentStats incrementReplyCount(Instant now) {
+        return new CommentStats(
+                id,
+                commentId,
+                clapCount,
+                replyCount + 1,
+                now,
+                createdAt,
+                now
+        );
+    }
+
+    public CommentStats decrementReplyCount(Instant now) {
+        return new CommentStats(
+                id,
+                commentId,
+                clapCount,
+                Math.max(0, replyCount - 1),
+                now,
+                createdAt,
+                now
+        );
+    }
+
     public CommentStatsId id() {
         return id;
     }

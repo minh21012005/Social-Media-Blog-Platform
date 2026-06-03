@@ -147,8 +147,8 @@ public class Article {
             Instant now
     ) {
         ensureOwner(actorId);
-        if (status == ArticleStatus.ARCHIVED) {
-            throw new IllegalStateException("Archived articles cannot be updated");
+        if (status == ArticleStatus.ARCHIVED || status == ArticleStatus.DELETED) {
+            throw new IllegalStateException("Only draft or published articles can be updated");
         }
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl, status, publishedAt,
                 featuredRank, editorPickRank,
@@ -157,8 +157,8 @@ public class Article {
 
     public Article publish(AuthorId actorId, Instant now) {
         ensureOwner(actorId);
-        if (status == ArticleStatus.ARCHIVED) {
-            throw new IllegalStateException("Archived articles cannot be published");
+        if (status == ArticleStatus.ARCHIVED || status == ArticleStatus.DELETED) {
+            throw new IllegalStateException("Only draft or published articles can be published");
         }
         validatePublishable();
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
@@ -167,11 +167,26 @@ public class Article {
 
     public Article archive(AuthorId actorId, Instant now) {
         ensureOwner(actorId);
+        if (status == ArticleStatus.DELETED) {
+            throw new IllegalStateException("Deleted articles cannot be archived");
+        }
         if (status == ArticleStatus.ARCHIVED) {
             return this;
         }
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
                 ArticleStatus.ARCHIVED, publishedAt, null, null, tags, createdAt, now);
+    }
+
+    public Article delete(AuthorId actorId, Instant now) {
+        ensureOwner(actorId);
+        if (status == ArticleStatus.PUBLISHED) {
+            throw new IllegalStateException("Published articles must be archived before deleting");
+        }
+        if (status == ArticleStatus.DELETED) {
+            return this;
+        }
+        return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
+                ArticleStatus.DELETED, publishedAt, null, null, tags, createdAt, now);
     }
 
     public Article curate(Integer featuredRank, Integer editorPickRank, Instant now) {
