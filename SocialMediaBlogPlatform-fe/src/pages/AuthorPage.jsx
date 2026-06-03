@@ -10,6 +10,8 @@ import { getPublicUserByUsername } from '../services/users'
 
 export function AuthorPage({ username, navigate, session, requestWithAuth, notify }) {
   const [state, setState] = useState({ loading: true, author: null, articles: [], error: '' })
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [followState, setFollowState] = useState({
     loading: false,
     busy: false,
@@ -25,22 +27,19 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
       setState((current) => ({ ...current, loading: true, error: '' }))
       try {
         const author = await getPublicUserByUsername(username)
-        const [page, counts] = await Promise.all([
-          listPublishedArticles({ authorId: author.id, size: 12 }),
-          getFollowCounts(author.id).catch(() => null),
-        ])
+        const articlePage = await listPublishedArticles({ authorId: author.id, page, size: 12 })
         if (active) {
-          setState({ loading: false, author, articles: page.items, error: '' })
+          setState({ loading: false, author, articles: articlePage.items, error: '' })
+          setTotalPages(articlePage.totalPages ?? 0)
           setFollowState((current) => ({
             ...current,
-            followers: counts?.followers ?? 0,
-            followingCount: counts?.following ?? 0,
             error: '',
           }))
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, author: null, articles: [], error: error.message, page: 0, totalPages: 0 })
+          setState({ loading: false, author: null, articles: [], error: error.message })
+          setTotalPages(0)
         }
       }
     }
@@ -48,19 +47,29 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
     return () => {
       active = false
     }
-  }, [username])
+  }, [page, username])
 
   useEffect(() => {
     let active = true
-    async function loadStatus() {
-      if (!session || !state.author?.id || session.user.id === state.author.id) {
+    async function loadFollowSummary() {
+      if (!session || !state.author?.id) {
         return
       }
       setFollowState((current) => ({ ...current, loading: true }))
       try {
-        const status = await requestWithAuth((token) => getFollowStatus(state.author.id, token))
+        const [counts, status] = await requestWithAuth((token) => Promise.all([
+          getFollowCounts(state.author.id, token),
+          session.user.id === state.author.id ? null : getFollowStatus(state.author.id, token),
+        ]))
         if (active) {
-          setFollowState((current) => ({ ...current, loading: false, following: status.following, error: '' }))
+          setFollowState((current) => ({
+            ...current,
+            loading: false,
+            following: status?.following ?? false,
+            followers: counts.followers,
+            followingCount: counts.following,
+            error: '',
+          }))
         }
       } catch (error) {
         if (active) {
@@ -68,7 +77,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         }
       }
     }
-    loadStatus()
+    loadFollowSummary()
     return () => {
       active = false
     }
@@ -87,7 +96,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
       const relation = await requestWithAuth((token) => (
         followState.following ? unfollowUser(author.id, token) : followUser(author.id, token)
       ))
-      const counts = await getFollowCounts(author.id).catch(() => null)
+      const counts = await requestWithAuth((token) => getFollowCounts(author.id, token)).catch(() => null)
       setFollowState((current) => ({
         ...current,
         busy: false,
@@ -143,7 +152,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         {!state.loading && !state.error && (
           <ArticleList articles={state.articles} emptyText="This author has not published an article yet." navigate={navigate} />
         )}
-        <Pagination page={state.page} totalPages={state.totalPages} onPageChange={setPage} />
+        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </section>
 
       <SiteFooter />

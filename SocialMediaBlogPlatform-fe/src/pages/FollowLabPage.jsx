@@ -70,13 +70,13 @@ export function FollowLabPage({ session, requestWithAuth, notify }) {
   })
 
   const refreshCounts = () => run('Get follow counts', async () => {
-    const result = await getFollowCounts(target.id)
+    const result = await requestWithAuth((token) => getFollowCounts(target.id, token))
     setCounts(result)
     return result
   })
 
   const loadFollowers = () => run('List followers', async () => {
-    const page = await listFollowers(target.id, { page: 0, size: 20 })
+    const page = await requestWithAuth((token) => listFollowers(target.id, { page: 0, size: 20 }, token))
     const profiles = await getProfilesForPage(page)
     const result = { ...page, profiles }
     setFollowers(result)
@@ -84,7 +84,7 @@ export function FollowLabPage({ session, requestWithAuth, notify }) {
   })
 
   const loadFollowing = () => run('List following', async () => {
-    const page = await listFollowing(target.id, { page: 0, size: 20 })
+    const page = await requestWithAuth((token) => listFollowing(target.id, { page: 0, size: 20 }, token))
     const profiles = await getProfilesForPage(page)
     const result = { ...page, profiles }
     setFollowing(result)
