@@ -3,6 +3,7 @@ package com.socialmediablog.platform.infra.gateway.config;
 import com.socialmediablog.platform.common.security.JwtProperties;
 import com.socialmediablog.platform.common.security.JwtSupport;
 import com.socialmediablog.platform.common.security.error.ReactiveSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.correlation.CorrelationHeaders;
 import com.socialmediablog.platform.common.web.error.ErrorCode;
 import java.util.Arrays;
 import java.util.List;
@@ -93,8 +94,13 @@ public class GatewaySecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(splitCsv(allowedOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                CorrelationHeaders.CORRELATION_ID
+        ));
+        configuration.setExposedHeaders(List.of("Authorization", CorrelationHeaders.CORRELATION_ID));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

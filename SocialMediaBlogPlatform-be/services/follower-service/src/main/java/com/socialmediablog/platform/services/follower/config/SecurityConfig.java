@@ -1,8 +1,11 @@
 package com.socialmediablog.platform.services.follower.config;
 
 import com.socialmediablog.platform.common.security.GatewayHeaderAuthenticationFilter;
+import com.socialmediablog.platform.common.web.correlation.CorrelationIdFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -34,5 +37,12 @@ public class SecurityConfig {
     @Bean
     GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter() {
         return new GatewayHeaderAuthenticationFilter();
+    }
+
+    @Bean
+    FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter() {
+        FilterRegistrationBean<CorrelationIdFilter> registration = new FilterRegistrationBean<>(new CorrelationIdFilter());
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 }

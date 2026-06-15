@@ -45,3 +45,7 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
   article-folder: ${CLOUDINARY_ARTICLE_FOLDER:social-blog/articles}
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId}]"
