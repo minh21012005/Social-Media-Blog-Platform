@@ -1,24 +1,24 @@
-package com.socialmediablog.platform.services.comment.infrastructure.adapter;
+package com.socialmediablog.platform.services.follower.infrastructure.adapter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.socialmediablog.platform.common.events.DomainEvent;
-import com.socialmediablog.platform.services.comment.application.port.out.CommentEventPublisher;
-import com.socialmediablog.platform.services.comment.infrastructure.entity.JpaOutboxEventEntity;
-import com.socialmediablog.platform.services.comment.infrastructure.persistence.SpringDataJpaOutboxEventRepository;
+import com.socialmediablog.platform.services.follower.application.port.out.FollowerEventPublisher;
+import com.socialmediablog.platform.services.follower.infrastructure.entity.JpaOutboxEventEntity;
+import com.socialmediablog.platform.services.follower.infrastructure.persistence.SpringDataJpaOutboxEventRepository;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OutboxCommentEventPublisher implements CommentEventPublisher {
+public class OutboxFollowerEventPublisher implements FollowerEventPublisher {
 
-    private static final Logger log = LoggerFactory.getLogger(OutboxCommentEventPublisher.class);
+    private static final Logger log = LoggerFactory.getLogger(OutboxFollowerEventPublisher.class);
 
     private final SpringDataJpaOutboxEventRepository repository;
     private final ObjectMapper objectMapper;
 
-    public OutboxCommentEventPublisher(
+    public OutboxFollowerEventPublisher(
             SpringDataJpaOutboxEventRepository repository,
             ObjectMapper objectMapper
     ) {
@@ -33,13 +33,13 @@ public class OutboxCommentEventPublisher implements CommentEventPublisher {
             repository.save(JpaOutboxEventEntity.pending(
                     event.eventId(),
                     aggregateId,
-                    "Comment",
+                    "FollowRelation",
                     event.eventType(),
                     payload,
                     event.occurredAt()
             ));
         } catch (Exception e) {
-            log.error("[OutboxCommentEventPublisher] Failed to serialize event type={}: {}", event.eventType(), e.getMessage(), e);
+            log.error("[OutboxFollowerEventPublisher] Failed to serialize event type={}: {}", event.eventType(), e.getMessage(), e);
             throw new RuntimeException("Failed to serialize domain event", e);
         }
     }

@@ -72,4 +72,33 @@ public class JpaOutboxEventEntity extends BaseEntity {
                 now
         );
     }
+
+    public void markCompleted(Instant now) {
+        this.status = "COMPLETED";
+        this.publishedAt = now;
+    }
+
+    public UUID getAggregateId() {
+        return aggregateId;
+    }
+
+    public String getAggregateType() {
+        return aggregateType;
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public String getPayload() {
+        return payload;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public Instant getPublishedAt() {
+        return publishedAt;
+    }
 }
