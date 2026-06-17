@@ -14,6 +14,7 @@ import com.socialmediablog.platform.services.follower.application.port.in.GetSer
 import com.socialmediablog.platform.services.follower.application.port.in.ListFollowersUseCase;
 import com.socialmediablog.platform.services.follower.application.port.in.ListFollowingUseCase;
 import com.socialmediablog.platform.services.follower.application.port.in.UnfollowUserUseCase;
+import com.socialmediablog.platform.services.follower.application.port.out.FollowerEventPublisher;
 import com.socialmediablog.platform.services.follower.application.result.FollowCounts;
 import com.socialmediablog.platform.services.follower.application.result.FollowRelationView;
 import com.socialmediablog.platform.services.follower.application.result.FollowStatus;
@@ -21,6 +22,8 @@ import com.socialmediablog.platform.services.follower.application.result.FollowU
 import com.socialmediablog.platform.services.follower.application.result.FollowUserPage;
 import com.socialmediablog.platform.services.follower.application.result.ServiceStatus;
 import com.socialmediablog.platform.services.follower.domain.aggregate.FollowRelation;
+import com.socialmediablog.platform.services.follower.domain.event.UserFollowedEvent;
+import com.socialmediablog.platform.services.follower.domain.event.UserUnfollowedEvent;
 import com.socialmediablog.platform.services.follower.domain.repository.FollowRelationRepository;
 import com.socialmediablog.platform.services.follower.domain.vo.FollowedUserId;
 import com.socialmediablog.platform.services.follower.domain.vo.FollowerId;
@@ -43,9 +46,13 @@ public class FollowerApplicationService implements
     private static final int MAX_PAGE_SIZE = 100;
 
     private final FollowRelationRepository followRelationRepository;
+    private final FollowerEventPublisher followerEventPublisher;
 
-    public FollowerApplicationService(FollowRelationRepository followRelationRepository) {
+    public FollowerApplicationService(
+            FollowRelationRepository followRelationRepository,
+            FollowerEventPublisher followerEventPublisher) {
         this.followRelationRepository = followRelationRepository;
+        this.followerEventPublisher = followerEventPublisher;
     }
 
     @Override
@@ -65,7 +72,12 @@ public class FollowerApplicationService implements
                 .map(existing -> existing.activate(now))
                 .orElseGet(() -> FollowRelation.follow(followerId, followedUserId, now));
 
-        return FollowRelationView.from(followRelationRepository.save(relation));
+        FollowRelation saved = followRelationRepository.save(relation);
+        followerEventPublisher.publish(
+                saved.id().value(),
+                new UserFollowedEvent(UUID.randomUUID(), command.followerId(), command.followedUserId(), now)
+        );
+        return FollowRelationView.from(saved);
     }
 
     @Override
@@ -78,7 +90,13 @@ public class FollowerApplicationService implements
         return followRelationRepository.findByFollowerIdAndFollowedUserId(followerId, followedUserId)
                 .map(existing -> existing.unfollow(now))
                 .map(followRelationRepository::save)
-                .map(FollowRelationView::from)
+                .map(saved -> {
+                    followerEventPublisher.publish(
+                            saved.id().value(),
+                            new UserUnfollowedEvent(UUID.randomUUID(), command.followerId(), command.followedUserId(), now)
+                    );
+                    return FollowRelationView.from(saved);
+                })
                 .orElseGet(() -> new FollowRelationView(null, command.followerId(), command.followedUserId(), false, null, null));
     }
 
