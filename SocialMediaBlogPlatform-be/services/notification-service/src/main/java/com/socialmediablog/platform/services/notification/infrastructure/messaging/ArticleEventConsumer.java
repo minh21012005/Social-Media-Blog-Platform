@@ -7,9 +7,11 @@ import com.socialmediablog.platform.services.notification.domain.model.Notificat
 import com.socialmediablog.platform.services.notification.domain.repository.NotificationRepository;
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
 import com.socialmediablog.platform.common.web.ApiResponse;
+import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaProcessedEventEntity;
 import com.socialmediablog.platform.services.notification.infrastructure.feign.FollowerItem;
 import com.socialmediablog.platform.services.notification.infrastructure.feign.FollowerPage;
 import com.socialmediablog.platform.services.notification.infrastructure.feign.FollowerServiceFeignClient;
+import com.socialmediablog.platform.services.notification.infrastructure.persistence.SpringDataJpaProcessedEventRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -36,15 +38,18 @@ public class ArticleEventConsumer {
     private final NotificationRepository notificationRepository;
     private final FollowerServiceFeignClient followerServiceFeignClient;
     private final ObjectMapper objectMapper;
+    private final SpringDataJpaProcessedEventRepository processedEventRepository;
 
     public ArticleEventConsumer(
             NotificationRepository notificationRepository,
             FollowerServiceFeignClient followerServiceFeignClient,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            SpringDataJpaProcessedEventRepository processedEventRepository
     ) {
         this.notificationRepository = notificationRepository;
         this.followerServiceFeignClient = followerServiceFeignClient;
         this.objectMapper = objectMapper;
+        this.processedEventRepository = processedEventRepository;
     }
 
     @KafkaListener(topics = "article.events", groupId = "notification-service")
@@ -56,6 +61,15 @@ public class ArticleEventConsumer {
             if (!"article.published".equals(eventType)) {
                 return;
             }
+
+            UUID eventId = UUID.fromString(payload.path("eventId").asText());
+            if (processedEventRepository.existsById(eventId)) {
+                log.info("[ArticleEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
+                return;
+            }
+
+            // Đánh dấu là đã xử lý
+            processedEventRepository.save(new JpaProcessedEventEntity(eventId));
 
             UUID articleId = UUID.fromString(payload.path("articleId").asText());
             UUID authorId = UUID.fromString(payload.path("authorId").asText());
