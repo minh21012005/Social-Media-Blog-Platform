@@ -6,7 +6,6 @@ import com.socialmediablog.platform.services.notification.domain.aggregate.Notif
 import com.socialmediablog.platform.services.notification.domain.model.NotificationType;
 import com.socialmediablog.platform.services.notification.domain.repository.NotificationRepository;
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
-import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleServiceFeignClient;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -20,7 +19,8 @@ import org.springframework.stereotype.Component;
  *   {"eventId":"...", "articleId":"...", "authorId":"...", "occurredAt":"...", "eventType":"article.published"}
  *
  * When an article is published, we notify all followers of the author.
- * We query follower-service to get the list of followers.
+ * TODO: Call follower-service via Feign to get the list of followers of authorId
+ *       and create a notification for each follower.
  */
 @Component
 public class ArticleEventConsumer {
@@ -28,18 +28,16 @@ public class ArticleEventConsumer {
     private static final Logger log = LoggerFactory.getLogger(ArticleEventConsumer.class);
 
     private final NotificationRepository notificationRepository;
-    private final ArticleServiceFeignClient articleServiceFeignClient;
     private final ObjectMapper objectMapper;
 
     public ArticleEventConsumer(
             NotificationRepository notificationRepository,
-            ArticleServiceFeignClient articleServiceFeignClient,
             ObjectMapper objectMapper
     ) {
         this.notificationRepository = notificationRepository;
-        this.articleServiceFeignClient = articleServiceFeignClient;
         this.objectMapper = objectMapper;
     }
+
 
     @KafkaListener(topics = "article.events", groupId = "notification-service")
     public void consume(String message) {
