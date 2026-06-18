@@ -1,13 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { categories } from '../data/editorial'
 import { BellIcon, SearchIcon } from './icons'
+import { getMyNotifications, markNotificationRead } from '../services/notifications'
 
 export function SiteHeader({ session, navigate, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
   const menuRef = useRef(null)
   const searchRef = useRef(null)
+  const notifRef = useRef(null)
 
   useEffect(() => {
     if (!menuOpen) {
@@ -59,7 +63,47 @@ export function SiteHeader({ session, navigate, onLogout }) {
     }
   }, [searchOpen])
 
+  const fetchNotifications = useCallback(async () => {
+    if (!session?.token) return
+    try {
+      const data = await getMyNotifications(session.token)
+      setNotifications(data ?? [])
+    } catch {
+      // lỗi mạng: giữ nguyên danh sách cũ, không crash UI
+    }
+  }, [session?.token])
+
+  // Tải notification khi đăng nhập; tự động làm mới mỗi 30 giây
+  useEffect(() => {
+    fetchNotifications()
+    const timer = setInterval(fetchNotifications, 30_000)
+    return () => clearInterval(timer)
+  }, [fetchNotifications])
+
+  // Đóng notification dropdown khi click bên ngoài
+  useEffect(() => {
+    if (!notifOpen) return undefined
+    const close = (e) => {
+      if (!notifRef.current?.contains(e.target)) setNotifOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [notifOpen])
+
+  const handleMarkRead = async (notifId) => {
+    if (!session?.token) return
+    try {
+      await markNotificationRead(notifId, session.token)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, status: 'READ' } : n))
+      )
+    } catch {
+      // bỏ qua lỗi đơn lẻ
+    }
+  }
+
   const open = (path) => (event) => {
+
     event.preventDefault()
     setMenuOpen(false)
     navigate(path)
@@ -117,9 +161,61 @@ export function SiteHeader({ session, navigate, onLogout }) {
             </form>
           )}
         </div>
-        <button aria-label="Notifications" className="icon-button" type="button">
-          <BellIcon />
-        </button>
+        <div className="header-notif" ref={notifRef}>
+          <button
+            aria-expanded={notifOpen}
+            aria-label="Notifications"
+            className="icon-button notif-bell"
+            type="button"
+            onClick={() => setNotifOpen((c) => !c)}
+          >
+            <BellIcon />
+            {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
+              <span className="notif-badge">
+                {Math.min(notifications.filter((n) => n.status === 'UNREAD').length, 99)}
+              </span>
+            )}
+          </button>
+          {notifOpen && (
+            <div className="notif-dropdown">
+              <div className="notif-dropdown-header">
+                <span>Thông báo</span>
+                {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
+                  <span className="notif-unread-count">
+                    {notifications.filter((n) => n.status === 'UNREAD').length} chưa đọc
+                  </span>
+                )}
+              </div>
+              <ul className="notif-list">
+                {notifications.length === 0 ? (
+                  <li className="notif-empty">Bạn chưa có thông báo nào</li>
+                ) : (
+                  notifications.map((n) => (
+                    <li
+                      key={n.id}
+                      className={`notif-item${n.status === 'UNREAD' ? ' notif-item--unread' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleMarkRead(n.id)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleMarkRead(n.id)}
+                    >
+                      {n.status === 'UNREAD' && <span className="notif-dot" aria-hidden="true" />}
+                      <div className="notif-content">
+                        <p className="notif-title">{n.title}</p>
+                        {n.body && <p className="notif-body">{n.body}</p>}
+                        <time className="notif-time" dateTime={n.createdAt}>
+                          {new Date(n.createdAt).toLocaleString('vi-VN', {
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                          })}
+                        </time>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
         {session ? (
           <>
             <button className="header-link-button" type="button" onClick={() => navigate('/articles/me')}>My articles</button>

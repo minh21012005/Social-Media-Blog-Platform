@@ -6,7 +6,12 @@ import com.socialmediablog.platform.services.notification.domain.aggregate.Notif
 import com.socialmediablog.platform.services.notification.domain.model.NotificationType;
 import com.socialmediablog.platform.services.notification.domain.repository.NotificationRepository;
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
+import com.socialmediablog.platform.common.web.ApiResponse;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.FollowerItem;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.FollowerPage;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.FollowerServiceFeignClient;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,26 +23,29 @@ import org.springframework.stereotype.Component;
  * Event payload (serialized from ArticlePublishedEvent):
  *   {"eventId":"...", "articleId":"...", "authorId":"...", "occurredAt":"...", "eventType":"article.published"}
  *
- * When an article is published, we notify all followers of the author.
- * TODO: Call follower-service via Feign to get the list of followers of authorId
- *       and create a notification for each follower.
+ * When an article is published:
+ *   - Calls follower-service to get ALL followers of the author (via pagination).
+ *   - Creates an ARTICLE_PUBLISHED notification for each follower.
  */
 @Component
 public class ArticleEventConsumer {
 
     private static final Logger log = LoggerFactory.getLogger(ArticleEventConsumer.class);
+    private static final int FOLLOWER_PAGE_SIZE = 200;
 
     private final NotificationRepository notificationRepository;
+    private final FollowerServiceFeignClient followerServiceFeignClient;
     private final ObjectMapper objectMapper;
 
     public ArticleEventConsumer(
             NotificationRepository notificationRepository,
+            FollowerServiceFeignClient followerServiceFeignClient,
             ObjectMapper objectMapper
     ) {
         this.notificationRepository = notificationRepository;
+        this.followerServiceFeignClient = followerServiceFeignClient;
         this.objectMapper = objectMapper;
     }
-
 
     @KafkaListener(topics = "article.events", groupId = "notification-service")
     public void consume(String message) {
@@ -53,24 +61,49 @@ public class ArticleEventConsumer {
             UUID authorId = UUID.fromString(payload.path("authorId").asText());
             Instant now = Instant.now();
 
-            // Lấy danh sách follower của tác giả để gửi thông báo
-            // TODO: Gọi follower-service qua Feign để lấy followers của authorId và tạo notification cho mỗi người
-            // Hiện tại tạo notification cho chính authorId để xác nhận luồng hoạt động
-            Notification notification = Notification.create(
-                    RecipientId.of(authorId),
-                    authorId,
-                    NotificationType.ARTICLE_PUBLISHED,
-                    "Article",
-                    articleId,
-                    "Bài viết của bạn đã được xuất bản",
-                    null,
-                    now
-            );
-            notificationRepository.save(notification);
-            log.info("[NotificationConsumer] Saved ARTICLE_PUBLISHED notification: articleId={} authorId={}", articleId, authorId);
+            log.info("[ArticleEventConsumer] Article published articleId={} authorId={}, notifying followers...", articleId, authorId);
+
+            // Lấy tất cả followers theo phân trang
+            int page = 0;
+            long totalNotified = 0;
+
+            while (true) {
+                ApiResponse<FollowerPage> response = followerServiceFeignClient.getFollowers(authorId, page, FOLLOWER_PAGE_SIZE);
+                FollowerPage followerPage = response.data();
+
+                if (followerPage == null || followerPage.users() == null || followerPage.users().isEmpty()) {
+                    break;
+                }
+
+                List<FollowerItem> followers = followerPage.users();
+                for (FollowerItem follower : followers) {
+                    Notification notification = Notification.create(
+                            RecipientId.of(follower.userId()),   // người nhận = follower
+                            authorId,                             // actor = tác giả bài viết
+                            NotificationType.ARTICLE_PUBLISHED,
+                            "Article",
+                            articleId,
+                            "Tác giả bạn theo dõi vừa đăng bài mới",
+                            null,
+                            now
+                    );
+                    notificationRepository.save(notification);
+                }
+
+                totalNotified += followers.size();
+                log.debug("[ArticleEventConsumer] Notified {} followers (page {})", followers.size(), page);
+
+                // Kiểm tra còn trang tiếp theo không
+                if (followerPage.users().size() < FOLLOWER_PAGE_SIZE) {
+                    break;
+                }
+                page++;
+            }
+
+            log.info("[ArticleEventConsumer] Done. Notified {} followers for articleId={}", totalNotified, articleId);
 
         } catch (Exception e) {
-            log.error("[NotificationConsumer] Failed to process article event: {}", e.getMessage(), e);
+            log.error("[ArticleEventConsumer] Failed to process article.published event: {}", e.getMessage(), e);
         }
     }
 }

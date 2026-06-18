@@ -106,6 +106,17 @@ public class Notification {
         );
     }
 
+    public Notification markRead(Instant now) {
+        if (this.status == NotificationStatus.READ) {
+            return this;
+        }
+        return new Notification(
+                this.id, this.recipientId, this.actorId, this.type,
+                this.subjectType, this.subjectId, this.title, this.body,
+                NotificationStatus.READ, now, this.createdAt, now
+        );
+    }
+
     private static String required(String value, int maxLength, String field) {
         String normalized = optional(value, maxLength, field);
         if (normalized == null) {
