@@ -46,13 +46,13 @@ public class OutboxRelayJob {
 
         for (JpaOutboxEventEntity event : pending) {
             try {
-                kafkaTemplate.send(topic, event.getId().toString(), event.getPayload()).get();
+                kafkaTemplate.send(topic, event.id().toString(), event.getPayload()).get();
                 event.markCompleted(Instant.now());
                 repository.save(event);
-                log.debug("[OutboxRelay][interaction-service] Published event id={} type={}", event.getId(), event.getEventType());
+                log.debug("[OutboxRelay][interaction-service] Published event id={} type={}", event.id(), event.getEventType());
             } catch (Exception ex) {
                 log.error("[OutboxRelay][interaction-service] Failed to publish event id={} type={}: {}",
-                        event.getId(), event.getEventType(), ex.getMessage());
+                        event.id(), event.getEventType(), ex.getMessage());
             }
         }
     }
