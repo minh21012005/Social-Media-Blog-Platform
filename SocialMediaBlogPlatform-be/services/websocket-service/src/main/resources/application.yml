@@ -1,0 +1,48 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: websocket-service
+  config:
+    import: optional:file:.env[.properties],optional:file:../../.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: websocket-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:social-media-blog-platform}
+    key-id: ${JWT_KEY_ID:social-blog-local-dev}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:../../infra/api-gateway/src/main/resources/config/jwt/dev-public-key.pem}
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId}]"
+  level:
+    com.socialmediablog.platform.services.websocket: DEBUG
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    ip-address: ${EUREKA_INSTANCE_IP_ADDRESS:127.0.0.1}
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    instance-id: ${spring.application.name}:${server.port}
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
