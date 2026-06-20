@@ -1,5 +1,5 @@
 server:
-  port: 8086
+  port: 8087
 
 spring:
   application:
@@ -15,6 +15,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.socialmediablog.platform.services.websocket.infrastructure.messaging.NotificationPushEvent
 
 security:
   jwt:
