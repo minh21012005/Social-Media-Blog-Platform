@@ -39,6 +39,10 @@ spring:
               uri: lb://notification-service
               predicates:
                 - Path=/api/v1/notifications/**
+            - id: websocket-service
+              uri: lb:ws://websocket-service
+              predicates:
+                - Path=/ws/**
 
 security:
   jwt:

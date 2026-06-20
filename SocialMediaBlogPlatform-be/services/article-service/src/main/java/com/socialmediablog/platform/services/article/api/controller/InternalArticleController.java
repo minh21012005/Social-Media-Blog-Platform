@@ -33,4 +33,16 @@ public class InternalArticleController {
                         null
                 )));
     }
+
+    @GetMapping("/{articleId}/author")
+    public ResponseEntity<ApiResponse<com.socialmediablog.platform.services.article.api.dto.ArticleAuthorResponse>> getAuthor(@PathVariable UUID articleId) {
+        return articleRepository.findById(ArticleId.of(articleId))
+                .map(article -> new com.socialmediablog.platform.services.article.api.dto.ArticleAuthorResponse(article.authorId().value()))
+                .map(response -> ResponseEntity.ok(ApiResponse.success("Article author loaded", response)))
+                .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse<>(
+                        404,
+                        ErrorCode.NOT_FOUND.defaultMessage(),
+                        null
+                )));
+    }
 }

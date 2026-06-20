@@ -13,13 +13,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import com.socialmediablog.platform.common.web.ApiResponse;
+import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaProcessedEventEntity;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleAuthorResponse;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleServiceFeignClient;
+import com.socialmediablog.platform.services.notification.infrastructure.persistence.SpringDataJpaProcessedEventRepository;
+
 /**
  * Listens for interaction.events Kafka topic.
  * Event payload (serialized from InteractionRecordedEvent):
  *   {"eventId":"...", "interactionId":"...", "targetId":"...", "userId":"...", "occurredAt":"...", "eventType":"interaction.recorded"}
- *
- * NOTE: InteractionRecordedEvent does not contain the target (article/comment) owner's ID.
- * TODO: Call article-service or comment-service to resolve owner of targetId and send notification.
  */
 @Component
 public class InteractionEventConsumer {
@@ -28,13 +31,19 @@ public class InteractionEventConsumer {
 
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final SpringDataJpaProcessedEventRepository processedEventRepository;
+    private final ArticleServiceFeignClient articleServiceFeignClient;
 
     public InteractionEventConsumer(
             NotificationRepository notificationRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            SpringDataJpaProcessedEventRepository processedEventRepository,
+            ArticleServiceFeignClient articleServiceFeignClient
     ) {
         this.notificationRepository = notificationRepository;
         this.objectMapper = objectMapper;
+        this.processedEventRepository = processedEventRepository;
+        this.articleServiceFeignClient = articleServiceFeignClient;
     }
 
     @KafkaListener(topics = "interaction.events", groupId = "notification-service")
@@ -47,27 +56,45 @@ public class InteractionEventConsumer {
                 return;
             }
 
+            UUID eventId = UUID.fromString(payload.path("eventId").asText());
+            if (processedEventRepository.existsById(eventId)) {
+                log.info("[InteractionEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
+                return;
+            }
+            processedEventRepository.save(new JpaProcessedEventEntity(eventId));
+
             UUID targetId = UUID.fromString(payload.path("targetId").asText());
-            UUID userId = UUID.fromString(payload.path("userId").asText());
+            UUID userId = UUID.fromString(payload.path("userId").asText()); // The user who interacted
             Instant now = Instant.now();
 
-            // TODO: Resolve target owner from article-service/comment-service
-            // For now: create an ARTICLE_CLAPPED placeholder notification
-            Notification notification = Notification.create(
-                    RecipientId.of(userId), // Placeholder: should be target owner
-                    userId,
-                    NotificationType.ARTICLE_CLAPPED,
-                    "Article",
-                    targetId,
-                    "Bài viết của bạn nhận được lượt thích",
-                    null,
-                    now
-            );
-            notificationRepository.save(notification);
-            log.info("[NotificationConsumer] Saved ARTICLE_CLAPPED notification: targetId={} userId={}", targetId, userId);
+            // Try to resolve targetId as an article
+            try {
+                ApiResponse<ArticleAuthorResponse> response = articleServiceFeignClient.getArticleAuthor(targetId);
+                if (response != null && response.data() != null) {
+                    UUID articleAuthorId = response.data().authorId();
+
+                    if (!articleAuthorId.equals(userId)) {
+                        Notification notification = Notification.create(
+                                RecipientId.of(articleAuthorId),
+                                userId,
+                                NotificationType.ARTICLE_CLAPPED,
+                                "Article",
+                                targetId,
+                                "Bài viết của bạn nhận được lượt thích",
+                                null,
+                                now
+                        );
+                        notificationRepository.save(notification);
+                        log.info("[InteractionEventConsumer] Saved ARTICLE_CLAPPED notification for articleId={}", targetId);
+                    }
+                }
+            } catch (Exception e) {
+                // If article is not found, target might be a comment. Ignore for now.
+                log.debug("[InteractionEventConsumer] Target {} not found as an article. It might be a comment.", targetId);
+            }
 
         } catch (Exception e) {
-            log.error("[NotificationConsumer] Failed to process interaction event: {}", e.getMessage(), e);
+            log.error("[InteractionEventConsumer] Failed to process interaction event: {}", e.getMessage(), e);
         }
     }
 }
