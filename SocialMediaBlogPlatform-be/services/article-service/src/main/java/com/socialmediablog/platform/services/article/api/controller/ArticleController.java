@@ -63,6 +63,7 @@ public class ArticleController {
     private final ArchiveArticleUseCase archiveArticleUseCase;
     private final DeleteArticleUseCase deleteArticleUseCase;
     private final GetArticleBySlugUseCase getArticleBySlugUseCase;
+    private final com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase getArticleByIdUseCase;
     private final ListPublishedArticlesUseCase listPublishedArticlesUseCase;
     private final ListMyArticlesUseCase listMyArticlesUseCase;
     private final ListFeaturedArticlesUseCase listFeaturedArticlesUseCase;
@@ -79,6 +80,7 @@ public class ArticleController {
             ArchiveArticleUseCase archiveArticleUseCase,
             DeleteArticleUseCase deleteArticleUseCase,
             GetArticleBySlugUseCase getArticleBySlugUseCase,
+            com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase getArticleByIdUseCase,
             ListPublishedArticlesUseCase listPublishedArticlesUseCase,
             ListMyArticlesUseCase listMyArticlesUseCase,
             ListFeaturedArticlesUseCase listFeaturedArticlesUseCase,
@@ -94,6 +96,7 @@ public class ArticleController {
         this.archiveArticleUseCase = archiveArticleUseCase;
         this.deleteArticleUseCase = deleteArticleUseCase;
         this.getArticleBySlugUseCase = getArticleBySlugUseCase;
+        this.getArticleByIdUseCase = getArticleByIdUseCase;
         this.listPublishedArticlesUseCase = listPublishedArticlesUseCase;
         this.listMyArticlesUseCase = listMyArticlesUseCase;
         this.listFeaturedArticlesUseCase = listFeaturedArticlesUseCase;
@@ -143,6 +146,11 @@ public class ArticleController {
     @GetMapping("/slug/{slug}")
     public ApiResponse<ArticleResponse> detail(@PathVariable String slug) {
         return ApiResponse.success(ArticleResponse.from(getArticleBySlugUseCase.executeBySlug(slug)));
+    }
+
+    @GetMapping("/id/{articleId}")
+    public ApiResponse<ArticleResponse> detailById(@PathVariable UUID articleId) {
+        return ApiResponse.success(ArticleResponse.from(getArticleByIdUseCase.executeById(articleId)));
     }
 
     @GetMapping("/me")
