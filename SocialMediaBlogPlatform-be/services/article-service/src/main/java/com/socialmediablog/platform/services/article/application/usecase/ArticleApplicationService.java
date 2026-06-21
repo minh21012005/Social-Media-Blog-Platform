@@ -17,6 +17,7 @@ import com.socialmediablog.platform.services.article.application.port.in.Archive
 import com.socialmediablog.platform.services.article.application.port.in.CreateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.CurateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.DeleteArticleUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleBySlugUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListEditorPicksUseCase;
@@ -74,6 +75,7 @@ public class ArticleApplicationService implements
         PublishArticleUseCase,
         ArchiveArticleUseCase,
         DeleteArticleUseCase,
+        GetArticleByIdUseCase,
         GetArticleBySlugUseCase,
         ListPublishedArticlesUseCase,
         ListMyArticlesUseCase,
@@ -102,8 +104,7 @@ public class ArticleApplicationService implements
             ArticleMediaAssetRepository articleMediaAssetRepository,
             ArticleMediaStorage articleMediaStorage,
             ArticleEventPublisher articleEventPublisher,
-            Clock clock
-    ) {
+            Clock clock) {
         this.articleRepository = articleRepository;
         this.articleStatsRepository = articleStatsRepository;
         this.articleRevisionRepository = articleRevisionRepository;
@@ -134,16 +135,14 @@ public class ArticleApplicationService implements
                 command.content(),
                 command.coverImageUrl(),
                 command.tags(),
-                now
-        );
+                now);
         Article savedArticle = articleRepository.save(article);
         articleStatsRepository.save(ArticleStats.empty(savedArticle.id(), now));
         articleEventPublisher.publish(savedArticle.id().value(), new ArticleDraftCreatedEvent(
                 UUID.randomUUID(),
                 savedArticle.id().value(),
                 savedArticle.authorId().value(),
-                now
-        ));
+                now));
         return view(savedArticle);
     }
 
@@ -169,8 +168,7 @@ public class ArticleApplicationService implements
                 existingArticle,
                 articleRevisionRepository.nextVersionFor(existingArticle.id()),
                 actorId,
-                now
-        ));
+                now));
         Article updatedArticle = articleRepository.save(existingArticle.update(
                 actorId,
                 ArticleTitle.of(command.title()),
@@ -180,14 +178,12 @@ public class ArticleApplicationService implements
                 command.content(),
                 command.coverImageUrl(),
                 command.tags(),
-                now
-        ));
+                now));
         articleEventPublisher.publish(updatedArticle.id().value(), new ArticleUpdatedEvent(
                 UUID.randomUUID(),
                 updatedArticle.id().value(),
                 updatedArticle.authorId().value(),
-                now
-        ));
+                now));
         return view(updatedArticle);
     }
 
@@ -203,8 +199,7 @@ public class ArticleApplicationService implements
                 UUID.randomUUID(),
                 published.id().value(),
                 published.authorId().value(),
-                now
-        ));
+                now));
         return view(published);
     }
 
@@ -220,8 +215,7 @@ public class ArticleApplicationService implements
                 UUID.randomUUID(),
                 archived.id().value(),
                 archived.authorId().value(),
-                now
-        ));
+                now));
         return view(archived);
     }
 
@@ -237,14 +231,22 @@ public class ArticleApplicationService implements
                 UUID.randomUUID(),
                 deleted.id().value(),
                 deleted.authorId().value(),
-                now
-        ));
+                now));
     }
 
     @Override
     @Transactional(readOnly = true)
     public ArticleView executeBySlug(String slug) {
         Article article = articleRepository.findBySlug(Slug.of(slug))
+                .filter(Article::isPublished)
+                .orElseThrow(() -> new ArticleNotFoundException("Article was not found"));
+        return view(article);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ArticleView executeById(UUID id) {
+        Article article = articleRepository.findById(ArticleId.of(id))
                 .filter(Article::isPublished)
                 .orElseThrow(() -> new ArticleNotFoundException("Article was not found"));
         return view(article);
@@ -263,9 +265,9 @@ public class ArticleApplicationService implements
                 command.query(),
                 command.sort(),
                 page,
-                size
-        );
-        long totalItems = articleRepository.countPublished(category, command.authorId(), command.tag(), command.query());
+                size);
+        long totalItems = articleRepository.countPublished(category, command.authorId(), command.tag(),
+                command.query());
         return PageResult.of(articles.stream().map(this::view).toList(), page, size, totalItems);
     }
 
@@ -289,7 +291,8 @@ public class ArticleApplicationService implements
             Set<UUID> selectedIds = editorPicks.stream()
                     .map(article -> article.id().value())
                     .collect(java.util.stream.Collectors.toSet());
-            List<Article> fallback = articleRepository.findPublished(null, null, null, null, "latest", 0, size * 2).stream()
+            List<Article> fallback = articleRepository.findPublished(null, null, null, null, "latest", 0, size * 2)
+                    .stream()
                     .filter(article -> !selectedIds.contains(article.id().value()))
                     .limit(size - editorPicks.size())
                     .toList();
@@ -305,8 +308,7 @@ public class ArticleApplicationService implements
         return view(articleRepository.save(article.curate(
                 command.featuredRank(),
                 command.editorPickRank(),
-                clock.instant()
-        )));
+                clock.instant())));
     }
 
     @Override
@@ -328,8 +330,7 @@ public class ArticleApplicationService implements
         StoredArticleMedia storedMedia = articleMediaStorage.upload(
                 command.originalFilename(),
                 command.mimeType(),
-                command.content()
-        );
+                command.content());
         ArticleMediaAsset mediaAsset = articleMediaAssetRepository.save(ArticleMediaAsset.uploaded(
                 null,
                 command.ownerId(),
@@ -341,8 +342,7 @@ public class ArticleApplicationService implements
                 storedMedia.sizeBytes(),
                 storedMedia.width(),
                 storedMedia.height(),
-                clock.instant()
-        ));
+                clock.instant()));
         return new UploadedArticleMedia(
                 mediaAsset.id().value(),
                 mediaAsset.secureUrl(),
@@ -350,8 +350,7 @@ public class ArticleApplicationService implements
                 mediaAsset.mimeType(),
                 mediaAsset.sizeBytes(),
                 mediaAsset.width(),
-                mediaAsset.height()
-        );
+                mediaAsset.height());
     }
 
     @Override
@@ -367,8 +366,7 @@ public class ArticleApplicationService implements
                 command.viewerId(),
                 command.anonymousViewerKey(),
                 command.source(),
-                now
-        ));
+                now));
         ArticleStats stats = articleStatsRepository.findByArticleId(article.id())
                 .orElseGet(() -> ArticleStats.empty(article.id(), now));
         articleStatsRepository.save(stats.recordView(now));

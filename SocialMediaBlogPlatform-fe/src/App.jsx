@@ -4,6 +4,7 @@ import { apiRequest } from './services/api'
 import { useRoute } from './hooks/useRoute'
 import { SiteHeader } from './components/SiteHeader'
 import { ToastStack } from './components/ToastStack'
+import { WebSocketManager } from './components/WebSocketManager'
 import { HomePage } from './pages/HomePage'
 import { CategoryPage } from './pages/CategoryPage'
 import { AuthorPage } from './pages/AuthorPage'
@@ -295,6 +296,7 @@ function App() {
     <>
       <SiteHeader session={session} navigate={navigate} onLogout={handleLogout} />
       <ToastStack onDismiss={dismissToast} toasts={toasts} />
+      <WebSocketManager session={session} notify={notify} />
       {renderPage()}
     </>
   )

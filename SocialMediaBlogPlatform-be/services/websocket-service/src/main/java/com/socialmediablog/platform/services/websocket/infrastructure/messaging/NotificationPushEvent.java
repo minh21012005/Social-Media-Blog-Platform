@@ -4,11 +4,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record NotificationPushEvent(
-        UUID notificationId,
+        UUID id,
+        UUID actorId,
         UUID recipientId,
         String type,
+        String subjectType,
+        UUID subjectId,
         String title,
-        String message,
+        String body,
+        String status,
         Instant createdAt
 ) {
 }

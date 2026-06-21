@@ -53,10 +53,14 @@ public class JpaNotificationRepositoryAdapter implements NotificationRepository 
         try {
             NotificationPushEvent pushEvent = new NotificationPushEvent(
                     saved.id().value(),
+                    saved.actorId(),
                     saved.recipientId().value(),
                     saved.type().name(),
+                    saved.subjectType(),
+                    saved.subjectId(),
                     saved.title(),
                     saved.body(),
+                    saved.status().name(),
                     saved.createdAt()
             );
             String payload = objectMapper.writeValueAsString(pushEvent);

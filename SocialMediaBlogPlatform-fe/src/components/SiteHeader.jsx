@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { categories } from '../data/editorial'
 import { BellIcon, SearchIcon } from './icons'
 import { getMyNotifications, markNotificationRead } from '../services/notifications'
+import { getArticleById } from '../services/articles'
+import { getPublicUser } from '../services/users'
 
 export function SiteHeader({ session, navigate, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -63,22 +65,38 @@ export function SiteHeader({ session, navigate, onLogout }) {
     }
   }, [searchOpen])
 
-  const fetchNotifications = useCallback(async () => {
-    if (!session?.token) return
-    try {
-      const data = await getMyNotifications(session.token)
-      setNotifications(data ?? [])
-    } catch {
-      // lỗi mạng: giữ nguyên danh sách cũ, không crash UI
-    }
-  }, [session?.token])
-
-  // Tải notification khi đăng nhập; tự động làm mới mỗi 30 giây
+  // Tải danh sách thông báo khi mới đăng nhập và lắng nghe WebSocket
   useEffect(() => {
-    fetchNotifications()
-    const timer = setInterval(fetchNotifications, 30_000)
-    return () => clearInterval(timer)
-  }, [fetchNotifications])
+    let ignore = false;
+    const fetchIt = async () => {
+      if (!session?.accessToken) return
+      try {
+        const data = await getMyNotifications(session.accessToken)
+        if (!ignore) setNotifications(data ?? [])
+      } catch {
+        // network error, ignore
+      }
+    }
+
+    // Load initial data
+    fetchIt()
+
+    // Handle real-time incoming events
+    const handleNewNotification = (e) => {
+      const newNotif = e.detail
+      setNotifications((prev) => {
+        // Prevent duplicate if already exists
+        if (prev.some((n) => n.id === newNotif.id)) return prev
+        return [newNotif, ...prev]
+      })
+    }
+    window.addEventListener('NEW_NOTIFICATION', handleNewNotification)
+
+    return () => {
+      ignore = true;
+      window.removeEventListener('NEW_NOTIFICATION', handleNewNotification)
+    }
+  }, [session?.accessToken])
 
   // Đóng notification dropdown khi click bên ngoài
   useEffect(() => {
@@ -90,13 +108,26 @@ export function SiteHeader({ session, navigate, onLogout }) {
     return () => document.removeEventListener('mousedown', close)
   }, [notifOpen])
 
-  const handleMarkRead = async (notifId) => {
+  const handleMarkRead = async (notif) => {
     if (!session?.token) return
     try {
-      await markNotificationRead(notifId, session.token)
+      await markNotificationRead(notif.id, session.token)
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notifId ? { ...n, status: 'READ' } : n))
+        prev.map((n) => (n.id === notif.id ? { ...n, status: 'READ' } : n))
       )
+      setNotifOpen(false)
+
+      if (notif.type === 'NEW_COMMENT' || notif.type === 'NEW_ARTICLE') {
+        const article = await getArticleById(notif.subjectId)
+        if (article?.slug) {
+          navigate(`/articles/${article.slug}`)
+        }
+      } else if (notif.type === 'NEW_FOLLOWER') {
+        const user = await getPublicUser(notif.actorId)
+        if (user?.username) {
+          navigate(`/author/${user.username}`)
+        }
+      }
     } catch {
       // bỏ qua lỗi đơn lẻ
     }
@@ -196,8 +227,8 @@ export function SiteHeader({ session, navigate, onLogout }) {
                       className={`notif-item${n.status === 'UNREAD' ? ' notif-item--unread' : ''}`}
                       role="button"
                       tabIndex={0}
-                      onClick={() => handleMarkRead(n.id)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleMarkRead(n.id)}
+                      onClick={() => handleMarkRead(n)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleMarkRead(n)}
                     >
                       {n.status === 'UNREAD' && <span className="notif-dot" aria-hidden="true" />}
                       <div className="notif-content">
