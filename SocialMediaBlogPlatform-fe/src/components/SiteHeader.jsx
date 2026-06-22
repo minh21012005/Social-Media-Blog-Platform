@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { categories } from '../data/editorial'
 import { BellIcon, SearchIcon } from './icons'
-import { getMyNotifications, markNotificationRead } from '../services/notifications'
+import { getMyNotifications, markNotificationRead, markAllNotificationsRead } from '../services/notifications'
 import { getArticleById } from '../services/articles'
 import { getPublicUser } from '../services/users'
 
@@ -109,9 +109,9 @@ export function SiteHeader({ session, navigate, onLogout }) {
   }, [notifOpen])
 
   const handleMarkRead = async (notif) => {
-    if (!session?.token) return
+    if (!session?.accessToken) return
     try {
-      await markNotificationRead(notif.id, session.token)
+      await markNotificationRead(notif.id, session.accessToken)
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, status: 'READ' } : n))
       )
@@ -130,6 +130,16 @@ export function SiteHeader({ session, navigate, onLogout }) {
       }
     } catch {
       // bỏ qua lỗi đơn lẻ
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (!session?.accessToken) return
+    try {
+      await markAllNotificationsRead(session.accessToken)
+      setNotifications((prev) => prev.map((n) => ({ ...n, status: 'READ' })))
+    } catch {
+      // bỏ qua lỗi
     }
   }
 
@@ -212,9 +222,19 @@ export function SiteHeader({ session, navigate, onLogout }) {
               <div className="notif-dropdown-header">
                 <span>Thông báo</span>
                 {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
-                  <span className="notif-unread-count">
-                    {notifications.filter((n) => n.status === 'UNREAD').length} chưa đọc
-                  </span>
+                  <div className="notif-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span className="notif-unread-count">
+                      {notifications.filter((n) => n.status === 'UNREAD').length} chưa đọc
+                    </span>
+                    <button 
+                      className="text-button" 
+                      type="button" 
+                      onClick={handleMarkAllRead}
+                      style={{ fontSize: '0.85rem', cursor: 'pointer', background: 'none', border: 'none', color: '#03a87c', padding: 0 }}
+                    >
+                      Đánh dấu tất cả đã đọc
+                    </button>
+                  </div>
                 )}
               </div>
               <ul className="notif-list">

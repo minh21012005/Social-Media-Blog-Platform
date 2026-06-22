@@ -21,3 +21,15 @@ export async function markNotificationRead(notificationId, token) {
     token,
   })
 }
+
+/**
+ * Đánh dấu tất cả notification của user là đã đọc.
+ * @param {string} token - JWT access token
+ * @returns {Promise<Object>} số lượng notification đã cập nhật
+ */
+export async function markAllNotificationsRead(token) {
+  return apiRequest('/api/v1/notifications/read-all', {
+    method: 'PATCH',
+    token,
+  })
+}

@@ -6,6 +6,8 @@ import com.socialmediablog.platform.services.notification.application.command.Ma
 import com.socialmediablog.platform.services.notification.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.notification.application.port.in.ListMyNotificationsUseCase;
 import com.socialmediablog.platform.services.notification.application.port.in.MarkNotificationReadUseCase;
+import com.socialmediablog.platform.services.notification.application.port.in.MarkAllNotificationsReadUseCase;
+import com.socialmediablog.platform.services.notification.application.command.MarkAllNotificationsReadCommand;
 import com.socialmediablog.platform.services.notification.application.result.NotificationItem;
 import com.socialmediablog.platform.services.notification.application.result.ServiceStatus;
 import com.socialmediablog.platform.services.notification.domain.aggregate.Notification;
@@ -20,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationApplicationService
-        implements GetServiceStatusUseCase, ListMyNotificationsUseCase, MarkNotificationReadUseCase {
+        implements GetServiceStatusUseCase, ListMyNotificationsUseCase, MarkNotificationReadUseCase, MarkAllNotificationsReadUseCase {
 
     private final NotificationRepository notificationRepository;
 
@@ -59,5 +61,14 @@ public class NotificationApplicationService
 
         Notification updated = notification.markRead(Instant.now());
         return NotificationItem.from(notificationRepository.save(updated));
+    }
+
+    @Override
+    @Transactional
+    public int execute(MarkAllNotificationsReadCommand command) {
+        return notificationRepository.markAllAsReadByRecipientId(
+                RecipientId.of(command.recipientId()), 
+                Instant.now()
+        );
     }
 }

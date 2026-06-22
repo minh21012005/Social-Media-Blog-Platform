@@ -9,6 +9,8 @@ import com.socialmediablog.platform.services.notification.application.command.Ma
 import com.socialmediablog.platform.services.notification.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.notification.application.port.in.ListMyNotificationsUseCase;
 import com.socialmediablog.platform.services.notification.application.port.in.MarkNotificationReadUseCase;
+import com.socialmediablog.platform.services.notification.application.port.in.MarkAllNotificationsReadUseCase;
+import com.socialmediablog.platform.services.notification.application.command.MarkAllNotificationsReadCommand;
 import com.socialmediablog.platform.services.notification.application.result.NotificationItem;
 import java.util.List;
 import java.util.UUID;
@@ -26,15 +28,18 @@ public class NotificationController {
     private final GetServiceStatusUseCase getServiceStatusUseCase;
     private final ListMyNotificationsUseCase listMyNotificationsUseCase;
     private final MarkNotificationReadUseCase markNotificationReadUseCase;
+    private final MarkAllNotificationsReadUseCase markAllNotificationsReadUseCase;
 
     public NotificationController(
             GetServiceStatusUseCase getServiceStatusUseCase,
             ListMyNotificationsUseCase listMyNotificationsUseCase,
-            MarkNotificationReadUseCase markNotificationReadUseCase
+            MarkNotificationReadUseCase markNotificationReadUseCase,
+            MarkAllNotificationsReadUseCase markAllNotificationsReadUseCase
     ) {
         this.getServiceStatusUseCase = getServiceStatusUseCase;
         this.listMyNotificationsUseCase = listMyNotificationsUseCase;
         this.markNotificationReadUseCase = markNotificationReadUseCase;
+        this.markAllNotificationsReadUseCase = markAllNotificationsReadUseCase;
     }
 
     @GetMapping("/status")
@@ -71,5 +76,18 @@ public class NotificationController {
                 new MarkNotificationReadCommand(userId, id)
         );
         return ApiResponse.success(updated);
+    }
+
+    /**
+     * PATCH /api/v1/notifications/read-all
+     * Đánh dấu tất cả notification của user là đã đọc.
+     */
+    @PatchMapping("/read-all")
+    public ApiResponse<Integer> markAllRead(@AuthenticationPrincipal CurrentUser currentUser) {
+        UUID userId = UUID.fromString(currentUser.id());
+        int updatedCount = markAllNotificationsReadUseCase.execute(
+                new MarkAllNotificationsReadCommand(userId)
+        );
+        return ApiResponse.success(updatedCount);
     }
 }
