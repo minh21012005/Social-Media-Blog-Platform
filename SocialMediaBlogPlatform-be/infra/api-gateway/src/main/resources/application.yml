@@ -43,6 +43,10 @@ spring:
               uri: lb:ws://websocket-service
               predicates:
                 - Path=/ws/**
+            - id: websocket-service-api
+              uri: lb://websocket-service
+              predicates:
+                - Path=/api/v1/presence/**
 
 security:
   jwt:
