@@ -16,6 +16,10 @@ spring:
       properties:
         spring.json.trusted.packages: "*"
         spring.json.value.default.type: com.socialmediablog.platform.services.websocket.infrastructure.messaging.NotificationPushEvent
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 security:
   jwt:

@@ -61,6 +61,7 @@ public class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles/*/comments").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/presence/**").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()
                 )
