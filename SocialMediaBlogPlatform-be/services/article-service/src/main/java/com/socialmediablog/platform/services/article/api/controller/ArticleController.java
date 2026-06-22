@@ -35,6 +35,8 @@ import com.socialmediablog.platform.services.article.application.port.in.UpdateA
 import com.socialmediablog.platform.services.article.application.port.in.UploadArticleMediaUseCase;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase;
+import com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -63,7 +65,7 @@ public class ArticleController {
     private final ArchiveArticleUseCase archiveArticleUseCase;
     private final DeleteArticleUseCase deleteArticleUseCase;
     private final GetArticleBySlugUseCase getArticleBySlugUseCase;
-    private final com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase getArticleByIdUseCase;
+    private final GetArticleByIdUseCase getArticleByIdUseCase;
     private final ListPublishedArticlesUseCase listPublishedArticlesUseCase;
     private final ListMyArticlesUseCase listMyArticlesUseCase;
     private final ListFeaturedArticlesUseCase listFeaturedArticlesUseCase;
@@ -80,7 +82,7 @@ public class ArticleController {
             ArchiveArticleUseCase archiveArticleUseCase,
             DeleteArticleUseCase deleteArticleUseCase,
             GetArticleBySlugUseCase getArticleBySlugUseCase,
-            com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase getArticleByIdUseCase,
+            GetArticleByIdUseCase getArticleByIdUseCase,
             ListPublishedArticlesUseCase listPublishedArticlesUseCase,
             ListMyArticlesUseCase listMyArticlesUseCase,
             ListFeaturedArticlesUseCase listFeaturedArticlesUseCase,
@@ -283,7 +285,7 @@ public class ArticleController {
 
     private void ensureAdmin(CurrentUser currentUser) {
         if (currentUser == null || !currentUser.hasRole("ADMIN")) {
-            throw new com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException(
+            throw new ForbiddenArticleActionException(
                     "Only admins can curate articles"
             );
         }

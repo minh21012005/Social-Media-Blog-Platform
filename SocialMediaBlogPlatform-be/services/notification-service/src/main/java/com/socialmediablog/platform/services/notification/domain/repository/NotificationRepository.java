@@ -5,6 +5,7 @@ import com.socialmediablog.platform.services.notification.domain.vo.Notification
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 
 public interface NotificationRepository {
 
@@ -13,4 +14,6 @@ public interface NotificationRepository {
     List<Notification> findByRecipientId(RecipientId recipientId);
 
     Notification save(Notification notification);
+
+    int markAllAsReadByRecipientId(RecipientId recipientId, Instant now);
 }

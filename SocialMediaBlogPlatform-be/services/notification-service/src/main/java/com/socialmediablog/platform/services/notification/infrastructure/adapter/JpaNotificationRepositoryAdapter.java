@@ -79,4 +79,10 @@ public class JpaNotificationRepositoryAdapter implements NotificationRepository 
         
         return saved;
     }
+
+    @Override
+    @Transactional
+    public int markAllAsReadByRecipientId(RecipientId recipientId, Instant now) {
+        return repository.markAllAsReadByRecipientId(recipientId.value(), now);
+    }
 }
