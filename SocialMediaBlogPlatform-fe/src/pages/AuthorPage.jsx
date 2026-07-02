@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArticleList } from '../components/ArticleList'
 import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
 import { SocialIcon } from '../components/icons'
 import { authors } from '../data/editorial'
 import { listPublishedArticles } from '../services/articles'
-import { followUser, getFollowCounts, getFollowStatus, unfollowUser } from '../services/follows'
+import { blockUser, followUser, getBlockStatus, getFollowCounts, getFollowStatus, unfollowUser } from '../services/follows'
 import { getPublicUserByUsername } from '../services/users'
 
 export function AuthorPage({ username, navigate, session, requestWithAuth, notify }) {
@@ -16,10 +16,34 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
     loading: false,
     busy: false,
     following: false,
+    blocked: false,
+    mutualFollow: false,
     followers: 0,
     followingCount: 0,
     error: '',
   })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  const canCallTargetApis = Boolean(state.author?.id)
+  const isSelf = Boolean(session?.user?.id && state.author?.id && session.user.id === state.author.id)
+
+  // Close kebab menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const close = (e) => {
+      if (!menuRef.current?.contains(e.target)) setMenuOpen(false)
+    }
+    const closeEsc = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', closeEsc)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', closeEsc)
+    }
+  }, [menuOpen])
 
   useEffect(() => {
     let active = true
@@ -57,15 +81,18 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
       }
       setFollowState((current) => ({ ...current, loading: true }))
       try {
-        const [counts, status] = await requestWithAuth((token) => Promise.all([
+        const [counts, status, blockStatus] = await requestWithAuth((token) => Promise.all([
           getFollowCounts(state.author.id, token),
           session.user.id === state.author.id ? null : getFollowStatus(state.author.id, token),
+          session.user.id === state.author.id ? null : getBlockStatus(state.author.id, token),
         ]))
         if (active) {
           setFollowState((current) => ({
             ...current,
             loading: false,
             following: status?.following ?? false,
+            blocked: blockStatus?.blocked ?? false,
+            mutualFollow: status?.mutualFollow ?? false,
             followers: counts.followers,
             followingCount: counts.following,
             error: '',
@@ -88,7 +115,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
       navigate('/login')
       return
     }
-    if (!author?.id || followState.busy) {
+    if (!author?.id || followState.busy || followState.blocked) {
       return
     }
     setFollowState((current) => ({ ...current, busy: true, error: '' }))
@@ -97,16 +124,41 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         followState.following ? unfollowUser(author.id, token) : followUser(author.id, token)
       ))
       const counts = await requestWithAuth((token) => getFollowCounts(author.id, token)).catch(() => null)
+      const status = await requestWithAuth((token) => getFollowStatus(author.id, token)).catch(() => null)
       setFollowState((current) => ({
         ...current,
         busy: false,
         following: relation.following,
+        mutualFollow: status?.mutualFollow ?? false,
         followers: counts?.followers ?? current.followers + (relation.following ? 1 : -1),
         followingCount: counts?.following ?? current.followingCount,
       }))
     } catch (error) {
       setFollowState((current) => ({ ...current, busy: false, error: error.message }))
       notify?.(error.message, { title: 'Follow failed' })
+    }
+  }
+
+  const doBlock = async () => {
+    if (!session || !author?.id) return
+    setMenuOpen(false)
+    setFollowState((current) => ({ ...current, busy: true, error: '' }))
+    try {
+      await requestWithAuth((token) => blockUser(author.id, token))
+      const counts = await requestWithAuth((token) => getFollowCounts(author.id, token)).catch(() => null)
+      setFollowState((current) => ({
+        ...current,
+        busy: false,
+        blocked: true,
+        following: false,
+        mutualFollow: false,
+        followers: counts?.followers ?? Math.max(0, current.followers - 1),
+        followingCount: counts?.following ?? current.followingCount,
+      }))
+      notify?.('User has been blocked', { title: 'Blocked', type: 'success' })
+    } catch (error) {
+      setFollowState((current) => ({ ...current, busy: false, error: error.message }))
+      notify?.(error.message, { title: 'Block failed' })
     }
   }
 
@@ -119,19 +171,57 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         <div className="page-container author-inner">
           <img alt="" src={author?.avatarUrl || authors.sarah.avatar} />
           <div>
-            <h1>{author?.displayName || (state.loading ? 'Loading author' : 'Author not found')}</h1>
+            <div className="author-title-row">
+              <h1>{author?.displayName || (state.loading ? 'Loading author' : 'Author not found')}</h1>
+              {author && !isOwnProfile && session && (
+                <div className="author-kebab-menu" ref={menuRef}>
+                  <button
+                    aria-expanded={menuOpen}
+                    aria-label="More actions"
+                    className="icon-button kebab-button"
+                    type="button"
+                    onClick={() => setMenuOpen((c) => !c)}
+                  >
+                    ⋯
+                  </button>
+                  {menuOpen && (
+                    <div className="kebab-dropdown">
+                      {followState.blocked ? (
+                        <p className="kebab-info">This user is blocked. Manage blocked users in your <a href="/profile" onClick={(e) => { e.preventDefault(); setMenuOpen(false); navigate('/profile') }}>Profile settings</a>.</p>
+                      ) : (
+                        <button type="button" className="kebab-danger" onClick={doBlock} disabled={followState.busy}>
+                          Block @{author?.username}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <p>{author?.bio || 'An editorial voice writing across design, culture, technology, and lifestyle.'}</p>
             {author && (
               <div className="follow-summary" aria-label="Follow counts">
                 <span><strong>{followState.followers}</strong> followers</span>
                 <span><strong>{followState.followingCount}</strong> following</span>
+                {followState.mutualFollow && (
+                  <span className="mutual-badge">Follows you</span>
+                )}
               </div>
             )}
             {author && !isOwnProfile && (
               <div className="follow-actions">
-                <button className={followState.following ? 'outline-pill compact' : 'submit-button compact'} disabled={followState.loading || followState.busy} type="button" onClick={toggleFollow}>
-                  {followState.busy ? 'Updating...' : followState.following ? 'Following' : 'Follow'}
-                </button>
+                {followState.blocked ? (
+                  <span className="blocked-label">Blocked</span>
+                ) : (
+                  <button
+                    className={followState.following ? 'outline-pill compact' : 'submit-button compact'}
+                    disabled={followState.loading || followState.busy}
+                    type="button"
+                    onClick={toggleFollow}
+                  >
+                    {followState.busy ? 'Updating...' : followState.following ? 'Following' : 'Follow'}
+                  </button>
+                )}
                 {followState.error && <span>{followState.error}</span>}
               </div>
             )}

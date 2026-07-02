@@ -26,4 +26,11 @@ public interface SpringDataJpaFollowRelationRepository extends JpaRepository<Jpa
     long countByFollowedUserIdAndStatus(UUID followedUserId, String status);
 
     long countByFollowerIdAndStatus(UUID followerId, String status);
+
+    List<JpaFollowRelationEntity> findByFollowerIdAndStatusOrderByUpdatedAtDesc(
+            UUID followerId,
+            String status,
+            Pageable pageable
+    );
 }
+

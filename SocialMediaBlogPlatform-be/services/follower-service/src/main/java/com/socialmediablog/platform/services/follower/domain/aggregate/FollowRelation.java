@@ -89,8 +89,57 @@ public class FollowRelation {
         );
     }
 
+    public FollowRelation block(Instant now) {
+        if (status == FollowRelationStatus.BLOCKED) {
+            return this;
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.BLOCKED,
+                followedAt,
+                now,
+                createdAt,
+                now
+        );
+    }
+
+    public FollowRelation unblock(Instant now) {
+        if (status != FollowRelationStatus.BLOCKED) {
+            return this;
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.UNFOLLOWED,
+                followedAt,
+                now,
+                createdAt,
+                now
+        );
+    }
+
+    public static FollowRelation blockNew(FollowerId blockerId, FollowedUserId blockedUserId, Instant now) {
+        return new FollowRelation(
+                FollowRelationId.of(UUID.randomUUID()),
+                blockerId,
+                blockedUserId,
+                FollowRelationStatus.BLOCKED,
+                null,
+                null,
+                now,
+                now
+        );
+    }
+
     public boolean isActive() {
         return status == FollowRelationStatus.ACTIVE;
+    }
+
+    public boolean isBlocked() {
+        return status == FollowRelationStatus.BLOCKED;
     }
 
     public static FollowRelation restore(

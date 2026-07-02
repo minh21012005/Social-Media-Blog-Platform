@@ -270,7 +270,6 @@ export function SiteHeader({ session, navigate, onLogout }) {
         {session ? (
           <>
             <button className="header-link-button" type="button" onClick={() => navigate('/articles/me')}>My articles</button>
-            <button className="header-link-button" type="button" onClick={() => navigate('/follow-lab')}>Follow lab</button>
             <button className="header-write-button" type="button" onClick={() => navigate('/write')}>Write</button>
             <div className="header-user-menu" ref={menuRef}>
               <button

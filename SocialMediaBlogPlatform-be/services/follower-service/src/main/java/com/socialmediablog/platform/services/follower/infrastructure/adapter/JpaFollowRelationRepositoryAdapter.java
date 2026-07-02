@@ -65,6 +65,20 @@ public class JpaFollowRelationRepositoryAdapter implements FollowRelationReposit
     }
 
     @Override
+    public List<FollowRelation> findBlockedByUser(FollowerId blockerId, int page, int size) {
+        return repository.findByFollowerIdAndStatusOrderByUpdatedAtDesc(
+                blockerId.value(),
+                FollowRelationStatus.BLOCKED.name(),
+                PageRequest.of(page, size)
+        ).stream().map(JpaFollowRelationEntity::toDomain).toList();
+    }
+
+    @Override
+    public long countBlockedByUser(FollowerId blockerId) {
+        return repository.countByFollowerIdAndStatus(blockerId.value(), FollowRelationStatus.BLOCKED.name());
+    }
+
+    @Override
     public FollowRelation save(FollowRelation followRelation) {
         return repository.save(JpaFollowRelationEntity.fromDomain(followRelation)).toDomain();
     }
