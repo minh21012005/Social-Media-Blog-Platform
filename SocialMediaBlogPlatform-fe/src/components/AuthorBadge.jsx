@@ -47,8 +47,8 @@ export function AuthorBadge({ author, navigate }) {
           <span 
             style={{
               position: 'absolute',
-              bottom: '2px',
-              right: '2px',
+              top: '-1px',
+              right: '-1px',
               width: '10px',
               height: '10px',
               backgroundColor: '#10b981',

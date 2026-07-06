@@ -7,6 +7,7 @@ import { authors } from '../data/editorial'
 import { listPublishedArticles } from '../services/articles'
 import { followUser, getFollowCounts, getFollowStatus, unfollowUser } from '../services/follows'
 import { getPublicUserByUsername } from '../services/users'
+import { getPresenceStatus } from '../services/presence'
 
 export function AuthorPage({ username, navigate, session, requestWithAuth, notify }) {
   const [state, setState] = useState({ loading: true, author: null, articles: [], error: '' })
@@ -117,7 +118,9 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
     <main>
       <section className="author-hero">
         <div className="page-container author-inner">
-          <img alt="" src={author?.avatarUrl || authors.sarah.avatar} />
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img alt="" src={author?.avatarUrl || authors.sarah.avatar} />
+          </div>
           <div>
             <h1>{author?.displayName || (state.loading ? 'Loading author' : 'Author not found')}</h1>
             <p>{author?.bio || 'An editorial voice writing across design, culture, technology, and lifestyle.'}</p>
