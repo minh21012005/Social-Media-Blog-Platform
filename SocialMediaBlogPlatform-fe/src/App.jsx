@@ -64,6 +64,69 @@ function App() {
     return authRestoreInFlight.current
   }, [])
 
+  const notify = useCallback((message, options = {}) => {
+    const id = crypto.randomUUID()
+    setToasts((current) => [
+      ...current,
+      {
+        id,
+        message,
+        title: options.title,
+        type: options.type || 'error',
+      },
+    ])
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id))
+    }, options.duration || 5200)
+  }, [])
+
+  const dismissToast = useCallback((id) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id))
+  }, [])
+
+  const requestWithAuth = useCallback(async (request) => {
+    let activeAuth = auth
+
+    if (!activeAuth?.accessToken) {
+      try {
+        activeAuth = await restoreSessionFromRefresh()
+      } catch (refreshError) {
+        navigate('/login')
+        throw refreshError
+      }
+    }
+
+    if (isAccessTokenExpiring(activeAuth)) {
+      try {
+        activeAuth = await restoreSessionFromRefresh()
+      } catch (refreshError) {
+        navigate('/login')
+        throw refreshError
+      }
+    }
+
+    try {
+      return await request(activeAuth.accessToken)
+    } catch (error) {
+      if (error.status !== 401) {
+        throw error
+      }
+      try {
+        const refreshed = await restoreSessionFromRefresh()
+        return request(refreshed.accessToken)
+      } catch (refreshError) {
+        navigate('/login')
+        throw refreshError
+      }
+    }
+  }, [auth, navigate, restoreSessionFromRefresh])
+
+  const handleAuthenticated = (authResponse) => {
+    const savedAuth = saveAuth(authResponse)
+    setAuth(savedAuth)
+    navigate('/')
+  }
+
   useEffect(() => {
     let active = true
 
@@ -154,69 +217,6 @@ function App() {
       active = false
     }
   }, [authChecking, restoreSessionFromRefresh, route, session])
-
-  const handleAuthenticated = (authResponse) => {
-    const savedAuth = saveAuth(authResponse)
-    setAuth(savedAuth)
-    navigate('/')
-  }
-
-  const notify = useCallback((message, options = {}) => {
-    const id = crypto.randomUUID()
-    setToasts((current) => [
-      ...current,
-      {
-        id,
-        message,
-        title: options.title,
-        type: options.type || 'error',
-      },
-    ])
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id))
-    }, options.duration || 5200)
-  }, [])
-
-  const dismissToast = useCallback((id) => {
-    setToasts((current) => current.filter((toast) => toast.id !== id))
-  }, [])
-
-  const requestWithAuth = useCallback(async (request) => {
-    let activeAuth = auth
-
-    if (!activeAuth?.accessToken) {
-      try {
-        activeAuth = await restoreSessionFromRefresh()
-      } catch (refreshError) {
-        navigate('/login')
-        throw refreshError
-      }
-    }
-
-    if (isAccessTokenExpiring(activeAuth)) {
-      try {
-        activeAuth = await restoreSessionFromRefresh()
-      } catch (refreshError) {
-        navigate('/login')
-        throw refreshError
-      }
-    }
-
-    try {
-      return await request(activeAuth.accessToken)
-    } catch (error) {
-      if (error.status !== 401) {
-        throw error
-      }
-      try {
-        const refreshed = await restoreSessionFromRefresh()
-        return request(refreshed.accessToken)
-      } catch (refreshError) {
-        navigate('/login')
-        throw refreshError
-      }
-    }
-  }, [auth, navigate, restoreSessionFromRefresh])
 
   const handleLogout = async () => {
     await apiRequest('/api/v1/auth/logout', {
