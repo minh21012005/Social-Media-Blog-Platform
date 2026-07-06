@@ -171,3 +171,11 @@ export function uploadArticleMedia(file, token) {
     token,
   })
 }
+
+export function curateArticle(articleId, payload, token) {
+  return apiRequest(`/api/v1/articles/${articleId}/curation`, {
+    method: 'PATCH',
+    body: payload,
+    token,
+  })
+}

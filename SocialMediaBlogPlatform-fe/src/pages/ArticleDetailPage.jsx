@@ -467,139 +467,139 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     <>
       <div className="comment-list">
         {comments.map((comment) => {
-        const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
-        const isArticleOwner = currentUserId && String(articleAuthorId) === String(currentUserId)
-        const canDelete = isMine || isArticleOwner
-        const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
-        const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
-        const isEditing = editingId === comment.id
-        const isReplying = replyingToId === comment.id
-        const remaining = COMMENT_MAX_LENGTH - draft.length
-        const replyRemaining = COMMENT_MAX_LENGTH - replyDraft.length
-        const isDeleted = comment.status === 'DELETED'
-        const replyCount = getReplyCount(comment)
+          const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
+          const isArticleOwner = currentUserId && String(articleAuthorId) === String(currentUserId)
+          const canDelete = isMine || isArticleOwner
+          const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
+          const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
+          const isEditing = editingId === comment.id
+          const isReplying = replyingToId === comment.id
+          const remaining = COMMENT_MAX_LENGTH - draft.length
+          const replyRemaining = COMMENT_MAX_LENGTH - replyDraft.length
+          const isDeleted = comment.status === 'DELETED'
+          const replyCount = getReplyCount(comment)
 
-        if (isDeleted) {
-          return (
-            <article className="comment-item comment-item-deleted" key={comment.id}>
-              <div className="deleted-comment-card">
-                <div className="deleted-comment-header">
-                  <div>
-                    <p className="deleted-comment-title">Comment deleted</p>
-                    {replyCount > 0 && (
-                      <p className="deleted-comment-count">
-                        ({replyCount} {replyCount === 1 ? 'reply' : 'replies'})
-                      </p>
-                    )}
+          if (isDeleted) {
+            return (
+              <article className="comment-item comment-item-deleted" key={comment.id}>
+                <div className="deleted-comment-card">
+                  <div className="deleted-comment-header">
+                    <div>
+                      <p className="deleted-comment-title">Comment deleted</p>
+                      {replyCount > 0 && (
+                        <p className="deleted-comment-count">
+                          ({replyCount} {replyCount === 1 ? 'reply' : 'replies'})
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  {renderRepliesToggle(comment)}
+                  {renderReplies(comment)}
                 </div>
-                {renderRepliesToggle(comment)}
-                {renderReplies(comment)}
+              </article>
+            )
+          }
+
+          return (
+            <article className="comment-item" key={comment.id}>
+              {comment.author?.avatarUrl ? (
+                <img alt="" className="comment-avatar" src={comment.author.avatarUrl} />
+              ) : (
+                <div className="comment-avatar" aria-hidden="true">
+                  {avatarLabel}
+                </div>
+              )}
+              <div>
+                <div className="comment-item-meta">
+                  <strong>{isMine ? 'You' : authorName}</strong>
+                  <span>{formatCommentDate(comment.createdAt)}</span>
+                  {comment.editedAt && <span>edited</span>}
+                  {isMine && !isEditing && (
+                    <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
+                      Edit
+                    </button>
+                  )}
+                  {canDelete && !isEditing && (
+                    <>
+                      <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={() => requestDeleteComment(comment)}>
+                        {deletingId === comment.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </>
+                  )}
+                  {!isEditing && (
+                    <button className="comment-action-button" disabled={replyingId === comment.id} type="button" onClick={() => startReplying(comment)}>
+                      Reply
+                    </button>
+                  )}
+                </div>
+                {isEditing ? (
+                  <form className="comment-edit-form" onSubmit={(event) => saveCommentEditing(event, comment)}>
+                    <textarea
+                      aria-invalid={Boolean(error)}
+                      disabled={savingId === comment.id}
+                      maxLength={COMMENT_MAX_LENGTH}
+                      onChange={(event) => {
+                        setDraft(event.target.value)
+                        if (error) {
+                          setError('')
+                        }
+                      }}
+                      rows="4"
+                      value={draft}
+                    />
+                    <div className="comment-edit-actions">
+                      <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                        {remaining} characters left
+                      </span>
+                      <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
+                        Cancel
+                      </button>
+                      <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
+                        {savingId === comment.id ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                    {error && <p className="form-error">{error}</p>}
+                  </form>
+                ) : (
+                  <>
+                    <p>{comment.content}</p>
+                    {isReplying && (
+                      <form className="comment-reply-form" onSubmit={(event) => submitReply(event, comment)}>
+                        <textarea
+                          aria-invalid={Boolean(replyError)}
+                          disabled={replyingId === comment.id}
+                          maxLength={COMMENT_MAX_LENGTH}
+                          onChange={(event) => {
+                            setReplyDraft(event.target.value)
+                            if (replyError) {
+                              setReplyError('')
+                            }
+                          }}
+                          placeholder="Write a reply..."
+                          rows="3"
+                          value={replyDraft}
+                        />
+                        <div className="comment-reply-actions">
+                          <span className={replyRemaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                            {replyRemaining} characters left
+                          </span>
+                          <button className="text-button muted" disabled={replyingId === comment.id} type="button" onClick={cancelReplying}>
+                            Cancel
+                          </button>
+                          <button className="submit-button" disabled={replyingId === comment.id || !replyDraft.trim()} type="submit">
+                            {replyingId === comment.id ? 'Replying...' : 'Reply'}
+                          </button>
+                        </div>
+                        {replyError && <p className="form-error">{replyError}</p>}
+                      </form>
+                    )}
+                    {renderRepliesToggle(comment)}
+                    {renderReplies(comment)}
+                  </>
+                )}
               </div>
             </article>
           )
-        }
-
-        return (
-          <article className="comment-item" key={comment.id}>
-            {comment.author?.avatarUrl ? (
-              <img alt="" className="comment-avatar" src={comment.author.avatarUrl} />
-            ) : (
-              <div className="comment-avatar" aria-hidden="true">
-                {avatarLabel}
-              </div>
-            )}
-            <div>
-              <div className="comment-item-meta">
-                <strong>{isMine ? 'You' : authorName}</strong>
-                <span>{formatCommentDate(comment.createdAt)}</span>
-                {comment.editedAt && <span>edited</span>}
-                {isMine && !isEditing && (
-                  <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
-                    Edit
-                  </button>
-                )}
-                {canDelete && !isEditing && (
-                  <>
-                    <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={() => requestDeleteComment(comment)}>
-                      {deletingId === comment.id ? 'Deleting...' : 'Delete'}
-                    </button>
-                  </>
-                )}
-                {!isEditing && (
-                  <button className="comment-action-button" disabled={replyingId === comment.id} type="button" onClick={() => startReplying(comment)}>
-                    Reply
-                  </button>
-                )}
-              </div>
-              {isEditing ? (
-                <form className="comment-edit-form" onSubmit={(event) => saveCommentEditing(event, comment)}>
-                  <textarea
-                    aria-invalid={Boolean(error)}
-                    disabled={savingId === comment.id}
-                    maxLength={COMMENT_MAX_LENGTH}
-                    onChange={(event) => {
-                      setDraft(event.target.value)
-                      if (error) {
-                        setError('')
-                      }
-                    }}
-                    rows="4"
-                    value={draft}
-                  />
-                  <div className="comment-edit-actions">
-                    <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
-                      {remaining} characters left
-                    </span>
-                    <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
-                      Cancel
-                    </button>
-                    <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
-                      {savingId === comment.id ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                  {error && <p className="form-error">{error}</p>}
-                </form>
-              ) : (
-                <>
-                  <p>{comment.content}</p>
-                  {isReplying && (
-                    <form className="comment-reply-form" onSubmit={(event) => submitReply(event, comment)}>
-                      <textarea
-                        aria-invalid={Boolean(replyError)}
-                        disabled={replyingId === comment.id}
-                        maxLength={COMMENT_MAX_LENGTH}
-                        onChange={(event) => {
-                          setReplyDraft(event.target.value)
-                          if (replyError) {
-                            setReplyError('')
-                          }
-                        }}
-                        placeholder="Write a reply..."
-                        rows="3"
-                        value={replyDraft}
-                      />
-                      <div className="comment-reply-actions">
-                        <span className={replyRemaining < 0 ? 'comment-count danger' : 'comment-count'}>
-                          {replyRemaining} characters left
-                        </span>
-                        <button className="text-button muted" disabled={replyingId === comment.id} type="button" onClick={cancelReplying}>
-                          Cancel
-                        </button>
-                        <button className="submit-button" disabled={replyingId === comment.id || !replyDraft.trim()} type="submit">
-                          {replyingId === comment.id ? 'Replying...' : 'Reply'}
-                        </button>
-                      </div>
-                      {replyError && <p className="form-error">{replyError}</p>}
-                    </form>
-                  )}
-                  {renderRepliesToggle(comment)}
-                  {renderReplies(comment)}
-                </>
-              )}
-            </div>
-          </article>
-        )
         })}
       </div>
       {confirmDeleteComment && (
@@ -763,12 +763,12 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
       setComments((current) => current.map((item) => (
         item.id === comment.id
           ? {
-              ...item,
-              content: 'Comment deleted',
-              deletedAt: new Date().toISOString(),
-              editedAt: null,
-              status: 'DELETED',
-            }
+            ...item,
+            content: 'Comment deleted',
+            deletedAt: new Date().toISOString(),
+            editedAt: null,
+            status: 'DELETED',
+          }
           : item
       )))
       return
@@ -844,7 +844,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           <p>{article.summary}</p>
           <div className="article-detail-meta">
             <AuthorBadge author={article.author} navigate={navigate} />
-            <ArticleMeta article={article} />
+            <span style={{ color: 'var(--ink-light)' }}>&middot; {article.date}</span>
           </div>
         </header>
         <img alt="" className="article-detail-cover" src={article.image} />

@@ -16,6 +16,8 @@ import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
 import { FollowLabPage } from './pages/FollowLabPage'
+import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { EditorsPicksPage } from './pages/EditorsPicksPage'
 import './App.css'
 
 function isProtectedRoute(route) {
@@ -23,6 +25,7 @@ function isProtectedRoute(route) {
     || route === '/articles/me'
     || route === '/profile'
     || route === '/follow-lab'
+    || route === '/admin'
     || /^\/articles\/[^/]+\/edit$/.test(route)
 }
 
@@ -218,6 +221,23 @@ function App() {
     return element
   }
 
+  const adminPage = (element) => {
+    const page = protectedPage(element)
+    if (!authChecking && session) {
+      const roles = session.user.roles || []
+      if (!roles.includes('ADMIN')) {
+        return (
+          <main className="page-container empty-state" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
+            <h2>Access Denied</h2>
+            <p>You do not have administrative privileges to access this console.</p>
+            <button className="pill-button" type="button" onClick={() => navigate('/')}>Return Home</button>
+          </main>
+        )
+      }
+    }
+    return page
+  }
+
   if (route === '/login') {
     return <AuthPage mode="login" onDone={handleAuthenticated} navigate={navigate} />
   }
@@ -241,6 +261,16 @@ function App() {
 
     if (route === '/follow-lab') {
       return protectedPage(<FollowLabPage session={session} requestWithAuth={requestWithAuth} notify={notify} />)
+    }
+
+    if (pathname === '/admin') {
+      return adminPage(
+        <AdminDashboardPage
+          requestWithAuth={requestWithAuth}
+          navigate={navigate}
+          notify={notify}
+        />
+      )
     }
 
     const editMatch = route.match(/^\/articles\/([^/]+)\/edit$/)
@@ -282,6 +312,10 @@ function App() {
     if (pathname.startsWith('/category/')) {
       const categorySlug = pathname.replace('/category/', '')
       return <CategoryPage key={categorySlug} slug={categorySlug} navigate={navigate} />
+    }
+
+    if (pathname === '/editors-picks') {
+      return <EditorsPicksPage navigate={navigate} />
     }
 
     if (pathname === '/search') {
