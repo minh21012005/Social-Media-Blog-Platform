@@ -18,6 +18,8 @@ public interface CommentRepository {
 
     long countRootCommentsByArticleId(ArticleId articleId);
 
+    Optional<Comment> findPinnedByArticleId(ArticleId articleId);
+
     List<Comment> findRepliesByParentCommentId(CommentId parentCommentId, int page, int size);
 
     long countVisibleRepliesByParentCommentId(CommentId parentCommentId);

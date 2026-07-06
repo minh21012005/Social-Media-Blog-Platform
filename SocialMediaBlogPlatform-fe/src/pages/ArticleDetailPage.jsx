@@ -113,7 +113,7 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin }) {
+function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, onPin, onUnpin }) {
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState('')
   const [deletingId, setDeletingId] = useState('')
@@ -514,8 +514,14 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
               <div>
                 <div className="comment-item-meta">
                   <strong>{isMine ? 'You' : authorName}</strong>
+                  {comment.pinnedAt && <span className="comment-pinned-badge" title="Pinned by author" style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>📌 Pinned</span>}
                   <span>{formatCommentDate(comment.createdAt)}</span>
                   {comment.editedAt && <span>edited</span>}
+                  {isArticleOwner && !isEditing && (
+                    <button className="comment-action-button" type="button" onClick={() => comment.pinnedAt ? onUnpin(comment) : onPin(comment)}>
+                      {comment.pinnedAt ? 'Unpin' : 'Pin'}
+                    </button>
+                  )}
                   {isMine && !isEditing && (
                     <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
                       Edit
@@ -812,6 +818,24 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     return enrichedReply
   }
 
+  const handleCommentPinned = async (comment) => {
+    const pinnedComment = await requestWithAuth((token) => import('../services/comments').then(m => m.pinComment(comment.id, token)))
+    setComments((current) => current.map((item) => (
+      item.id === comment.id
+        ? { ...pinnedComment, author: item.author }
+        : { ...item, pinnedAt: null } // unpin others
+    )))
+  }
+
+  const handleCommentUnpinned = async (comment) => {
+    const unpinnedComment = await requestWithAuth((token) => import('../services/comments').then(m => m.unpinComment(comment.id, token)))
+    setComments((current) => current.map((item) => (
+      item.id === comment.id
+        ? { ...unpinnedComment, author: item.author }
+        : item
+    )))
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -882,6 +906,8 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             onLoadReplies={handleLoadReplies}
             onReply={handleCommentReplied}
             onRequireLogin={() => navigate('/login')}
+            onPin={handleCommentPinned}
+            onUnpin={handleCommentUnpinned}
           />
           {hasMoreComments && (
             <button className="text-button" disabled={loadingMore} type="button" onClick={handleLoadMoreComments} style={{ marginTop: '1rem', width: '100%' }}>

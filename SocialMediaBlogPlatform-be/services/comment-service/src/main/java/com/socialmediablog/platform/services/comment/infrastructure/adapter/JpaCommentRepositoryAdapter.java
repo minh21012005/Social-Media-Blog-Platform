@@ -43,10 +43,11 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
 
     @Override
     public List<Comment> findRootCommentsByArticleId(ArticleId articleId, int page, int size, String sortBy) {
-        Sort sort = switch (sortBy) {
+        Sort baseSort = switch (sortBy) {
             case "OLDEST" -> Sort.by(Sort.Direction.ASC, "createdAt");
             default -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
+        Sort sort = Sort.by(Sort.Order.desc("pinnedAt").nullsLast()).and(baseSort);
         return repository.findRootCommentsByArticleId(articleId.value(), PageRequest.of(page, size, sort)).stream()
                 .map(JpaCommentEntity::toDomain)
                 .toList();
@@ -55,6 +56,11 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
     @Override
     public long countRootCommentsByArticleId(ArticleId articleId) {
         return repository.countRootCommentsByArticleId(articleId.value());
+    }
+
+    @Override
+    public Optional<Comment> findPinnedByArticleId(ArticleId articleId) {
+        return repository.findByArticleIdAndPinnedAtIsNotNull(articleId.value()).map(JpaCommentEntity::toDomain);
     }
 
     @Override

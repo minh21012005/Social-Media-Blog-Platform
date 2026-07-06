@@ -15,6 +15,7 @@ public record CommentResponse(
         Instant deletedAt,
         Instant createdAt,
         Instant updatedAt,
+        Instant pinnedAt,
         CommentStatsResponse stats) {
 
     public static CommentResponse from(CommentView comment) {
@@ -29,6 +30,7 @@ public record CommentResponse(
                 comment.deletedAt(),
                 comment.createdAt(),
                 comment.updatedAt(),
+                comment.pinnedAt(),
                 CommentStatsResponse.from(comment.stats()));
     }
 }

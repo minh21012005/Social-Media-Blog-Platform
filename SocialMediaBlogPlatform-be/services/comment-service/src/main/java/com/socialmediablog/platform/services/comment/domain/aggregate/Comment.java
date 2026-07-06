@@ -20,6 +20,7 @@ public class Comment {
     private final Instant deletedAt;
     private final Instant createdAt;
     private final Instant updatedAt;
+    private final Instant pinnedAt;
 
     private Comment(
             CommentId id,
@@ -31,7 +32,8 @@ public class Comment {
             Instant editedAt,
             Instant deletedAt,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            Instant pinnedAt) {
         this.id = id;
         this.articleId = articleId;
         this.authorId = authorId;
@@ -42,6 +44,7 @@ public class Comment {
         this.deletedAt = deletedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.pinnedAt = pinnedAt;
     }
 
     public static Comment create(
@@ -60,7 +63,8 @@ public class Comment {
                 null,
                 null,
                 now,
-                now);
+                now,
+                null);
     }
 
     public static Comment restore(
@@ -73,7 +77,8 @@ public class Comment {
             Instant editedAt,
             Instant deletedAt,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            Instant pinnedAt) {
         return new Comment(
                 CommentId.of(id),
                 ArticleId.of(articleId),
@@ -84,7 +89,8 @@ public class Comment {
                 editedAt,
                 deletedAt,
                 createdAt,
-                updatedAt);
+                updatedAt,
+                pinnedAt);
     }
 
     public boolean isReply() {
@@ -101,6 +107,10 @@ public class Comment {
 
     public boolean isDeleted() {
         return status == CommentStatus.DELETED || deletedAt != null;
+    }
+
+    public boolean isPinned() {
+        return pinnedAt != null;
     }
 
     public Comment edit(AuthorId requesterId, CommentContent newContent, Instant now) {
@@ -120,7 +130,8 @@ public class Comment {
                 now,
                 deletedAt,
                 createdAt,
-                now);
+                now,
+                pinnedAt);
     }
 
     public Comment delete(AuthorId requesterId, Instant now) {
@@ -137,7 +148,47 @@ public class Comment {
                 editedAt,
                 now,
                 createdAt,
+                now,
+                null); // Auto-unpin when deleted
+    }
+
+    public Comment pin(Instant now) {
+        if (isDeleted()) {
+            throw new IllegalArgumentException("Cannot pin a deleted comment");
+        }
+        if (isReply()) {
+            throw new IllegalArgumentException("Cannot pin a reply");
+        }
+        return new Comment(
+                id,
+                articleId,
+                authorId,
+                parentCommentId,
+                content,
+                status,
+                editedAt,
+                deletedAt,
+                createdAt,
+                updatedAt,
                 now);
+    }
+
+    public Comment unpin(Instant now) {
+        if (!isPinned()) {
+            return this;
+        }
+        return new Comment(
+                id,
+                articleId,
+                authorId,
+                parentCommentId,
+                content,
+                status,
+                editedAt,
+                deletedAt,
+                createdAt,
+                updatedAt,
+                null);
     }
 
     public CommentId id() {
@@ -178,5 +229,9 @@ public class Comment {
 
     public Instant updatedAt() {
         return updatedAt;
+    }
+
+    public Instant pinnedAt() {
+        return pinnedAt;
     }
 }
