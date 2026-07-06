@@ -179,3 +179,7 @@ export function curateArticle(articleId, payload, token) {
     token,
   })
 }
+
+export async function listTrendingArticles({ size = 6 } = {}) {
+  return enrichArticles(await apiRequest(`/api/v1/articles/trending?size=${size}`))
+}

@@ -1,6 +1,7 @@
 package com.socialmediablog.platform.services.article.infrastructure.persistence;
 
 import com.socialmediablog.platform.services.article.infrastructure.entity.JpaArticleEntity;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -86,4 +87,6 @@ public interface SpringDataJpaArticleRepository extends JpaRepository<JpaArticle
             nativeQuery = true
     )
     Page<JpaArticleEntity> findEditorPicks(Pageable pageable);
+
+    Page<JpaArticleEntity> findByStatusAndPublishedAtGreaterThanEqual(String status, Instant publishedAt, Pageable pageable);
 }

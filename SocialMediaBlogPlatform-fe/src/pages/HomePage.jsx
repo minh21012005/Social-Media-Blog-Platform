@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react'
 import { categories } from '../data/editorial'
-import { listEditorPicks, listFeaturedArticles, listPublishedArticles } from '../services/articles'
+import { listEditorPicks, listFeaturedArticles, listPublishedArticles, listTrendingArticles } from '../services/articles'
 import { ArrowRightIcon } from '../components/icons'
 import { ArticleCard } from '../components/ArticleCard'
 import { Newsletter } from '../components/Newsletter'
 import { SiteFooter } from '../components/SiteFooter'
 
 export function HomePage({ navigate }) {
-  const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], latest: [], error: '' })
+  const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], trending: [], latest: [], error: '' })
 
   useEffect(() => {
     let active = true
     async function load() {
       try {
-        const [featuredArticles, editorPickArticles, latestPage] = await Promise.all([
+        const [featuredArticles, editorPickArticles, trendingArticles, latestPage] = await Promise.all([
           listFeaturedArticles({ size: 1 }),
           listEditorPicks({ size: 5 }),
+          listTrendingArticles({ size: 6 }).catch(() => []),
           listPublishedArticles({ size: 8, sort: 'latest' }),
         ])
         if (active) {
@@ -28,6 +29,9 @@ export function HomePage({ navigate }) {
           }
           editorPicks = editorPicks.slice(0, 2)
           editorPicks.forEach((article) => usedIds.add(article.id))
+
+          const trending = trendingArticles.filter((article) => !usedIds.has(article.id)).slice(0, 6)
+          trending.forEach((article) => usedIds.add(article.id))
           
           let latest = latestPage.items.filter((article) => !usedIds.has(article.id))
           if (latest.length === 0) {
@@ -35,7 +39,7 @@ export function HomePage({ navigate }) {
           }
           latest = latest.slice(0, 2)
           
-          setState({ loading: false, featured, editorPicks, latest, error: '' })
+          setState({ loading: false, featured, editorPicks, trending, latest, error: '' })
         }
       } catch (error) {
         if (active) {
@@ -54,7 +58,7 @@ export function HomePage({ navigate }) {
     navigate(path)
   }
 
-  const { featured, editorPicks, latest } = state
+  const { featured, editorPicks, trending, latest } = state
 
   return (
     <main>
@@ -123,6 +127,37 @@ export function HomePage({ navigate }) {
             <div className="editor-grid">
               {editorPicks.map((article) => (
                 <ArticleCard article={article} key={article.id} navigate={navigate} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {trending.length > 0 && (
+        <section className="section-band trending-band">
+          <div className="page-container">
+            <div className="section-heading">
+              <h2>Trending Now 🔥</h2>
+              <a href="/articles" onClick={open('/articles')}>
+                View all
+                <ArrowRightIcon />
+              </a>
+            </div>
+            <div className="trending-grid">
+              {trending.map((article, index) => (
+                <div className="trending-card" key={article.id} onClick={() => navigate(article.path)}>
+                  <span className="trending-rank">#{index + 1}</span>
+                  <div className="trending-card-body">
+                    <span className="trending-category">{article.category}</span>
+                    <h3 className="trending-title">{article.title}</h3>
+                    <div className="trending-meta">
+                      <img alt="" className="trending-avatar" src={article.author.avatar} />
+                      <span>{article.author.name}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{article.readTime}</span>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
