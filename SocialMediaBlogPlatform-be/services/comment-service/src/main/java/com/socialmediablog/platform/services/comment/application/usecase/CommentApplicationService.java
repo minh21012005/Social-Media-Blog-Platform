@@ -8,6 +8,8 @@ import com.socialmediablog.platform.services.comment.application.command.ReplyCo
 import com.socialmediablog.platform.services.comment.application.exception.CommentAlreadyDeletedException;
 import com.socialmediablog.platform.services.comment.application.exception.CommentNotFoundException;
 import com.socialmediablog.platform.services.comment.application.exception.CommentPermissionDeniedException;
+import com.socialmediablog.platform.services.comment.application.port.in.CountArticleCommentsUseCase;
+import com.socialmediablog.platform.services.comment.application.query.CountArticleCommentsQuery;
 import com.socialmediablog.platform.services.comment.application.port.in.CreateCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.DeleteCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.EditCommentUseCase;
@@ -45,7 +47,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase, ListArticleCommentsUseCase, ListCommentRepliesUseCase, ReplyCommentUseCase {
+public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase, ListArticleCommentsUseCase, ListCommentRepliesUseCase, ReplyCommentUseCase, CountArticleCommentsUseCase {
 
     private final CommentRepository commentRepository;
     private final CommentStatsRepository commentStatsRepository;
@@ -248,5 +250,10 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
                 .orElseGet(CommentStatsView::empty);
         long replyCount = commentRepository.countByParentCommentId(comment.id());
         return new CommentStatsView(storedStats.clapCount(), replyCount, storedStats.lastInteractionAt());
+    }
+
+    @Override
+    public long execute(CountArticleCommentsQuery query) {
+        return commentRepository.countVisibleByArticleId(ArticleId.of(query.articleId()));
     }
 }

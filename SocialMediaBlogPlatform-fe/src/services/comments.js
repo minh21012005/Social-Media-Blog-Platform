@@ -40,3 +40,7 @@ export function deleteComment(commentId, token) {
     token,
   })
 }
+
+export function getArticleCommentCount(articleId) {
+  return apiRequest(`/api/v1/articles/${articleId}/comments/count`)
+}
