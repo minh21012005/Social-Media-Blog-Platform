@@ -33,4 +33,6 @@ public interface ArticleRepository {
     boolean existsBySlugAndIdNot(Slug slug, ArticleId id);
 
     Article save(Article article);
+
+    List<Article> findTrending(int size);
 }

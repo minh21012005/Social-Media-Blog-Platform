@@ -24,6 +24,7 @@ import com.socialmediablog.platform.services.article.application.port.in.ListEdi
 import com.socialmediablog.platform.services.article.application.port.in.ListFeaturedArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListMyArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListPublishedArticlesUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.ListTrendingArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.PublishArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.RecordArticleViewUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.UpdateArticleUseCase;
@@ -64,6 +65,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,6 +85,7 @@ public class ArticleApplicationService implements
         ListMyArticlesUseCase,
         ListFeaturedArticlesUseCase,
         ListEditorPicksUseCase,
+        ListTrendingArticlesUseCase,
         CurateArticleUseCase,
         UploadArticleMediaUseCase,
         RecordArticleViewUseCase {
@@ -273,6 +278,7 @@ public class ArticleApplicationService implements
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "homepage:featured", key = "#command.size()")
     public List<ArticleView> executeFeatured(ListCuratedArticlesCommand command) {
         int size = size(command.size());
         List<Article> featured = articleRepository.findFeatured(size);
@@ -284,6 +290,7 @@ public class ArticleApplicationService implements
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "homepage:editor-picks", key = "#command.size()")
     public List<ArticleView> executeEditorPicks(ListCuratedArticlesCommand command) {
         int size = size(command.size());
         List<Article> editorPicks = articleRepository.findEditorPicks(size);
@@ -302,7 +309,20 @@ public class ArticleApplicationService implements
     }
 
     @Override
+    @Transactional(readOnly = true)
+    @Cacheable(value = "homepage:trending", key = "#command.size()")
+    public List<ArticleView> executeTrending(ListCuratedArticlesCommand command) {
+        int size = size(command.size());
+        List<Article> trending = articleRepository.findTrending(size);
+        return trending.stream().map(this::view).toList();
+    }
+
+    @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "homepage:featured", allEntries = true),
+            @CacheEvict(value = "homepage:editor-picks", allEntries = true)
+    })
     public ArticleView curate(CurateArticleCommand command) {
         Article article = findRequired(command.articleId());
         return view(articleRepository.save(article.curate(
