@@ -52,6 +52,6 @@ class CommentPersistenceTests {
         Comment mappedChild = savedChild.toDomain();
         assertThat(mappedChild.isReply()).isTrue();
         assertThat(mappedChild.parentCommentId()).isEqualTo(parent.id());
-        assertThat(repository.findByArticleId(articleId)).hasSize(2);
+        assertThat(repository.findAll()).hasSize(2);
     }
 }

@@ -2,5 +2,9 @@ package com.socialmediablog.platform.services.comment.application.query;
 
 import java.util.UUID;
 
-public record ListCommentRepliesQuery(UUID commentId) {
+public record ListCommentRepliesQuery(UUID commentId, int page, int size) {
+
+    public ListCommentRepliesQuery(UUID commentId) {
+        this(commentId, 0, 20);
+    }
 }
