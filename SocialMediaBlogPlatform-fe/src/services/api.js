@@ -1,7 +1,7 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 export const CORRELATION_ID_HEADER = 'X-Correlation-ID'
 
-export async function apiRequest(path, { method = 'GET', body, token, credentials } = {}) {
+export async function apiRequest(path, { method = 'GET', body, token, credentials, silent = false } = {}) {
   const isFormData = body instanceof FormData
   const correlationId = createCorrelationId()
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -22,13 +22,15 @@ export async function apiRequest(path, { method = 'GET', body, token, credential
     error.status = payload?.status ?? response.status
     error.payload = payload
     error.correlationId = responseCorrelationId
-    console.error('API request failed', {
-      correlationId: responseCorrelationId,
-      method,
-      path,
-      status: error.status,
-      message: error.message,
-    })
+    if (!silent) {
+      console.error('API request failed', {
+        correlationId: responseCorrelationId,
+        method,
+        path,
+        status: error.status,
+        message: error.message,
+      })
+    }
     throw error
   }
 

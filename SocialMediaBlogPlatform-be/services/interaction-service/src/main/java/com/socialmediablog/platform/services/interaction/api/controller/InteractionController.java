@@ -8,6 +8,7 @@ import com.socialmediablog.platform.services.interaction.application.command.Cou
 import com.socialmediablog.platform.services.interaction.application.command.GetServiceStatusCommand;
 import com.socialmediablog.platform.services.interaction.application.command.IsArticleLikedQuery;
 import com.socialmediablog.platform.services.interaction.application.command.LikeArticleCommand;
+import com.socialmediablog.platform.services.interaction.application.command.ListMyBookmarksQuery;
 import com.socialmediablog.platform.services.interaction.application.command.RemoveBookmarkCommand;
 import com.socialmediablog.platform.services.interaction.application.command.UnlikeArticleCommand;
 import com.socialmediablog.platform.services.interaction.application.port.in.BookmarkArticleUseCase;
@@ -15,8 +16,10 @@ import com.socialmediablog.platform.services.interaction.application.port.in.Cou
 import com.socialmediablog.platform.services.interaction.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.IsArticleLikedUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.LikeArticleUseCase;
+import com.socialmediablog.platform.services.interaction.application.port.in.ListMyBookmarksUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.RemoveBookmarkUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.UnlikeArticleUseCase;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +36,7 @@ public class InteractionController {
     private final GetServiceStatusUseCase getServiceStatusUseCase;
     private final BookmarkArticleUseCase bookmarkArticleUseCase;
     private final RemoveBookmarkUseCase removeBookmarkUseCase;
+    private final ListMyBookmarksUseCase listMyBookmarksUseCase;
     private final LikeArticleUseCase likeArticleUseCase;
     private final UnlikeArticleUseCase unlikeArticleUseCase;
     private final CountArticleLikesUseCase countArticleLikesUseCase;
@@ -42,6 +46,7 @@ public class InteractionController {
             GetServiceStatusUseCase getServiceStatusUseCase,
             BookmarkArticleUseCase bookmarkArticleUseCase,
             RemoveBookmarkUseCase removeBookmarkUseCase,
+            ListMyBookmarksUseCase listMyBookmarksUseCase,
             LikeArticleUseCase likeArticleUseCase,
             UnlikeArticleUseCase unlikeArticleUseCase,
             CountArticleLikesUseCase countArticleLikesUseCase,
@@ -50,6 +55,7 @@ public class InteractionController {
         this.getServiceStatusUseCase = getServiceStatusUseCase;
         this.bookmarkArticleUseCase = bookmarkArticleUseCase;
         this.removeBookmarkUseCase = removeBookmarkUseCase;
+        this.listMyBookmarksUseCase = listMyBookmarksUseCase;
         this.likeArticleUseCase = likeArticleUseCase;
         this.unlikeArticleUseCase = unlikeArticleUseCase;
         this.countArticleLikesUseCase = countArticleLikesUseCase;
@@ -80,6 +86,11 @@ public class InteractionController {
     ) {
         removeBookmarkUseCase.execute(new RemoveBookmarkCommand(currentUserId(currentUser), articleId));
         return ApiResponse.success("Bookmark removed", null);
+    }
+
+    @GetMapping("/bookmarks/me")
+    public ApiResponse<List<UUID>> listMyBookmarks(@AuthenticationPrincipal CurrentUser currentUser) {
+        return ApiResponse.success(listMyBookmarksUseCase.execute(new ListMyBookmarksQuery(currentUserId(currentUser))));
     }
 
     @PostMapping("/{articleId}/like")

@@ -100,8 +100,8 @@ export async function getArticleBySlug(slug) {
   return enriched
 }
 
-export async function getArticleById(id) {
-  const article = await apiRequest(`/api/v1/articles/id/${id}`)
+export async function getArticleById(id, token) {
+  const article = await apiRequest(`/api/v1/articles/id/${id}`, { token })
   const [enriched] = await enrichArticles([article])
   return enriched
 }

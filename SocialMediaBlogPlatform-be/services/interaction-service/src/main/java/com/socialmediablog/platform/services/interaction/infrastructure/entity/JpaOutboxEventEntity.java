@@ -60,7 +60,17 @@ public class JpaOutboxEventEntity extends BaseEntity {
             String payload,
             Instant now
     ) {
-        return new JpaOutboxEventEntity(eventId, aggregateId, aggregateType, eventType, payload, "PENDING", null, now, now);
+        return new JpaOutboxEventEntity(
+                eventId,
+                aggregateId,
+                aggregateType,
+                eventType,
+                payload,
+                "PENDING",
+                null,
+                now,
+                now
+        );
     }
 
     public void markCompleted(Instant now) {

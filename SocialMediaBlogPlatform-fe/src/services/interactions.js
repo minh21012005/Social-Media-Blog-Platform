@@ -1,16 +1,21 @@
 import { apiRequest } from './api'
 
 export function bookmarkArticle(articleId, token) {
-  return apiRequest('/api/v1/interactions/bookmarks', {
+  return apiRequest(`/api/v1/interactions/${articleId}/bookmark`, {
     method: 'POST',
-    body: { articleId },
     token,
   })
 }
 
 export function removeBookmark(articleId, token) {
-  return apiRequest(`/api/v1/interactions/bookmarks/${articleId}`, {
+  return apiRequest(`/api/v1/interactions/${articleId}/bookmark`, {
     method: 'DELETE',
+    token,
+  })
+}
+
+export function listMyBookmarks(token) {
+  return apiRequest('/api/v1/interactions/bookmarks/me', {
     token,
   })
 }

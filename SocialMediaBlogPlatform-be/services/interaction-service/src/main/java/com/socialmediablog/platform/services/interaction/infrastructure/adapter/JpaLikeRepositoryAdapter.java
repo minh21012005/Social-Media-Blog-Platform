@@ -47,6 +47,6 @@ public class JpaLikeRepositoryAdapter implements LikeRepository {
 
     @Override
     public long countByArticle(ArticleId articleId) {
-        return repository.countById_ArticleId(articleId.value());
+        return repository.countByIdArticleId(articleId.value());
     }
 }

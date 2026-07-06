@@ -111,7 +111,9 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                 <span className="article-category">{article.status}</span>
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
-                <span className="dashboard-stat">{formatCount(article.stats?.viewCount)} views</span>
+                <span className="dashboard-stat">
+                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.likeCount ?? article.stats?.likesCount)} likes
+                </span>
               </div>
               <div className="row-actions">
                 <button type="button" onClick={() => navigate(`/articles/${article.id}/edit`)}>Edit</button>

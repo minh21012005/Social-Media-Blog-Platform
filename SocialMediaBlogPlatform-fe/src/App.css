@@ -1255,6 +1255,55 @@
   padding: 2px;
 }
 
+.like-notice-panel {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border);
+  bottom: clamp(18px, 4vw, 28px);
+  box-shadow: 0 18px 42px rgba(17, 24, 39, 0.16);
+  max-width: min(330px, calc(100vw - 28px));
+  padding: 14px 14px 12px;
+  position: fixed;
+  right: clamp(14px, 3vw, 26px);
+  z-index: 82;
+}
+
+.like-notice-panel::before {
+  background: #1f9d6b;
+  content: "";
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 3px;
+}
+
+.like-notice-kicker {
+  color: #126246;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.like-notice-message {
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 7px 0 10px;
+}
+
+.like-notice-close {
+  background: none;
+  border: 0;
+  color: var(--soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 850;
+  padding: 0;
+}
+
 .auth-switch {
   color: var(--muted);
   margin-top: 24px;

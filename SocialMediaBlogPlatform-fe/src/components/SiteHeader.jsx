@@ -309,6 +309,12 @@ export function SiteHeader({ session, navigate, onLogout }) {
                     My articles
                   </button>
                   <button type="button" onClick={() => {
+                      setMenuOpen(false)
+                      navigate('/bookmarks')
+                    }}>
+                    Bookmarks
+                  </button>
+                  <button type="button" onClick={() => {
                     setMenuOpen(false)
                     navigate('/profile')
                   }}>
