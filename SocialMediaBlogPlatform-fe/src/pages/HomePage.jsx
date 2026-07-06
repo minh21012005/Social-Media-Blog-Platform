@@ -15,15 +15,26 @@ export function HomePage({ navigate }) {
       try {
         const [featuredArticles, editorPickArticles, latestPage] = await Promise.all([
           listFeaturedArticles({ size: 1 }),
-          listEditorPicks({ size: 2 }),
+          listEditorPicks({ size: 5 }),
           listPublishedArticles({ size: 8, sort: 'latest' }),
         ])
         if (active) {
           const [featured] = featuredArticles
           const usedIds = new Set(featured ? [featured.id] : [])
-          const editorPicks = editorPickArticles.filter((article) => !usedIds.has(article.id)).slice(0, 2)
+          
+          let editorPicks = editorPickArticles.filter((article) => !usedIds.has(article.id))
+          if (editorPicks.length < 2) {
+            editorPicks = editorPickArticles
+          }
+          editorPicks = editorPicks.slice(0, 2)
           editorPicks.forEach((article) => usedIds.add(article.id))
-          const latest = latestPage.items.filter((article) => !usedIds.has(article.id)).slice(0, 4)
+          
+          let latest = latestPage.items.filter((article) => !usedIds.has(article.id))
+          if (latest.length === 0) {
+            latest = latestPage.items
+          }
+          latest = latest.slice(0, 2)
+          
           setState({ loading: false, featured, editorPicks, latest, error: '' })
         }
       } catch (error) {
@@ -52,25 +63,41 @@ export function HomePage({ navigate }) {
 
       {!state.loading && !state.error && featured && (
         <section className="hero-section page-container">
-          <img alt="" className="hero-image" src={featured.image} />
+          <img 
+            alt="" 
+            className="hero-image" 
+            src={featured.image} 
+            style={{ cursor: 'pointer' }}
+            onClick={() => navigate(featured.path)}
+          />
           <article className="hero-copy">
             <div className="eyebrow-row">
               <span>{featured.category}</span>
               <span aria-hidden="true">&middot;</span>
               <span>{featured.date}</span>
             </div>
-            <h1>{featured.title}</h1>
+            <h1 
+              style={{ cursor: 'pointer' }} 
+              onClick={() => navigate(featured.path)}
+            >
+              {featured.title}
+            </h1>
             <p>{featured.summary}</p>
-            <div className="author-line">
+            <div 
+              className="author-line"
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                navigate(`/author/${featured.author.username}`)
+              }}
+            >
               <img alt="" src={featured.author.avatar} />
               <div>
                 <strong>{featured.author.name}</strong>
                 <span>{featured.readTime}</span>
               </div>
             </div>
-            <button className="outline-pill inline-pill" type="button" onClick={() => navigate(featured.path)}>
-              Read story
-            </button>
           </article>
         </section>
       )}
@@ -102,30 +129,36 @@ export function HomePage({ navigate }) {
         </section>
       )}
 
-      {latest.length > 0 && (
-        <section className="latest-section page-container">
-          <h2>Latest Stories</h2>
-          <div className="story-list">
-            {latest.map((article) => (
-              <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
-            ))}
-          </div>
-          <button className="outline-pill" type="button" onClick={() => navigate('/category/design')}>Browse Stories</button>
-        </section>
-      )}
-
-      <Newsletter />
-
-      <section className="topics-section page-container">
-        <h2>Popular Topics</h2>
-        <div className="topic-list">
-          {categories.map((category) => (
-            <a href={`/category/${category.slug}`} key={category.slug} onClick={open(`/category/${category.slug}`)}>
-              {category.label}
-            </a>
-          ))}
+      <div className="homepage-bottom-grid page-container">
+        <div className="homepage-main-column">
+          {latest.length > 0 && (
+            <section className="latest-section">
+              <h2>Latest Stories</h2>
+              <div className="story-list" style={{ display: 'grid', gap: '32px', marginBottom: '32px' }}>
+                {latest.map((article) => (
+                  <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
+                ))}
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <button className="outline-pill" type="button" onClick={() => navigate('/category/design')}>Load More Stories</button>
+              </div>
+            </section>
+          )}
         </div>
-      </section>
+        <div className="homepage-sidebar">
+          <Newsletter />
+          <section className="topics-section">
+            <h2>Popular Topics</h2>
+            <div className="topic-list" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              {categories.map((category) => (
+                <a href={`/category/${category.slug}`} key={category.slug} onClick={open(`/category/${category.slug}`)} style={{ border: '1px solid var(--border)', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', color: 'var(--ink)', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                  {category.label}
+                </a>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
 
       <SiteFooter />
     </main>
