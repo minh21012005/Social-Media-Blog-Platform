@@ -1,5 +1,6 @@
 package com.socialmediablog.platform.services.interaction.infrastructure.adapter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.socialmediablog.platform.common.events.DomainEvent;
 import com.socialmediablog.platform.services.interaction.application.port.out.InteractionEventPublisher;
 import com.socialmediablog.platform.services.interaction.infrastructure.entity.JpaOutboxEventEntity;
@@ -11,9 +12,14 @@ import org.springframework.stereotype.Component;
 public class OutboxInteractionEventPublisher implements InteractionEventPublisher {
 
     private final SpringDataJpaOutboxEventRepository repository;
+    private final ObjectMapper objectMapper;
 
-    public OutboxInteractionEventPublisher(SpringDataJpaOutboxEventRepository repository) {
+    public OutboxInteractionEventPublisher(
+            SpringDataJpaOutboxEventRepository repository,
+            ObjectMapper objectMapper
+    ) {
         this.repository = repository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -29,8 +35,10 @@ public class OutboxInteractionEventPublisher implements InteractionEventPublishe
     }
 
     private String payload(UUID aggregateId, DomainEvent event) {
-        return """
-                {"eventId":"%s","aggregateId":"%s","eventType":"%s","occurredAt":"%s"}
-                """.formatted(event.eventId(), aggregateId, event.eventType(), event.occurredAt()).trim();
+        try {
+            return objectMapper.writeValueAsString(event);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to serialize interaction event payload for aggregateId=" + aggregateId, exception);
+        }
     }
 }

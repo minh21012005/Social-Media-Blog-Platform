@@ -38,6 +38,12 @@ export function WebSocketManager({ session, notify }) {
             const event = JSON.parse(message.body)
             // Dispatch event for UI synchronization
             window.dispatchEvent(new CustomEvent('NEW_NOTIFICATION', { detail: event }))
+            if (notify && event?.type === 'ARTICLE_CLAPPED') {
+              notify(event.title || 'Your article received a new like.', {
+                title: 'New notification',
+                type: 'success',
+              })
+            }
           } catch (e) {
             console.error('[WebSocket] Failed to parse message body:', e)
           }

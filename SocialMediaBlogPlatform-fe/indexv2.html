@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Header Propagation & Feign Interceptors</title>
+    <style>
+        /* Global Styles & Variables */
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #34d399;
+            --accent-orange: #fbbf24;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --code-bg: #0b0f19;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #020617;
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Presentation Wrapper */
+        .deck-wrapper {
+            width: 95%;
+            max-width: 1300px;
+            height: 85vh;
+            position: relative;
+            background-color: var(--bg-main);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        /* ----- FULLSCREEN MAGIC CSS ----- */
+        .deck-wrapper:fullscreen {
+            width: 100vw;
+            max-width: 100%;
+            height: 100vh;
+            border-radius: 0;
+            border: none;
+        }
+        .deck-wrapper:-webkit-full-screen { width: 100vw; max-width: 100%; height: 100vh; border-radius: 0; border: none; }
+        .deck-wrapper:-ms-fullscreen { width: 100vw; max-width: 100%; height: 100vh; border-radius: 0; border: none; }
+
+        /* Slide Container */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 50px 60px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            overflow-y: auto;
+            padding-bottom: 90px; /* Space for footer */
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 10;
+        }
+
+        /* Slide Header */
+        .slide-header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .slide-number {
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+        }
+
+        .slide-title {
+            font-size: 2.2rem;
+            color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .slide-title span {
+            color: var(--accent-blue);
+        }
+
+        /* Typography & Content */
+        .slide-body {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+        }
+
+        h3 {
+            color: var(--text-main);
+            margin-top: 25px;
+            margin-bottom: 12px;
+            font-size: 1.5rem;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        ul {
+            margin-left: 25px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        li strong {
+            color: var(--text-main);
+        }
+
+        /* Grid Layout */
+        .grid-2 {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .col {
+            flex: 1;
+        }
+
+        /* Card Component */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 22px;
+            margin-top: 15px;
+        }
+
+        .card.border-blue { border-left: 5px solid var(--accent-blue); }
+        .card.border-green { border-left: 5px solid var(--accent-green); }
+        .card.border-orange { border-left: 5px solid var(--accent-orange); }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: var(--text-main);
+            margin-bottom: 10px;
+        }
+
+        /* Code Block Styling */
+        pre {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            font-size: 0.95rem;
+            color: #e2e8f0;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+
+        .keyword { color: #f472b6; }
+        .annotation { color: #fbbf24; }
+        .class-name { color: #c084fc; }
+        .string { color: #34d399; }
+        .comment { color: #64748b; font-style: italic; }
+
+        /* Diagram / Architecture Blocks */
+        .diagram-container {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 35px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .flow-node {
+            background-color: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            padding: 14px 22px;
+            color: var(--text-main);
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .flow-node.active {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        .flow-node.interceptor {
+            border-color: var(--accent-orange);
+            background-color: #2d2215;
+        }
+
+        .flow-arrow {
+            color: var(--accent-blue);
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .header-tag {
+            display: block;
+            font-size: 0.8rem;
+            background-color: #1e1b4b;
+            color: #a5b4fc;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 6px;
+            font-family: monospace;
+        }
+
+        /* Title Slide Layout */
+        .title-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding-bottom: 50px;
+        }
+
+        .title-slide h1 {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            line-height: 1.2;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .title-slide h2 {
+            font-size: 1.6rem;
+            color: var(--accent-blue);
+            margin-bottom: 50px;
+            font-weight: 400;
+        }
+
+        .meta-info {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+        }
+
+        .meta-info strong {
+            color: var(--text-main);
+        }
+
+        /* Persistent Navigation Footer */
+        .deck-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            border-top: 1px solid var(--border-color);
+            background-color: #0b1329;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 40px;
+            z-index: 100;
+        }
+
+        .footer-text {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .nav-btn.primary {
+            background-color: #0369a1;
+            border-color: #0284c7;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background-color: var(--accent-blue);
+            color: #020617;
+            border-color: var(--accent-blue);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .slide-counter {
+            font-size: 1rem;
+            color: var(--text-main);
+            font-family: monospace;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        /* Top Progress Bar */
+        .progress-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background-color: var(--border-color);
+            z-index: 101;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-green));
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+<div class="deck-wrapper" id="presentationContainer">
+    <!-- Progress Tracking bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- SLIDE 1: TITLE SLIDE -->
+    <div class="slide title-slide active">
+        <h1>Header Propagation & Feign Interceptors</h1>
+        <br>
+        <h2>Securing Context and Identity in Spring Boot Microservices</h2>
+        <div class="meta-info">
+            <p>Presented by: <strong> Group 7</strong></p>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: AGENDA -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">02 . Overview</div>
+            <div class="slide-title">Session <span>Agenda</span></div>
+        </div>
+        <div class="slide-body">
+            <div class="grid-2">
+                <div class="col">
+                    <div class="card border-blue">
+                        <div class="card-title">1. The Distributed Core Problem</div>
+                        <p>Why security context and custom metadata get lost when cross-communicating between independent services.</p>
+                    </div>
+                    <div class="card border-blue">
+                        <div class="card-title">2. Header Propagation Decoded</div>
+                        <p>The philosophical and structural pattern of cascading runtime tokens seamlessly through downstream nodes.</p>
+                    </div>
+                    <div class="card border-blue">
+                        <div class="card-title">3. Spring Cloud OpenFeign</div>
+                        <p>Transitioning from boilerplate HTTP clients to elegant, interface-driven declarative REST calls.</p>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-green">
+                        <div class="card-title">4. Deep Dive: Feign Interceptors</div>
+                        <p>How the <code>RequestInterceptor</code> acts as an automated infrastructure hook to mutate outbound requests.</p>
+                    </div>
+                    <div class="card border-green">
+                        <div class="card-title">5. Step-by-Step Implementation</div>
+                        <p>Production-ready code patterns for extracting, verifying, and mapping tokens smoothly.</p>
+                    </div>
+                    <div class="card border-orange">
+                        <div class="card-title">6. Critical Pitfalls & ThreadLocal Trap</div>
+                        <p>Unveiling multi-threading context crashes caused by asynchronous processes and defensive mitigation patterns.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: THE CORE PROBLEM -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">03 . Context Disruption</div>
+            <div class="slide-title">The Microservices <span>Communication Challenge</span></div>
+        </div>
+        <div class="slide-body">
+            <p>In a monolithic architecture, security principles rest comfortably in a shared memory pool via a single <code>SecurityContextHolder</code>. In microservices, this paradigm breaks entirely.</p>
+            
+            <div class="diagram-container">
+                <div class="flow-node active">User Request<span class="header-tag">Authorization: JWT</span></div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">API Gateway</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">Order-Service<br>(Valid Context)</div>
+                <div class="flow-arrow" style="color: #ef4444;">&rarr; ❌</div>
+                <div class="flow-node" style="border-color: #ef4444;">Payment-Service<br>(401 Unauthorized)</div>
+            </div>
+
+            <h3>Why Does Context Isolation Occur?</h3>
+            <ul>
+                <li><strong>Network Bound Boundaries:</strong> Every service invocation is a distinct, stateless HTTP/REST interaction over network sockets.</li>
+                <li><strong>Blank-Slate Outbound Client:</strong> Standard declarative HTTP clients create fresh network requests from scratch, naturally stripping away all incoming headers.</li>
+                <li><strong>Downstream Rejections:</strong> Sub-services require authentication parameters (JWT/OAuth2), resulting in immediate <code>401 Unauthorized</code> blockades.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: WHAT IS HEADER PROPAGATION -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">04 . Architectural Pattern</div>
+            <div class="slide-title">What is <span>Header Propagation</span>?</div>
+        </div>
+        <div class="slide-body">
+            <p><strong>Header Propagation</strong> is an essential design pattern that ensures metadata, end-user identities, and tracing telemetry flow natively across isolated service boundaries.</p>
+            
+            <div class="grid-2">
+                <div class="col">
+                    <div class="card border-green">
+                        <div class="card-title">Primary Use Cases</div>
+                        <ul>
+                            <li><strong>Security Identity:</strong> Forwarding OAuth2/JWT tokens to preserve authorization and role mapping downstream.</li>
+                            <li><strong>Distributed Tracing:</strong> Injecting <code>X-B3-TraceId</code> or W3C Trace Context headers to tie logs together via Zipkin/Brave.</li>
+                            <li><strong>Multi-Tenancy:</strong> Transferring <code>X-Tenant-ID</code> tokens to toggle dynamic database routing on downstream nodes.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-blue">
+                        <div class="card-title">The Real-World Corporate Analogy</div>
+                        <p>Think of an employee entering a secure compound. The front desk checks their ID and prints a visitor badge. If that employee must visit an internal warehouse managed by another subcontractor, they must carry and present that identical badge to gain access. They don't re-apply for a badge at every inner doorway.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: SPRING CLOUD OPENFEIGN -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">05 . Tooling Foundations</div>
+            <div class="slide-title">Introduction to <span>Spring Cloud OpenFeign</span></div>
+        </div>
+        <div class="slide-body">
+            <p>Before automating propagation, we leverage <strong>OpenFeign</strong>: a declarative REST client wrapper that eliminates low-level HTTP boilerplate code.</p>
+            
+            <div class="card">
+                <div class="card-title">The Declarative Revolution</div>
+                <p>Instead of manually constructing <code>WebClient</code> or legacy <code>RestTemplate</code> calls, handling connection pools, and serializing JSON payloads, you simply define a standard Java Interface.</p>
+            </div>
+
+            <pre><span class="annotation">@FeignClient</span>(name = <span class="string">"payment-service"</span>, path = <span class="string">"/api/v1/payments"</span>)
+<span class="keyword">public interface</span> <span class="class-name">PaymentClient</span> {
+
+    <span class="annotation">@PostMapping</span>
+    <span class="class-name">PaymentResponse</span> <span class="method-name">processTransaction</span>(<span class="class-name">PaymentRequest</span> request);
+}</pre>
+            <p>OpenFeign automatically generates the concrete implementation at runtime, binding endpoints seamlessly to internal service discovery components like Spring Cloud LoadBalancer.</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: ENTER FEIGN INTERCEPTOR -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">06 . The Hook Mechanics</div>
+            <div class="slide-title">Enter the <span>Feign RequestInterceptor</span></div>
+        </div>
+        <div class="slide-body">
+            <p>A <strong>RequestInterceptor</strong> is an aspect-oriented lifecycle hook provided natively by OpenFeign. It intercepts every single outbound HTTP request right before it hits the network socket.</p>
+
+            <div class="diagram-container">
+                <div class="flow-node">Order-Service Logic</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node interceptor">Feign Interceptor<br><small>Applies Header Injections</small></div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-node active">Outbound HTTP Request<span class="header-tag">Authorization: Attached ✅</span></div>
+            </div>
+
+            <h3>Core Architectural Capabilities:</h3>
+            <ul>
+                <li><strong>Centralized Pipeline Mutation:</strong> Modify outbound headers, cookies, or query parameters globally without polluting specific client business logic methods.</li>
+                <li><strong>Request Conversion Layer:</strong> Exposes the <code>RequestTemplate</code> object, allowing developers to inspect target URLs and apply selective header injections dynamically.</li>
+                <li><strong>Decoupled Infrastructure:</strong> Keeps authentication concerns separate from core domain logic interfaces.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: ARCHITECTURE FLOW DIAGRAM -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">07 . Visualizing Architecture</div>
+            <div class="slide-title">End-to-End <span>Header Propagation Pipeline</span></div>
+        </div>
+        <div class="slide-body">
+            <p style="margin-bottom: 20px;">This visual mapping displays the precise architectural layout of automated Token Propagation across microservice runtimes:</p>
+            
+            <div style="background-color: var(--code-bg); padding: 30px; border-radius: 12px; border: 1px solid var(--border-color);">
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: var(--accent-blue);">Step 1: Inbound Request Gateway</strong><br>
+                    User Request &rarr; Lands on <strong>Order-Service (Thread A)</strong> with <span style="color: var(--accent-green); font-family: monospace;">[Authorization: Bearer xyz...]</span>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: var(--accent-orange);">Step 2: Thread Context Capture</strong><br>
+                    Spring Boot stores incoming request metadata inside <code>RequestContextHolder (ThreadLocal)</code>.
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: var(--accent-blue);">Step 3: Feign Outbound Interception</strong><br>
+                    Order-Service triggers <code>paymentClient.fetchPaymentStatus()</code> &rarr; <strong>Feign Interceptor</strong> awakens &rarr; Pulls token from active ThreadLocal &rarr; Injects token into target <code>RequestTemplate</code>.
+                </div>
+                <div>
+                    <strong style="color: var(--accent-green);">Step 4: Secure Downstream Processing</strong><br>
+                    Outbound Request <span style="color: var(--accent-green); font-family: monospace;">[JWT Token Propagated]</span> &rarr; Arrives at <strong>Payment-Service</strong> &rarr; Validated successfully!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: CODE STEP 1 - DEPENDENCIES -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">08 . Implementation Step 1</div>
+            <div class="slide-title">Project Setup and <span>Bootstrapping</span></div>
+        </div>
+        <div class="slide-body">
+            <h3>1. Maven Dependency Configuration</h3>
+            <p>Ensure your <code>pom.xml</code> file imports the unified Spring Cloud BOM (Bill of Materials) and declares the explicit starter module dependency:</p>
+            
+            <pre>&lt;<span class="keyword">dependency</span>&gt;
+    &lt;<span class="keyword">groupId</span>&gt;org.springframework.cloud&lt;/<span class="keyword">groupId</span>&gt;
+    &lt;<span class="keyword">artifactId</span>&gt;spring-cloud-starter-openfeign&lt;/<span class="keyword">artifactId</span>&gt;
+&lt;/<span class="keyword">dependency</span>&gt;</pre>
+
+            <h3>2. Enabling Feign Clients Globally</h3>
+            <p>You must append the <code>@EnableFeignClients</code> annotation to your primary Spring Boot configuration or bootstrap execution class:</p>
+
+            <pre><span class="annotation">@SpringBootApplication</span>
+<span class="annotation">@EnableFeignClients</span>(basePackages = <span class="string">"com.enterprise.client"</span>)
+<span class="keyword">public class</span> <span class="class-name">OrderServiceApplication</span> {
+    <span class="keyword">public static void</span> <span class="method-name">main</span>(String[] args) {
+        <span class="class-name">SpringApplication</span>.run(<span class="class-name">OrderServiceApplication</span>.<span class="keyword">class</span>, args);
+    }
+}</pre>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: CODE STEP 2 - THE INTERCEPTOR -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">09 . Implementation Step 2</div>
+            <div class="slide-title">Crafting the <span>RequestInterceptor Implementation</span></div>
+        </div>
+        <div class="slide-body">
+            <p>Create a concrete implementation class that reads from the running request execution context:</p>
+            <pre><span class="annotation">@Component</span>
+<span class="keyword">public class</span> <span class="class-name">JwtPropagationInterceptor</span> <span class="keyword">implements</span> <span class="class-name">RequestInterceptor</span> {
+
+    <span class="keyword">private static final</span> <span class="class-name">String</span> AUTH_HEADER = <span class="string">"Authorization"</span>;
+
+    <span class="annotation">@Override</span>
+    <span class="keyword">public void</span> <span class="method-name">apply</span>(<span class="class-name">RequestTemplate</span> template) {
+        <span class="comment">// Extract the current Thread's active HTTP servlet attributes</span>
+        <span class="class-name">ServletRequestAttributes</span> attributes = 
+            (<span class="class-name">ServletRequestAttributes</span>) <span class="class-name">RequestContextHolder</span>.getRequestAttributes();
+        
+        <span class="keyword">if</span> (attributes != <span class="keyword">null</span>) {
+            <span class="class-name">HttpServletRequest</span> incomingRequest = attributes.getRequest();
+            <span class="class-name">String</span> activeToken = incomingRequest.getHeader(AUTH_HEADER);
+            
+            <span class="comment">// Propagate the active token down to the outbound target request template</span>
+            <span class="keyword">if</span> (activeToken != <span class="keyword">null</span> && !activeToken.isBlank()) {
+                template.header(AUTH_HEADER, activeToken);
+            }
+        }
+    }
+}</pre>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: CODE STEP 3 - CLIENT DEFINITION -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">10 . Implementation Step 3</div>
+            <div class="slide-title">Declaring the Clean <span>Feign Client Interface</span></div>
+        </div>
+        <div class="slide-body">
+            <p>Because we annotated our interceptor class with <code>@Component</code>, Spring Boot registers it within the application context and applies it automatically to <strong>all</strong> Feign clients globally.</p>
+
+            <pre><span class="annotation">@FeignClient</span>(name = <span class="string">"payment-service"</span>, path = <span class="string">"/api/v1/payments"</span>)
+<span class="keyword">public interface</span> <span class="class-name">PaymentClient</span> {
+
+    <span class="annotation">@GetMapping</span>(<span class="string">"/status/{orderId}"</span>)
+    <span class="class-name">String</span> <span class="method-name">fetchPaymentStatus</span>(<span class="annotation">@PathVariable</span>(<span class="string">"orderId"</span>) <span class="class-name">String</span> orderId);
+}</pre>
+
+            <h3>How it looks inside your Business Logic:</h3>
+            <pre><span class="annotation">@Service</span>
+<span class="keyword">public class</span> <span class="class-name">OrderService</span> {
+    <span class="annotation">@Autowired</span> <span class="keyword">private</span> <span class="class-name">PaymentClient</span> paymentClient;
+
+    <span class="keyword">public void</span> <span class="method-name">completeOrder</span>(<span class="class-name">String</span> orderId) {
+        <span class="comment">// Outbound call automatically inherits token context</span>
+        <span class="class-name">String</span> status = paymentClient.fetchPaymentStatus(orderId);
+    }
+}</pre>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: CRITICAL PITFALL - THREADLOCAL TRAP -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">11 . Senior Insights</div>
+            <div class="slide-title">The Danger Zone: <span>The ThreadLocal Trap</span></div>
+        </div>
+        <div class="slide-body">
+            <p>As a senior developer, I must warn you about the most common issue you will run into: <strong>Context Isolation over Multi-threaded boundaries.</strong></p>
+            
+            <div class="card border-orange">
+                <div class="card-title">The Root Cause Analysis</div>
+                <p><code>RequestContextHolder</code> utilizes a <code>ThreadLocal</code> storage mechanism by default. This locks metadata to the precise thread that accepted the initial inbound web call (e.g., Tomcat execution thread <code>http-nio-8080-exec-1</code>).</p>
+            </div>
+
+            <div class="grid-2" style="margin-top: 15px;">
+                <div class="col">
+                    <h3>When Does Context Loss Occur?</h3>
+                    <ul>
+                        <li>Using asynchronous methods annotated with <code>@Async</code>.</li>
+                        <li>Executing operations inside parallel streams or dedicated <code>CompletableFuture</code> pools.</li>
+                        <li>Utilizing fault-tolerance frameworks (like Resilience4j or Hystrix) configured with isolated <strong>THREAD pool models</strong>.</li>
+                    </ul>
+                </div>
+                <div class="col">
+                    <div class="card" style="background-color: #2d1a1a; border-color: #ef4444; margin-top: 0;">
+                        <p style="color: #f87171; font-weight: bold;">Resulting Error Behavior:</p>
+                        <p style="font-size: 0.95rem; font-family: monospace;">RequestContextHolder.getRequestAttributes() &rarr; returns null!<br><br>Outbound tokens drop completely, resulting in mysterious downstream 401 Rejections under high concurrency events.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: SOLUTIONS FOR THREADLOCAL -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">12 . Advanced Mitigations</div>
+            <div class="slide-title">Resolving Multi-Threaded <span>Context Loss</span></div>
+        </div>
+        <div class="slide-body">
+            <div class="card border-green" style="margin-top: 0;">
+                <div class="card-title">Strategy A: Tweaking the InheritableThreadLocal Engine</div>
+                <p>During system boot, instruct Spring to elevate its underlying container layout to use an inheritable strategy. This mirrors parents' storage allocations straight down into newly spawned child sub-threads.</p>
+                <pre style="margin-bottom: 5px;"><span class="class-name">RequestContextHolder</span>.setRequestAttributes(attributes, <span class="keyword">true</span>);</pre>
+                <small style="color: var(--accent-orange);">⚠️ Warning: This setup does not resolve issues with managed, reused shared thread pools (like standard ExecutorServices).</small>
+            </div>
+
+            <div class="card border-green" style="margin-top: 15px;">
+                <div class="card-title">Strategy B: Leveraging an Explicit TaskDecorator Pipeline</div>
+                <p>For custom asynchronous thread executors, register a concrete <code>TaskDecorator</code> to clone metadata cleanly across execution pools right as threads are scheduled:</p>
+                <pre style="margin-top: 5px; font-size: 0.85rem; padding: 12px;"><span class="keyword">public class</span> <span class="class-name">ContextCopyingDecorator</span> <span class="keyword">implements</span> <span class="class-name">TaskDecorator</span> {
+    <span class="annotation">@Override</span>
+    <span class="keyword">public</span> <span class="class-name">Runnable</span> <span class="method-name">decorate</span>(<span class="class-name">Runnable</span> runnable) {
+        <span class="class-name">RequestAttributes</span> context = <span class="class-name">RequestContextHolder</span>.currentRequestAttributes();
+        <span class="keyword">return</span> () -> {
+            <span class="keyword">try</span> {
+                <span style="color: var(--accent-blue);">RequestContextHolder</span>.setRequestAttributes(context);
+                runnable.run();
+            } <span class="keyword">finally</span> {
+                <span style="color: var(--accent-blue);">RequestContextHolder</span>.resetRequestAttributes();
+            }
+        };
+    }
+}</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: PRODUCTION BEST PRACTICES -->
+    <div class="slide">
+        <div class="slide-header">
+            <div class="slide-number">13 . Engineering Guidelines</div>
+            <div class="slide-title">Production-Grade <span>Best Practices</span></div>
+        </div>
+        <div class="slide-body">
+            <div class="grid-2">
+                <div class="col">
+                    <div class="card border-blue">
+                        <div class="card-title">1. Defensive Coding Blocks</div>
+                        <p>Always incorporate clean sanitization validation rules within your interceptor classes. Ensure you verify header contents before propagating them down to prevent injecting malformed text strings or null pointers.</p>
+                    </div>
+                    <div class="card border-blue" style="margin-top: 15px;">
+                        <div class="card-title">2. Selective Scoping Rules</div>
+                        <p>Avoid wiring interceptor beans using blanket global configurations if some backend nodes should not receive specific user tokens. Instead, leverage target-specific Feign configuration files.</p>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card border-orange">
+                        <div class="card-title">3. Avoid Log Data Leaks</div>
+                        <p>Never output raw security headers (like decrypted bearer strings) straight into production application log files. Sanitize your log lines to ensure compliance with security standards.</p>
+                    </div>
+                    <div class="card border-blue" style="margin-top: 15px;">
+                        <div class="card-title">4. Minimize Performance Overhead</div>
+                        <p>Keep your interceptor logic lightweight. Avoid performing long-running calculations or hitting remote databases inside the interceptor loop, as this adds latency to every outbound call.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: SUMMARY / CONCLUSION -->
+    <div class="slide title-slide">
+        <h1 style="color: var(--accent-green); background: none; -webkit-text-fill-color: initial;">Summary & Key Takeaways</h1>
+        <p style="font-size: 1.3rem; color: var(--text-main); margin-bottom: 30px;">Automated contextual integrity across highly distributed service topologies</p>
+        
+        <div style="max-width: 600px; text-align: left; margin-bottom: 40px;">
+            <ul style="font-size: 1.2rem; color: var(--text-muted); line-height: 2;">
+                <li>🛡️ <strong>Automated Token Passing:</strong> Eliminates repetitive, manual header injection logic.</li>
+                <li>⚙️ <strong>Seamless Decoupling:</strong> Isolates routing concerns from foundational business rules.</li>
+                <li>🧠 <strong>Thread Safety Awareness:</strong> Prevents silent context dropouts within high-concurrency systems.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- PERSISTENT CONTROLS -->
+    <div class="deck-footer">
+        <div class="nav-controls">
+            <button class="nav-btn primary" id="fullscreenBtn">📺 Toàn màn hình</button>
+        </div>
+        <div class="nav-controls">
+            <button class="nav-btn" id="prevBtn" disabled>Quay lại</button>
+            <span class="slide-counter" id="slideCounter">1 / 14</span>
+            <button class="nav-btn" id="nextBtn">Tiếp theo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // System Elements
+    const slides = document.querySelectorAll('.slide');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const slideCounter = document.getElementById('slideCounter');
+    const progressBar = document.getElementById('progressBar');
+    
+    // Fullscreen Elements
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const presentationContainer = document.getElementById('presentationContainer');
+    
+    let currentSlideIndex = 0;
+    const totalSlides = slides.length;
+
+    // ----- Slide Navigation Logic -----
+    function updateSlides() {
+        slides.forEach((slide, index) => {
+            if (index === currentSlideIndex) {
+                slide.classList.add('active');
+            } else {
+                slide.classList.remove('active');
+            }
+        });
+
+        slideCounter.textContent = `${currentSlideIndex + 1} / ${totalSlides}`;
+        const progressPercentage = ((currentSlideIndex + 1) / totalSlides) * 100;
+        progressBar.style.width = `${progressPercentage}%`;
+
+        prevBtn.disabled = (currentSlideIndex === 0);
+        nextBtn.disabled = (currentSlideIndex === totalSlides - 1);
+    }
+
+    prevBtn.addEventListener('click', () => {
+        if (currentSlideIndex > 0) { currentSlideIndex--; updateSlides(); }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (currentSlideIndex < totalSlides - 1) { currentSlideIndex++; updateSlides(); }
+    });
+
+    // Keyboard controls
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'Space') {
+            if (currentSlideIndex < totalSlides - 1) { currentSlideIndex++; updateSlides(); }
+        } else if (event.key === 'ArrowLeft') {
+            if (currentSlideIndex > 0) { currentSlideIndex--; updateSlides(); }
+        }
+    });
+
+    // ----- Fullscreen API Logic -----
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            // Enter Fullscreen on the container itself
+            if (presentationContainer.requestFullscreen) {
+                presentationContainer.requestFullscreen();
+            } else if (presentationContainer.webkitRequestFullscreen) { /* Safari */
+                presentationContainer.webkitRequestFullscreen();
+            } else if (presentationContainer.msRequestFullscreen) { /* IE11 */
+                presentationContainer.msRequestFullscreen();
+            }
+        } else {
+            // Exit Fullscreen
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) { /* Safari */
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) { /* IE11 */
+                document.msExitFullscreen();
+            }
+        }
+    });
+
+    // Update button text based on fullscreen state
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+    
+    function updateFullscreenButton() {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+            fullscreenBtn.innerHTML = '🗗 Thu nhỏ';
+        } else {
+            fullscreenBtn.innerHTML = '📺 Toàn màn hình';
+        }
+    }
+
+    // Initialize UI
+    updateSlides();
+</script>
+
+</body>
+</html>

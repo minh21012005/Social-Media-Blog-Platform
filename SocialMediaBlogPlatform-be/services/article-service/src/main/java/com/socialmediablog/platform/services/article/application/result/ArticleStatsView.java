@@ -4,19 +4,21 @@ import com.socialmediablog.platform.services.article.domain.aggregate.ArticleSta
 
 public record ArticleStatsView(
         long clapCount,
+        long likeCount,
         long commentCount,
         long viewCount,
         long bookmarkCount
 ) {
 
     public static ArticleStatsView empty() {
-        return new ArticleStatsView(0, 0, 0, 0);
+        return new ArticleStatsView(0, 0, 0, 0, 0);
     }
 
     public static ArticleStatsView from(ArticleStats stats) {
         if (stats == null) {
             return empty();
         }
-        return new ArticleStatsView(stats.clapCount(), stats.commentCount(), stats.viewCount(), stats.bookmarkCount());
+        // The likeCount is handled separately in the ArticleApplicationService
+        return new ArticleStatsView(stats.clapCount(), 0, stats.commentCount(), stats.viewCount(), stats.bookmarkCount());
     }
 }

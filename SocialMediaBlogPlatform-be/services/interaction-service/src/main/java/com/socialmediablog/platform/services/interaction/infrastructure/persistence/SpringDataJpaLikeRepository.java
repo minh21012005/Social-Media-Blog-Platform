@@ -6,5 +6,5 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SpringDataJpaLikeRepository extends JpaRepository<LikeEntity, LikeEntityId> {
-    long countById_ArticleId(UUID articleId);
+    long countByIdArticleId(UUID articleId);
 }

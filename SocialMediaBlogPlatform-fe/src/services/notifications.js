@@ -1,12 +1,36 @@
 import { apiRequest } from './api'
 
+async function withTransientRetry(requestFn, maxRetries = 2) {
+  let attempt = 0
+  while (true) {
+    try {
+      return await requestFn()
+    } catch (error) {
+      const retriableStatus = error?.status === 502 || error?.status === 503 || error?.status === 504
+      if (!retriableStatus || attempt >= maxRetries) {
+        throw error
+      }
+      attempt += 1
+      await new Promise((resolve) => window.setTimeout(resolve, 300 * attempt))
+    }
+  }
+}
+
 /**
  * Lấy danh sách notification của user đang đăng nhập.
  * @param {string} token - JWT access token
  * @returns {Promise<Array>} danh sách notification
  */
 export async function getMyNotifications(token) {
-  return apiRequest('/api/v1/notifications/me', { token })
+  try {
+    return await withTransientRetry(() => apiRequest('/api/v1/notifications/me', { token, silent: true }))
+  } catch (error) {
+    const retriableStatus = error?.status === 502 || error?.status === 503 || error?.status === 504
+    if (retriableStatus) {
+      return []
+    }
+    throw error
+  }
 }
 
 /**

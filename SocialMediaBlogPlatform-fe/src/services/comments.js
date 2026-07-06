@@ -1,13 +1,29 @@
 import { apiRequest } from './api'
 
+async function withTransientRetry(requestFn, maxRetries = 1) {
+  let attempt = 0
+  while (true) {
+    try {
+      return await requestFn()
+    } catch (error) {
+      const retriableStatus = error?.status === 502 || error?.status === 503 || error?.status === 504
+      if (!retriableStatus || attempt >= maxRetries) {
+        throw error
+      }
+      attempt += 1
+      await new Promise((resolve) => window.setTimeout(resolve, 300 * attempt))
+    }
+  }
+}
+
 export function listArticleComments(articleId, token, page = 0, size = 10, sort = 'NEWEST') {
   const query = new URLSearchParams({ page, size, sort }).toString()
-  return apiRequest(`/api/v1/articles/${articleId}/comments?${query}`, { token })
+  return withTransientRetry(() => apiRequest(`/api/v1/articles/${articleId}/comments?${query}`, { token }))
 }
 
 export function listCommentReplies(commentId, token, page = 0, size = 10) {
   const query = new URLSearchParams({ page, size }).toString()
-  return apiRequest(`/api/v1/comments/${commentId}/replies?${query}`, { token })
+  return withTransientRetry(() => apiRequest(`/api/v1/comments/${commentId}/replies?${query}`, { token }))
 }
 
 export function createCommentReply(commentId, payload, token) {

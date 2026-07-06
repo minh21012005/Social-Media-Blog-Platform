@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArticleMeta } from '../components/ArticleCard'
 import { BookmarkButton } from '../components/BookmarkButton'
 import { AuthorBadge } from '../components/AuthorBadge'
@@ -24,6 +24,89 @@ function formatCommentDate(value) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value))
+}
+
+function toDisplayName(candidate) {
+  if (!candidate) {
+    return ''
+  }
+
+  if (typeof candidate === 'string') {
+    return candidate.trim()
+  }
+
+  if (typeof candidate !== 'object') {
+    return ''
+  }
+
+  return (
+    candidate.displayName
+    || candidate.username
+    || candidate.name
+    || candidate.fullName
+    || ''
+  ).trim()
+}
+
+function normalizeLikePayload(payload) {
+  if (typeof payload === 'number') {
+    return { count: payload, likerNames: [] }
+  }
+
+  if (Array.isArray(payload)) {
+    const likerNames = payload.map(toDisplayName).filter(Boolean)
+    return { count: payload.length, likerNames }
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return { count: 0, likerNames: [] }
+  }
+
+  const nested = payload.data && typeof payload.data === 'object' ? payload.data : null
+  const likesList = [
+    payload.likers,
+    payload.recentLikers,
+    payload.users,
+    payload.items,
+    Array.isArray(payload.likes) ? payload.likes : null,
+    nested?.likers,
+    nested?.recentLikers,
+    nested?.users,
+    nested?.items,
+    Array.isArray(nested?.likes) ? nested.likes : null,
+  ].find((value) => Array.isArray(value)) || []
+
+  const likerNames = likesList.map(toDisplayName).filter(Boolean)
+  const explicitCount = Number(
+    payload.count
+    ?? payload.total
+    ?? payload.likeCount
+    ?? payload.likesCount
+    ?? nested?.count
+    ?? nested?.total
+    ?? nested?.likeCount
+    ?? nested?.likesCount
+  )
+
+  const count = Number.isFinite(explicitCount) && explicitCount >= 0
+    ? explicitCount
+    : likerNames.length
+
+  return { count, likerNames }
+}
+
+function buildLikeNoticeMessage(gainedLikes, newNames) {
+  if (newNames.length === 1) {
+    return `${newNames[0]} vua thich bai viet cua ban.`
+  }
+
+  if (newNames.length > 1) {
+    return `${newNames[0]} va ${newNames.length - 1} nguoi khac vua thich bai viet cua ban.`
+  }
+
+  return gainedLikes === 1
+    ? 'Vua co 1 nguoi khac thich bai viet cua ban.'
+    : `Vua co ${gainedLikes} nguoi khac thich bai viet cua ban.`
 }
 
 function CommentComposer({ articleId, session, requestWithAuth, navigate, onCreated }) {
@@ -645,6 +728,9 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   const [commentSortBy, setCommentSortBy] = useState('NEWEST')
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [likeNotice, setLikeNotice] = useState(null)
+  const likeSnapshotRef = useRef(null)
+  const likeActorSnapshotRef = useRef(new Set())
 
   useEffect(() => {
     let active = true
@@ -656,9 +742,12 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           setState({ loading: false, article, error: '' })
         }
         try {
-          const likes = await getArticleLikes(article.id)
+          const likesPayload = await getArticleLikes(article.id)
+          const { count, likerNames } = normalizeLikePayload(likesPayload)
           if (active) {
-            setLikeCount(likes)
+            setLikeCount(count)
+            likeSnapshotRef.current = count
+            likeActorSnapshotRef.current = new Set(likerNames)
           }
         } catch (likesError) {
           console.error('Could not load likes.', likesError)
@@ -742,6 +831,71 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   }
 
   const currentUserId = useMemo(() => session?.user?.id, [session])
+  const isArticleOwner = Boolean(
+    currentUserId
+    && state.article?.author?.id
+    && String(currentUserId) === String(state.article.author.id)
+  )
+
+  useEffect(() => {
+    if (!state.article?.id || !isArticleOwner) {
+      return
+    }
+
+    let active = true
+
+    const checkNewLikes = async () => {
+      try {
+        const likesPayload = await getArticleLikes(state.article.id)
+        const { count: latestLikes, likerNames } = normalizeLikePayload(likesPayload)
+        if (!active) {
+          return
+        }
+
+        setLikeCount((currentLikes) => {
+          const previousLikes = likeSnapshotRef.current ?? currentLikes
+          const previousActorNames = likeActorSnapshotRef.current
+          const newActorNames = likerNames.filter((name) => !previousActorNames.has(name))
+
+          likeSnapshotRef.current = latestLikes
+          likeActorSnapshotRef.current = new Set(likerNames)
+
+          if (latestLikes > previousLikes) {
+            const gainedLikes = latestLikes - previousLikes
+            setLikeNotice({
+              id: crypto.randomUUID(),
+              message: buildLikeNoticeMessage(gainedLikes, newActorNames),
+            })
+          }
+
+          return latestLikes
+        })
+      } catch {
+        // Keep polling quietly; this notification should not block reading.
+      }
+    }
+
+    const intervalId = window.setInterval(checkNewLikes, 12000)
+
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
+  }, [isArticleOwner, state.article?.id])
+
+  useEffect(() => {
+    if (!likeNotice) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLikeNotice(null)
+    }, 4200)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [likeNotice])
 
   const handleCommentCreated = (comment) => {
     setComments((current) => [
@@ -836,13 +990,21 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   const handleLike = async (articleId) => {
     await requestWithAuth((token) => likeArticle(articleId, token))
     setIsLiked(true)
-    setLikeCount((count) => count + 1)
+    setLikeCount((count) => {
+      const next = count + 1
+      likeSnapshotRef.current = next
+      return next
+    })
   }
 
   const handleUnlike = async (articleId) => {
     await requestWithAuth((token) => unlikeArticle(articleId, token))
     setIsLiked(false)
-    setLikeCount((count) => count - 1)
+    setLikeCount((count) => {
+      const next = Math.max(0, count - 1)
+      likeSnapshotRef.current = next
+      return next
+    })
   }
 
   if (state.loading) {
@@ -928,6 +1090,15 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           )}
         </div>
       </section>
+      {likeNotice && (
+        <aside className="like-notice-panel" role="status" aria-live="polite" aria-atomic="true">
+          <p className="like-notice-kicker">Thong bao moi</p>
+          <p className="like-notice-message">{likeNotice.message}</p>
+          <button className="like-notice-close" type="button" onClick={() => setLikeNotice(null)}>
+            Dong
+          </button>
+        </aside>
+      )}
       <SiteFooter />
     </main>
   )

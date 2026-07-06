@@ -28,6 +28,7 @@ import com.socialmediablog.platform.services.article.application.port.in.Publish
 import com.socialmediablog.platform.services.article.application.port.in.RecordArticleViewUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.UpdateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.UploadArticleMediaUseCase;
+import com.socialmediablog.platform.services.article.application.port.out.ArticleLikeCountProvider;
 import com.socialmediablog.platform.services.article.application.port.out.ArticleEventPublisher;
 import com.socialmediablog.platform.services.article.application.port.out.ArticleMediaStorage;
 import com.socialmediablog.platform.services.article.application.result.ArticleStatsView;
@@ -94,6 +95,7 @@ public class ArticleApplicationService implements
     private final ArticleMediaAssetRepository articleMediaAssetRepository;
     private final ArticleMediaStorage articleMediaStorage;
     private final ArticleEventPublisher articleEventPublisher;
+    private final ArticleLikeCountProvider articleLikeCountProvider;
     private final Clock clock;
 
     public ArticleApplicationService(
@@ -104,7 +106,9 @@ public class ArticleApplicationService implements
             ArticleMediaAssetRepository articleMediaAssetRepository,
             ArticleMediaStorage articleMediaStorage,
             ArticleEventPublisher articleEventPublisher,
-            Clock clock) {
+            ArticleLikeCountProvider articleLikeCountProvider,
+            Clock clock
+        ) {
         this.articleRepository = articleRepository;
         this.articleStatsRepository = articleStatsRepository;
         this.articleRevisionRepository = articleRevisionRepository;
@@ -112,6 +116,7 @@ public class ArticleApplicationService implements
         this.articleMediaAssetRepository = articleMediaAssetRepository;
         this.articleMediaStorage = articleMediaStorage;
         this.articleEventPublisher = articleEventPublisher;
+        this.articleLikeCountProvider = articleLikeCountProvider;
         this.clock = clock;
     }
 
@@ -389,6 +394,13 @@ public class ArticleApplicationService implements
         ArticleStatsView stats = articleStatsRepository.findByArticleId(article.id())
                 .map(ArticleStatsView::from)
                 .orElseGet(ArticleStatsView::empty);
+        stats = new ArticleStatsView(
+                stats.clapCount(),
+                articleLikeCountProvider.countLikes(article.id().value()),
+                stats.commentCount(),
+                stats.viewCount(),
+                stats.bookmarkCount()
+        );
         return ArticleView.from(article, stats);
     }
 

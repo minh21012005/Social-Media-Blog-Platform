@@ -12,6 +12,7 @@ import { AuthPage } from './pages/AuthPage'
 import { ArticleDetailPage } from './pages/ArticleDetailPage'
 import { EditArticlePage } from './pages/EditArticlePage'
 import { MyArticlesPage } from './pages/MyArticlesPage'
+import { BookmarksPage } from './pages/BookmarksPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
@@ -23,6 +24,7 @@ import './App.css'
 function isProtectedRoute(route) {
   return route === '/write'
     || route === '/articles/me'
+    || route === '/bookmarks'
     || route === '/profile'
     || route === '/follow-lab'
     || route === '/admin'
@@ -257,6 +259,10 @@ function App() {
 
     if (pathname === '/profile') {
       return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
+    }
+
+    if (pathname === '/bookmarks') {
+      return protectedPage(<BookmarksPage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
     if (route === '/follow-lab') {
