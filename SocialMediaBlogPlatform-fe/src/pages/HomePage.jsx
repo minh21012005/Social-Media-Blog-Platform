@@ -115,7 +115,7 @@ export function HomePage({ navigate }) {
           <div className="page-container">
             <div className="section-heading">
               <h2>Editor&apos;s Picks</h2>
-              <a href="/category/design" onClick={open('/category/design')}>
+              <a href="/editors-picks" onClick={open('/editors-picks')}>
                 View all
                 <ArrowRightIcon />
               </a>
