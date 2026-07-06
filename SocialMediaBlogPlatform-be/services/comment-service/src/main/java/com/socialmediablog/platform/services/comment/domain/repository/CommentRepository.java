@@ -12,6 +12,8 @@ public interface CommentRepository {
 
     long countByParentCommentId(CommentId parentCommentId);
 
+    long countVisibleByArticleId(ArticleId articleId);
+
     List<Comment> findRootCommentsByArticleId(ArticleId articleId, int page, int size, String sortBy);
 
     long countRootCommentsByArticleId(ArticleId articleId);

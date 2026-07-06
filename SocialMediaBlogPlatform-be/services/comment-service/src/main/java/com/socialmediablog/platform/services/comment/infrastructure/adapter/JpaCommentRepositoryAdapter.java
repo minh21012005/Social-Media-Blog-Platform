@@ -35,6 +35,13 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
     }
 
     @Override
+    public long countVisibleByArticleId(ArticleId articleId) {
+        return repository.countByArticleIdAndStatusIn(
+                articleId.value(),
+                List.of(CommentStatus.ACTIVE.name(), CommentStatus.EDITED.name()));
+    }
+
+    @Override
     public List<Comment> findRootCommentsByArticleId(ArticleId articleId, int page, int size, String sortBy) {
         Sort sort = switch (sortBy) {
             case "OLDEST" -> Sort.by(Sort.Direction.ASC, "createdAt");
