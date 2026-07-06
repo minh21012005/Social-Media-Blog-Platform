@@ -11,7 +11,7 @@ spring:
     username: ${ARTICLE_SERVICE_DB_USERNAME:social_blog}
     password: ${ARTICLE_SERVICE_DB_PASSWORD:social_blog}
   flyway:
-    enabled: false
+    enabled: true
   servlet:
     multipart:
       max-file-size: ${ARTICLE_MEDIA_MAX_FILE_SIZE:10MB}
@@ -19,7 +19,7 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
