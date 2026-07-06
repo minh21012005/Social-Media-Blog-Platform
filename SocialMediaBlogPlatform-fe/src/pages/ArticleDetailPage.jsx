@@ -388,13 +388,15 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     setReplyError('')
     try {
       const createdReply = await onReply(comment, trimmed)
-      const refreshedReplies = await onLoadReplies(comment.id).catch(() => [createdReply])
+      const data = await onLoadReplies(comment.id).catch(() => ({ items: [createdReply], page: 0, hasMore: false }))
       setExpandedReplies((current) => ({ ...current, [comment.id]: true }))
       setRepliesByComment((current) => ({
         ...current,
         [comment.id]: {
           error: '',
-          items: refreshedReplies,
+          items: data.items,
+          page: data.page,
+          hasMore: data.hasMore,
           loading: false,
         },
       }))
