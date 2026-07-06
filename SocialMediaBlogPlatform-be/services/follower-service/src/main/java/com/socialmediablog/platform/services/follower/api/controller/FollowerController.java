@@ -33,6 +33,16 @@ import com.socialmediablog.platform.services.follower.application.port.in.ListFo
 import com.socialmediablog.platform.services.follower.application.port.in.ListFollowingUseCase;
 import com.socialmediablog.platform.services.follower.application.port.in.UnblockUserUseCase;
 import com.socialmediablog.platform.services.follower.application.port.in.UnfollowUserUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.AcceptFollowRequestUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.RejectFollowRequestUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.ListPendingFollowRequestsUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.MuteUserUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.UnmuteUserUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.GetMuteStatusUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.ListMutedUsersUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.ListMutedUserIdsUseCase;
+import com.socialmediablog.platform.services.follower.application.result.FollowUserPage;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -61,6 +71,14 @@ public class FollowerController {
     private final GetBlockStatusUseCase getBlockStatusUseCase;
     private final ListBlockedUsersUseCase listBlockedUsersUseCase;
     private final CheckMutualFollowUseCase checkMutualFollowUseCase;
+    private final AcceptFollowRequestUseCase acceptFollowRequestUseCase;
+    private final RejectFollowRequestUseCase rejectFollowRequestUseCase;
+    private final ListPendingFollowRequestsUseCase listPendingFollowRequestsUseCase;
+    private final MuteUserUseCase muteUserUseCase;
+    private final UnmuteUserUseCase unmuteUserUseCase;
+    private final GetMuteStatusUseCase getMuteStatusUseCase;
+    private final ListMutedUsersUseCase listMutedUsersUseCase;
+    private final ListMutedUserIdsUseCase listMutedUserIdsUseCase;
 
     public FollowerController(
             GetServiceStatusUseCase getServiceStatusUseCase,
@@ -74,7 +92,15 @@ public class FollowerController {
             UnblockUserUseCase unblockUserUseCase,
             GetBlockStatusUseCase getBlockStatusUseCase,
             ListBlockedUsersUseCase listBlockedUsersUseCase,
-            CheckMutualFollowUseCase checkMutualFollowUseCase
+            CheckMutualFollowUseCase checkMutualFollowUseCase,
+            AcceptFollowRequestUseCase acceptFollowRequestUseCase,
+            RejectFollowRequestUseCase rejectFollowRequestUseCase,
+            ListPendingFollowRequestsUseCase listPendingFollowRequestsUseCase,
+            MuteUserUseCase muteUserUseCase,
+            UnmuteUserUseCase unmuteUserUseCase,
+            GetMuteStatusUseCase getMuteStatusUseCase,
+            ListMutedUsersUseCase listMutedUsersUseCase,
+            ListMutedUserIdsUseCase listMutedUserIdsUseCase
     ) {
         this.getServiceStatusUseCase = getServiceStatusUseCase;
         this.followUserUseCase = followUserUseCase;
@@ -88,6 +114,14 @@ public class FollowerController {
         this.getBlockStatusUseCase = getBlockStatusUseCase;
         this.listBlockedUsersUseCase = listBlockedUsersUseCase;
         this.checkMutualFollowUseCase = checkMutualFollowUseCase;
+        this.acceptFollowRequestUseCase = acceptFollowRequestUseCase;
+        this.rejectFollowRequestUseCase = rejectFollowRequestUseCase;
+        this.listPendingFollowRequestsUseCase = listPendingFollowRequestsUseCase;
+        this.muteUserUseCase = muteUserUseCase;
+        this.unmuteUserUseCase = unmuteUserUseCase;
+        this.getMuteStatusUseCase = getMuteStatusUseCase;
+        this.listMutedUsersUseCase = listMutedUsersUseCase;
+        this.listMutedUserIdsUseCase = listMutedUserIdsUseCase;
     }
 
     @GetMapping("/status")
@@ -206,6 +240,79 @@ public class FollowerController {
         return ApiResponse.success(MutualFollowResponse.from(checkMutualFollowUseCase.execute(
                 new CheckMutualFollowCommand(currentUserId(currentUser), userId)
         )));
+    }
+
+    @GetMapping("/requests/pending")
+    public ApiResponse<FollowUserPageResponse> pendingRequests(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(FollowUserPageResponse.from(listPendingFollowRequestsUseCase.listPending(
+                currentUserId(currentUser), page, size
+        )));
+    }
+
+    @PostMapping("/requests/{followerId}/accept")
+    public ApiResponse<FollowRelationResponse> acceptRequest(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID followerId
+    ) {
+        return ApiResponse.success(FollowRelationResponse.from(acceptFollowRequestUseCase.accept(
+                currentUserId(currentUser), followerId
+        )));
+    }
+
+    @DeleteMapping("/requests/{followerId}/reject")
+    public ApiResponse<FollowRelationResponse> rejectRequest(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID followerId
+    ) {
+        return ApiResponse.success(FollowRelationResponse.from(rejectFollowRequestUseCase.reject(
+                currentUserId(currentUser), followerId
+        )));
+    }
+
+    @PostMapping("/{userId}/mute")
+    public ApiResponse<Void> mute(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID userId
+    ) {
+        muteUserUseCase.mute(currentUserId(currentUser), userId);
+        return ApiResponse.success("User muted successfully", null);
+    }
+
+    @DeleteMapping("/{userId}/mute")
+    public ApiResponse<Void> unmute(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID userId
+    ) {
+        unmuteUserUseCase.unmute(currentUserId(currentUser), userId);
+        return ApiResponse.success("User unmuted successfully", null);
+    }
+
+    @GetMapping("/{userId}/mute-status")
+    public ApiResponse<Boolean> muteStatus(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID userId
+    ) {
+        return ApiResponse.success(getMuteStatusUseCase.isMuted(currentUserId(currentUser), userId));
+    }
+
+    @GetMapping("/me/muted")
+    public ApiResponse<FollowUserPageResponse> mutedUsers(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success(FollowUserPageResponse.from(listMutedUsersUseCase.listMuted(
+                currentUserId(currentUser), page, size
+        )));
+    }
+
+    @GetMapping("/me/muted-ids")
+    public ApiResponse<List<UUID>> mutedUserIds(@AuthenticationPrincipal CurrentUser currentUser) {
+        return ApiResponse.success(listMutedUserIdsUseCase.listMutedIds(currentUserId(currentUser)));
     }
 
     private static UUID currentUserId(CurrentUser currentUser) {

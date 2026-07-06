@@ -221,6 +221,7 @@ public class AuthApplicationService implements
                 command.displayName(),
                 command.bio(),
                 command.avatarUrl(),
+                command.isPrivate() != null ? command.isPrivate() : user.isPrivate(),
                 clock.instant()
         )));
     }

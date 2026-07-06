@@ -4,7 +4,7 @@ import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
 import { listPublishedArticles } from '../services/articles'
 
-export function SearchPage({ query, navigate }) {
+export function SearchPage({ query, navigate, mutedUserIds = new Set() }) {
   const [page, setPage] = useState(0)
   const [state, setState] = useState({ loading: true, articles: [], error: '', page: 0, totalPages: 0, totalItems: 0 })
 
@@ -38,6 +38,8 @@ export function SearchPage({ query, navigate }) {
     }
   }, [page, query])
 
+  const filteredArticles = state.articles.filter((article) => article.author && !mutedUserIds.has(article.author.id))
+
   return (
     <main>
       <section className="search-hero page-container">
@@ -55,7 +57,7 @@ export function SearchPage({ query, navigate }) {
         {state.error && <div className="empty-state"><h2>Search failed.</h2><p>{state.error}</p></div>}
         {!state.loading && !state.error && (
           <ArticleList
-            articles={state.articles}
+            articles={filteredArticles}
             emptyText="No published stories matched this search."
             navigate={navigate}
           />

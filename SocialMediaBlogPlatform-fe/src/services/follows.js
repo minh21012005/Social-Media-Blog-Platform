@@ -55,3 +55,47 @@ export function listBlockedUsers({ page = 0, size = 20 } = {}, token) {
 export function checkMutualFollow(userId, token) {
   return apiRequest(`/api/v1/follows/${userId}/mutual`, { token })
 }
+
+export function listPendingFollowRequests({ page = 0, size = 20 } = {}, token) {
+  return apiRequest(`/api/v1/follows/requests/pending?page=${page}&size=${size}`, { token })
+}
+
+export function acceptFollowRequest(followerId, token) {
+  return apiRequest(`/api/v1/follows/requests/${followerId}/accept`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export function rejectFollowRequest(followerId, token) {
+  return apiRequest(`/api/v1/follows/requests/${followerId}/reject`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+export function muteUser(userId, token) {
+  return apiRequest(`/api/v1/follows/${userId}/mute`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export function unmuteUser(userId, token) {
+  return apiRequest(`/api/v1/follows/${userId}/mute`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+export function getMuteStatus(userId, token) {
+  return apiRequest(`/api/v1/follows/${userId}/mute-status`, { token })
+}
+
+export function listMutedUsers({ page = 0, size = 20 } = {}, token) {
+  return apiRequest(`/api/v1/follows/me/muted?page=${page}&size=${size}`, { token })
+}
+
+export function listMutedUserIds(token) {
+  return apiRequest(`/api/v1/follows/me/muted-ids`, { token })
+}

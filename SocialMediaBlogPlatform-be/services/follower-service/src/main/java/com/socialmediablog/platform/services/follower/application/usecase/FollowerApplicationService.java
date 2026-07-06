@@ -39,11 +39,26 @@ import com.socialmediablog.platform.services.follower.domain.event.UserFollowedE
 import com.socialmediablog.platform.services.follower.domain.event.UserUnblockedEvent;
 import com.socialmediablog.platform.services.follower.domain.event.UserUnfollowedEvent;
 import com.socialmediablog.platform.services.follower.domain.repository.FollowRelationRepository;
+import com.socialmediablog.platform.services.follower.domain.repository.MuteRepository;
+import com.socialmediablog.platform.services.follower.domain.aggregate.Mute;
+import com.socialmediablog.platform.services.follower.infrastructure.feign.UserServiceFeignClient;
+import com.socialmediablog.platform.services.follower.application.port.in.AcceptFollowRequestUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.RejectFollowRequestUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.ListPendingFollowRequestsUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.MuteUserUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.UnmuteUserUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.GetMuteStatusUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.ListMutedUsersUseCase;
+import com.socialmediablog.platform.services.follower.application.port.in.ListMutedUserIdsUseCase;
+import com.socialmediablog.platform.services.follower.domain.event.UserFollowRequestedEvent;
+import com.socialmediablog.platform.services.follower.domain.event.UserFollowAcceptedEvent;
 import com.socialmediablog.platform.services.follower.domain.vo.FollowedUserId;
 import com.socialmediablog.platform.services.follower.domain.vo.FollowerId;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,18 +75,33 @@ public class FollowerApplicationService implements
         UnblockUserUseCase,
         GetBlockStatusUseCase,
         ListBlockedUsersUseCase,
-        CheckMutualFollowUseCase {
+        CheckMutualFollowUseCase,
+        AcceptFollowRequestUseCase,
+        RejectFollowRequestUseCase,
+        ListPendingFollowRequestsUseCase,
+        MuteUserUseCase,
+        UnmuteUserUseCase,
+        GetMuteStatusUseCase,
+        ListMutedUsersUseCase,
+        ListMutedUserIdsUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(FollowerApplicationService.class);
     private static final int MAX_PAGE_SIZE = 100;
 
     private final FollowRelationRepository followRelationRepository;
     private final FollowerEventPublisher followerEventPublisher;
+    private final UserServiceFeignClient userServiceFeignClient;
+    private final MuteRepository muteRepository;
 
     public FollowerApplicationService(
             FollowRelationRepository followRelationRepository,
-            FollowerEventPublisher followerEventPublisher) {
+            FollowerEventPublisher followerEventPublisher,
+            UserServiceFeignClient userServiceFeignClient,
+            MuteRepository muteRepository) {
         this.followRelationRepository = followRelationRepository;
         this.followerEventPublisher = followerEventPublisher;
+        this.userServiceFeignClient = userServiceFeignClient;
+        this.muteRepository = muteRepository;
     }
 
     @Override
@@ -104,15 +134,46 @@ public class FollowerApplicationService implements
                     }
                 });
 
+        // Fetch isPrivate settings via Feign
+        boolean isPrivate = false;
+        try {
+            var userResponse = userServiceFeignClient.getPublicUser(command.followedUserId());
+            if (userResponse != null && userResponse.data() != null) {
+                isPrivate = userResponse.data().isPrivate();
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch user privacy settings via Feign client: {}", e.getMessage());
+        }
+
+        final boolean finalIsPrivate = isPrivate;
         FollowRelation relation = followRelationRepository.findByFollowerIdAndFollowedUserId(followerId, followedUserId)
-                .map(existing -> existing.activate(now))
-                .orElseGet(() -> FollowRelation.follow(followerId, followedUserId, now));
+                .map(existing -> {
+                    if (finalIsPrivate) {
+                        return existing.requestFollow(now);
+                    } else {
+                        return existing.activate(now);
+                    }
+                })
+                .orElseGet(() -> {
+                    if (finalIsPrivate) {
+                        return FollowRelation.pendingFollow(followerId, followedUserId, now);
+                    } else {
+                        return FollowRelation.follow(followerId, followedUserId, now);
+                    }
+                });
 
         FollowRelation saved = followRelationRepository.save(relation);
-        followerEventPublisher.publish(
-                saved.id().value(),
-                new UserFollowedEvent(UUID.randomUUID(), command.followerId(), command.followedUserId(), now)
-        );
+        if (saved.isPending()) {
+            followerEventPublisher.publish(
+                    saved.id().value(),
+                    new UserFollowRequestedEvent(UUID.randomUUID(), command.followerId(), command.followedUserId(), now)
+            );
+        } else {
+            followerEventPublisher.publish(
+                    saved.id().value(),
+                    new UserFollowedEvent(UUID.randomUUID(), command.followerId(), command.followedUserId(), now)
+            );
+        }
         return FollowRelationView.from(saved);
     }
 
@@ -133,7 +194,7 @@ public class FollowerApplicationService implements
                     );
                     return FollowRelationView.from(saved);
                 })
-                .orElseGet(() -> new FollowRelationView(null, command.followerId(), command.followedUserId(), false, false, null, null));
+                .orElseGet(() -> new FollowRelationView(null, command.followerId(), command.followedUserId(), false, false, false, null, null));
     }
 
     @Override
@@ -150,6 +211,10 @@ public class FollowerApplicationService implements
                 .map(FollowRelation::isBlocked)
                 .orElse(false);
 
+        boolean pending = followRelationRepository.findByFollowerIdAndFollowedUserId(viewerId, targetUserId)
+                .map(FollowRelation::isPending)
+                .orElse(false);
+
         boolean mutualFollow = false;
         if (following) {
             mutualFollow = followRelationRepository.findByFollowerIdAndFollowedUserId(
@@ -157,7 +222,7 @@ public class FollowerApplicationService implements
             ).map(FollowRelation::isActive).orElse(false);
         }
 
-        return new FollowStatus(command.viewerId(), command.targetUserId(), following, blocked, mutualFollow);
+        return new FollowStatus(command.viewerId(), command.targetUserId(), following, blocked, mutualFollow, pending);
     }
 
     @Override
@@ -256,7 +321,7 @@ public class FollowerApplicationService implements
                     );
                     return FollowRelationView.from(saved);
                 })
-                .orElseGet(() -> new FollowRelationView(null, command.blockerId(), command.blockedUserId(), false, false, null, null));
+                .orElseGet(() -> new FollowRelationView(null, command.blockerId(), command.blockedUserId(), false, false, false, null, null));
     }
 
     @Override
@@ -317,5 +382,132 @@ public class FollowerApplicationService implements
             return 20;
         }
         return Math.min(size, MAX_PAGE_SIZE);
+    }
+
+    // --- AcceptFollowRequestUseCase ---
+    @Override
+    @Transactional
+    public FollowRelationView accept(UUID userId, UUID followerId) {
+        FollowRelation relation = followRelationRepository.findByFollowerIdAndFollowedUserId(
+                FollowerId.of(followerId), FollowedUserId.of(userId)
+        ).orElseThrow(() -> new IllegalArgumentException("Follow request not found"));
+
+        if (!relation.isPending()) {
+            throw new IllegalStateException("Follow request is not in PENDING state");
+        }
+
+        Instant now = Instant.now();
+        FollowRelation accepted = relation.accept(now);
+        FollowRelation saved = followRelationRepository.save(accepted);
+
+        // Notify B (user who is being followed) -> publish UserFollowedEvent
+        followerEventPublisher.publish(
+                saved.id().value(),
+                new UserFollowedEvent(UUID.randomUUID(), followerId, userId, now)
+        );
+
+        // Notify A (follower who sent the request) -> publish UserFollowAcceptedEvent
+        followerEventPublisher.publish(
+                saved.id().value(),
+                new UserFollowAcceptedEvent(UUID.randomUUID(), followerId, userId, now)
+        );
+
+        return FollowRelationView.from(saved);
+    }
+
+    // --- RejectFollowRequestUseCase ---
+    @Override
+    @Transactional
+    public FollowRelationView reject(UUID userId, UUID followerId) {
+        FollowRelation relation = followRelationRepository.findByFollowerIdAndFollowedUserId(
+                FollowerId.of(followerId), FollowedUserId.of(userId)
+        ).orElseThrow(() -> new IllegalArgumentException("Follow request not found"));
+
+        if (!relation.isPending()) {
+            throw new IllegalStateException("Follow request is not in PENDING state");
+        }
+
+        Instant now = Instant.now();
+        FollowRelation rejected = relation.reject(now);
+        FollowRelation saved = followRelationRepository.save(rejected);
+
+        return FollowRelationView.from(saved);
+    }
+
+    // --- ListPendingFollowRequestsUseCase ---
+    @Override
+    @Transactional(readOnly = true)
+    public FollowUserPage listPending(UUID userId, int page, int size) {
+        UUID checkedUserId = requireUserId(userId);
+        int normalizedPage = normalizePage(page);
+        int normalizedSize = normalizeSize(size);
+        FollowedUserId followedUserId = FollowedUserId.of(checkedUserId);
+
+        List<FollowUserItem> pending = followRelationRepository.findPendingFollowRequests(followedUserId, normalizedPage, normalizedSize).stream()
+                .map(relation -> new FollowUserItem(relation.followerId().value(), relation.updatedAt()))
+                .toList();
+
+        return new FollowUserPage(
+                checkedUserId,
+                pending,
+                normalizedPage,
+                normalizedSize,
+                followRelationRepository.countPendingFollowRequests(followedUserId)
+        );
+    }
+
+    // --- MuteUserUseCase ---
+    @Override
+    @Transactional
+    public void mute(UUID muterId, UUID mutedUserId) {
+        if (muterId.equals(mutedUserId)) {
+            throw new IllegalArgumentException("Cannot mute yourself");
+        }
+        Instant now = Instant.now();
+        muteRepository.findByMuterIdAndMutedUserId(muterId, mutedUserId)
+                .orElseGet(() -> muteRepository.save(Mute.mute(muterId, mutedUserId, now)));
+    }
+
+    // --- UnmuteUserUseCase ---
+    @Override
+    @Transactional
+    public void unmute(UUID muterId, UUID mutedUserId) {
+        muteRepository.findByMuterIdAndMutedUserId(muterId, mutedUserId)
+                .ifPresent(muteRepository::delete);
+    }
+
+    // --- GetMuteStatusUseCase ---
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isMuted(UUID muterId, UUID mutedUserId) {
+        return muteRepository.findByMuterIdAndMutedUserId(muterId, mutedUserId).isPresent();
+    }
+
+    // --- ListMutedUsersUseCase ---
+    @Override
+    @Transactional(readOnly = true)
+    public FollowUserPage listMuted(UUID muterId, int page, int size) {
+        UUID checkedMuterId = requireUserId(muterId);
+        int normalizedPage = normalizePage(page);
+        int normalizedSize = normalizeSize(size);
+
+        List<FollowUserItem> mutedList = muteRepository.findByMuterId(checkedMuterId, normalizedPage, normalizedSize).stream()
+                .map(mute -> new FollowUserItem(mute.mutedUserId(), mute.createdAt()))
+                .toList();
+
+        return new FollowUserPage(
+                checkedMuterId,
+                mutedList,
+                normalizedPage,
+                normalizedSize,
+                muteRepository.countByMuterId(checkedMuterId)
+        );
+    }
+
+    // --- ListMutedUserIdsUseCase ---
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> listMutedIds(UUID muterId) {
+        return muteRepository.findMutedUserIdsByMuterId(muterId);
     }
 }

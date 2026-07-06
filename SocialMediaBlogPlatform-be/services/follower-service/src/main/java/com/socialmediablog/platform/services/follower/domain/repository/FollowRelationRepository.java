@@ -25,5 +25,9 @@ public interface FollowRelationRepository {
 
     long countBlockedByUser(FollowerId blockerId);
 
+    List<FollowRelation> findPendingFollowRequests(FollowedUserId followedUserId, int page, int size);
+
+    long countPendingFollowRequests(FollowedUserId followedUserId);
+
     FollowRelation save(FollowRelation followRelation);
 }

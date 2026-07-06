@@ -117,16 +117,28 @@ export function SiteHeader({ session, navigate, onLogout }) {
       )
       setNotifOpen(false)
 
-      if (notif.type === 'NEW_COMMENT' || notif.type === 'NEW_ARTICLE') {
+      if (
+        notif.type === 'NEW_COMMENT' ||
+        notif.type === 'NEW_ARTICLE' ||
+        notif.type === 'COMMENT_CREATED' ||
+        notif.type === 'COMMENT_REPLIED' ||
+        notif.type === 'ARTICLE_PUBLISHED'
+      ) {
         const article = await getArticleById(notif.subjectId)
         if (article?.slug) {
           navigate(`/articles/${article.slug}`)
         }
-      } else if (notif.type === 'NEW_FOLLOWER') {
+      } else if (
+        notif.type === 'NEW_FOLLOWER' ||
+        notif.type === 'USER_FOLLOWED' ||
+        notif.type === 'USER_FOLLOW_ACCEPTED'
+      ) {
         const user = await getPublicUser(notif.actorId)
         if (user?.username) {
           navigate(`/author/${user.username}`)
         }
+      } else if (notif.type === 'USER_FOLLOW_REQUESTED') {
+        navigate('/profile')
       }
     } catch {
       // bỏ qua lỗi đơn lẻ

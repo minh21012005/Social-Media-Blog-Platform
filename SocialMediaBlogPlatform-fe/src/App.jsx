@@ -35,6 +35,7 @@ function App() {
   const [auth, setAuth] = useState(loadAuth)
   const [authChecking, setAuthChecking] = useState(() => Boolean(loadAuth()?.accessToken || isProtectedRoute(window.location.pathname)))
   const [toasts, setToasts] = useState([])
+  const [mutedUserIds, setMutedUserIds] = useState(new Set())
   const authRestoreInFlight = useRef(null)
 
   const session = useMemo(() => {
@@ -108,6 +109,30 @@ function App() {
       active = false
     }
   }, [restoreSessionFromRefresh])
+
+  useEffect(() => {
+    if (!session) {
+      setMutedUserIds(new Set())
+      return
+    }
+
+    let active = true
+    requestWithAuth(async (token) => {
+      try {
+        const { listMutedUserIds } = await import('./services/follows')
+        const response = await listMutedUserIds(token)
+        if (active && response && response.data) {
+          setMutedUserIds(new Set(response.data))
+        }
+      } catch (error) {
+        console.error('Failed to load muted user IDs:', error)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [session, requestWithAuth])
 
   useEffect(() => {
     if (!isProtectedRoute(route) || session || authChecking || authRestoreInFlight.current) {
@@ -255,7 +280,16 @@ function App() {
     }
 
     if (pathname === '/profile') {
-      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
+      return protectedPage(
+        <ProfilePage
+          session={session}
+          requestWithAuth={requestWithAuth}
+          onProfileUpdated={handleProfileUpdated}
+          notify={notify}
+          mutedUserIds={mutedUserIds}
+          onMutedUsersChanged={setMutedUserIds}
+        />
+      )
     }
 
 
@@ -290,6 +324,7 @@ function App() {
           requestWithAuth={requestWithAuth}
           session={session}
           slug={articleMatch[1]}
+          mutedUserIds={mutedUserIds}
         />
       )
     }
@@ -302,6 +337,18 @@ function App() {
           session={session}
           requestWithAuth={requestWithAuth}
           notify={notify}
+          mutedUserIds={mutedUserIds}
+          onMuteToggle={(userId, isMuted) => {
+            setMutedUserIds(prev => {
+              const next = new Set(prev)
+              if (isMuted) {
+                next.add(userId)
+              } else {
+                next.delete(userId)
+              }
+              return next
+            })
+          }}
         />
       )
     }
@@ -317,10 +364,10 @@ function App() {
 
     if (pathname === '/search') {
       const query = routeUrl.searchParams.get('q')?.trim() || ''
-      return <SearchPage key={query} query={query} navigate={navigate} />
+      return <SearchPage key={query} query={query} navigate={navigate} mutedUserIds={mutedUserIds} />
     }
 
-    return <HomePage navigate={navigate} />
+    return <HomePage navigate={navigate} mutedUserIds={mutedUserIds} />
   }
 
   return (

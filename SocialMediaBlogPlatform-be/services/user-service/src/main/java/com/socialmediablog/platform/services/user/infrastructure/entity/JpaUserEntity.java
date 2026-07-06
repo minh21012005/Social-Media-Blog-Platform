@@ -44,6 +44,9 @@ public class JpaUserEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
+    @Column(name = "is_private", nullable = false)
+    private boolean isPrivate = false;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role", nullable = false, length = 30)
@@ -77,7 +80,7 @@ public class JpaUserEntity extends BaseEntity {
     }
 
     public static JpaUserEntity fromDomain(User user) {
-        return new JpaUserEntity(
+        JpaUserEntity entity = new JpaUserEntity(
                 user.id(),
                 user.username().value(),
                 user.email().value(),
@@ -90,6 +93,8 @@ public class JpaUserEntity extends BaseEntity {
                 user.createdAt(),
                 user.updatedAt()
         );
+        entity.isPrivate = user.isPrivate();
+        return entity;
     }
 
     public User toDomain() {
@@ -103,6 +108,7 @@ public class JpaUserEntity extends BaseEntity {
                 avatarUrl,
                 UserStatus.valueOf(status),
                 roles.stream().map(Role::valueOf).collect(Collectors.toCollection(LinkedHashSet::new)),
+                isPrivate,
                 createdAt,
                 updatedAt
         );

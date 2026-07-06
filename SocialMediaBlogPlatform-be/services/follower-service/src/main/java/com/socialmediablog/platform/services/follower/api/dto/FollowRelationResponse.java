@@ -10,6 +10,7 @@ public record FollowRelationResponse(
         UUID followedUserId,
         boolean following,
         boolean blocked,
+        boolean pending,
         Instant followedAt,
         Instant unfollowedAt
 ) {
@@ -21,6 +22,7 @@ public record FollowRelationResponse(
                 view.followedUserId(),
                 view.following(),
                 view.blocked(),
+                view.pending(),
                 view.followedAt(),
                 view.unfollowedAt()
         );

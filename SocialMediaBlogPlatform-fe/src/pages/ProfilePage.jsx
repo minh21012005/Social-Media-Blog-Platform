@@ -3,12 +3,13 @@ import { MediaUploader } from '../components/MediaUploader'
 import { SiteFooter } from '../components/SiteFooter'
 import { authors } from '../data/editorial'
 import { updateProfile, uploadAvatar, getPublicUsers } from '../services/users'
-import { getFollowCounts, listFollowers, listFollowing, listBlockedUsers, followUser, unfollowUser, unblockUser } from '../services/follows'
+import { getFollowCounts, listFollowers, listFollowing, listBlockedUsers, followUser, unfollowUser, unblockUser, listPendingFollowRequests, acceptFollowRequest, rejectFollowRequest, listMutedUsers, unmuteUser } from '../services/follows'
 
-export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify }) {
+export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify, mutedUserIds = new Set(), onMutedUsersChanged }) {
   const [form, setForm] = useState({
     displayName: session.user.displayName || '',
     bio: session.user.bio || '',
+    isPrivate: session.user.isPrivate || false,
   })
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -50,6 +51,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
         displayName: form.displayName,
         bio: form.bio,
         avatarUrl: session.user.avatarUrl,
+        isPrivate: form.isPrivate,
       }, token))
       onProfileUpdated(user)
       notify?.('Your public profile has been updated.', { title: 'Profile saved', type: 'success' })
@@ -88,6 +90,10 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
           page = await requestWithAuth((token) => listFollowers(session.user.id, { page: 0, size: 50 }, token))
         } else if (activeTab === 'following') {
           page = await requestWithAuth((token) => listFollowing(session.user.id, { page: 0, size: 50 }, token))
+        } else if (activeTab === 'requests') {
+          page = await requestWithAuth((token) => listPendingFollowRequests({ page: 0, size: 50 }, token))
+        } else if (activeTab === 'muted') {
+          page = await requestWithAuth((token) => listMutedUsers({ page: 0, size: 50 }, token))
         } else {
           page = await requestWithAuth((token) => listBlockedUsers({ page: 0, size: 50 }, token))
         }
@@ -164,6 +170,78 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
     }
   }
 
+  const handleAcceptRequest = async (followerId) => {
+    setTabBusy((prev) => ({ ...prev, [followerId]: true }))
+    try {
+      await requestWithAuth((token) => acceptFollowRequest(followerId, token))
+      notify?.('Follow request accepted', { title: 'Accepted', type: 'success' })
+      
+      // Update follow counts
+      const newCounts = await requestWithAuth((token) => getFollowCounts(session.user.id, token)).catch(() => null)
+      if (newCounts) setCounts({ followers: newCounts.followers, following: newCounts.following })
+
+      // Reload requests tab
+      const page = await requestWithAuth((token) => listPendingFollowRequests({ page: 0, size: 50 }, token))
+      const ids = (page?.users || []).map((u) => u.userId)
+      let profiles = new Map()
+      if (ids.length > 0) {
+        try { profiles = await getPublicUsers(ids) } catch { /* ignore */ }
+      }
+      setTabData({ users: page?.users || [], profiles, page: 0, total: page?.total || 0, loading: false })
+    } catch (err) {
+      notify?.(err.message, { title: 'Action failed' })
+    } finally {
+      setTabBusy((prev) => ({ ...prev, [followerId]: false }))
+    }
+  }
+
+  const handleRejectRequest = async (followerId) => {
+    setTabBusy((prev) => ({ ...prev, [followerId]: true }))
+    try {
+      await requestWithAuth((token) => rejectFollowRequest(followerId, token))
+      notify?.('Follow request rejected', { title: 'Rejected', type: 'success' })
+
+      // Reload requests tab
+      const page = await requestWithAuth((token) => listPendingFollowRequests({ page: 0, size: 50 }, token))
+      const ids = (page?.users || []).map((u) => u.userId)
+      let profiles = new Map()
+      if (ids.length > 0) {
+        try { profiles = await getPublicUsers(ids) } catch { /* ignore */ }
+      }
+      setTabData({ users: page?.users || [], profiles, page: 0, total: page?.total || 0, loading: false })
+    } catch (err) {
+      notify?.(err.message, { title: 'Action failed' })
+    } finally {
+      setTabBusy((prev) => ({ ...prev, [followerId]: false }))
+    }
+  }
+
+  const handleUnmute = async (userId) => {
+    setTabBusy((prev) => ({ ...prev, [userId]: true }))
+    try {
+      await requestWithAuth((token) => unmuteUser(userId, token))
+      notify?.('User has been unmuted', { title: 'Unmuted', type: 'success' })
+
+      // Update global mutedUserIds state
+      const nextMuted = new Set(mutedUserIds)
+      nextMuted.delete(userId)
+      onMutedUsersChanged?.(nextMuted)
+
+      // Reload muted tab
+      const page = await requestWithAuth((token) => listMutedUsers({ page: 0, size: 50 }, token))
+      const ids = (page?.users || []).map((u) => u.userId)
+      let profiles = new Map()
+      if (ids.length > 0) {
+        try { profiles = await getPublicUsers(ids) } catch { /* ignore */ }
+      }
+      setTabData({ users: page?.users || [], profiles, page: 0, total: page?.total || 0, loading: false })
+    } catch (err) {
+      notify?.(err.message, { title: 'Unmute failed' })
+    } finally {
+      setTabBusy((prev) => ({ ...prev, [userId]: false }))
+    }
+  }
+
   return (
     <main>
       <section className="profile-page">
@@ -196,6 +274,14 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                 Bio
                 <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: '16px 0', fontWeight: 'normal' }}>
+                <input
+                  type="checkbox"
+                  checked={form.isPrivate}
+                  onChange={(e) => setForm((c) => ({ ...c, isPrivate: e.target.checked }))}
+                />
+                Private account (requires approval for new followers)
+              </label>
               {error && <p className="form-error">{error}</p>}
               <div className="profile-actions">
                 <button className="submit-button" disabled={saving} type="submit">
@@ -224,6 +310,20 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
             Following <span className="tab-count">{counts.following}</span>
           </button>
           <button
+            className={`profile-tab${activeTab === 'requests' ? ' profile-tab--active' : ''}`}
+            type="button"
+            onClick={() => setActiveTab('requests')}
+          >
+            Requests
+          </button>
+          <button
+            className={`profile-tab${activeTab === 'muted' ? ' profile-tab--active' : ''}`}
+            type="button"
+            onClick={() => setActiveTab('muted')}
+          >
+            Muted
+          </button>
+          <button
             className={`profile-tab${activeTab === 'blocked' ? ' profile-tab--active' : ''}`}
             type="button"
             onClick={() => setActiveTab('blocked')}
@@ -237,7 +337,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
             <div className="loading-state">Loading...</div>
           ) : tabData.users.length === 0 ? (
             <div className="empty-state">
-              <p>{activeTab === 'followers' ? 'No followers yet.' : activeTab === 'following' ? 'Not following anyone yet.' : 'No blocked users.'}</p>
+              <p>{activeTab === 'followers' ? 'No followers yet.' : activeTab === 'following' ? 'Not following anyone yet.' : activeTab === 'requests' ? 'No pending follow requests.' : activeTab === 'muted' ? 'No muted users.' : 'No blocked users.'}</p>
             </div>
           ) : (
             <div className="follow-user-list">
@@ -271,6 +371,35 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                           onClick={() => handleFollowToggle(item.userId, true)}
                         >
                           {isBusy ? 'Updating...' : 'Unfollow'}
+                        </button>
+                      ) : activeTab === 'requests' ? (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            className="submit-button compact"
+                            style={{ margin: 0, padding: '4px 12px', fontSize: '12px' }}
+                            disabled={isBusy}
+                            type="button"
+                            onClick={() => handleAcceptRequest(item.userId)}
+                          >
+                            {isBusy ? 'Accepting...' : 'Accept'}
+                          </button>
+                          <button
+                            className="outline-pill compact"
+                            disabled={isBusy}
+                            type="button"
+                            onClick={() => handleRejectRequest(item.userId)}
+                          >
+                            {isBusy ? 'Rejecting...' : 'Reject'}
+                          </button>
+                        </div>
+                      ) : activeTab === 'muted' ? (
+                        <button
+                          className="outline-pill compact"
+                          disabled={isBusy}
+                          type="button"
+                          onClick={() => handleUnmute(item.userId)}
+                        >
+                          {isBusy ? 'Unmuting...' : 'Unmute'}
                         </button>
                       ) : null}
                       <time>{item.followedAt ? new Date(item.followedAt).toLocaleDateString() : ''}</time>

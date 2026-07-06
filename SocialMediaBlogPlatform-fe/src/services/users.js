@@ -13,6 +13,7 @@ export function normalizeProfile(profile) {
     bio: profile.bio || '',
     avatarUrl: profile.avatarUrl || '',
     roles: profile.roles || [],
+    isPrivate: profile.isPrivate || false,
     createdAt: profile.createdAt,
   }
 }

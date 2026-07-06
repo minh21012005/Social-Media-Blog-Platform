@@ -103,7 +103,8 @@ public class UserController {
                         userId,
                         request.displayName(),
                         request.bio(),
-                        request.avatarUrl()
+                        request.avatarUrl(),
+                        request.isPrivate()
                 )))
         );
     }

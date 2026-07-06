@@ -79,6 +79,20 @@ public class JpaFollowRelationRepositoryAdapter implements FollowRelationReposit
     }
 
     @Override
+    public List<FollowRelation> findPendingFollowRequests(FollowedUserId followedUserId, int page, int size) {
+        return repository.findByFollowedUserIdAndStatusOrderByFollowedAtDesc(
+                followedUserId.value(),
+                FollowRelationStatus.PENDING.name(),
+                PageRequest.of(page, size)
+        ).stream().map(JpaFollowRelationEntity::toDomain).toList();
+    }
+
+    @Override
+    public long countPendingFollowRequests(FollowedUserId followedUserId) {
+        return repository.countByFollowedUserIdAndStatus(followedUserId.value(), FollowRelationStatus.PENDING.name());
+    }
+
+    @Override
     public FollowRelation save(FollowRelation followRelation) {
         return repository.save(JpaFollowRelationEntity.fromDomain(followRelation)).toDomain();
     }

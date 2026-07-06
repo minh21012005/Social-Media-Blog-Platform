@@ -54,6 +54,19 @@ public class FollowRelation {
         );
     }
 
+    public static FollowRelation pendingFollow(FollowerId followerId, FollowedUserId followedUserId, Instant now) {
+        return new FollowRelation(
+                FollowRelationId.of(UUID.randomUUID()),
+                followerId,
+                followedUserId,
+                FollowRelationStatus.PENDING,
+                now,
+                null,
+                now,
+                now
+        );
+    }
+
     public FollowRelation activate(Instant now) {
         if (status == FollowRelationStatus.ACTIVE) {
             return this;
@@ -68,6 +81,57 @@ public class FollowRelation {
                 FollowRelationStatus.ACTIVE,
                 now,
                 null,
+                createdAt,
+                now
+        );
+    }
+
+    public FollowRelation requestFollow(Instant now) {
+        if (status == FollowRelationStatus.PENDING || status == FollowRelationStatus.ACTIVE) {
+            return this;
+        }
+        if (status == FollowRelationStatus.BLOCKED) {
+            throw new IllegalArgumentException("Blocked follow relationship cannot be updated");
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.PENDING,
+                now,
+                null,
+                createdAt,
+                now
+        );
+    }
+
+    public FollowRelation accept(Instant now) {
+        if (status != FollowRelationStatus.PENDING) {
+            throw new IllegalStateException("Relation is not pending");
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.ACTIVE,
+                now,
+                null,
+                createdAt,
+                now
+        );
+    }
+
+    public FollowRelation reject(Instant now) {
+        if (status != FollowRelationStatus.PENDING) {
+            throw new IllegalStateException("Relation is not pending");
+        }
+        return new FollowRelation(
+                id,
+                followerId,
+                followedUserId,
+                FollowRelationStatus.UNFOLLOWED,
+                followedAt,
+                now,
                 createdAt,
                 now
         );
@@ -140,6 +204,10 @@ public class FollowRelation {
 
     public boolean isBlocked() {
         return status == FollowRelationStatus.BLOCKED;
+    }
+
+    public boolean isPending() {
+        return status == FollowRelationStatus.PENDING;
     }
 
     public static FollowRelation restore(

@@ -9,7 +9,7 @@ import { blockUser, followUser, getBlockStatus, getFollowCounts, getFollowStatus
 import { getPublicUserByUsername } from '../services/users'
 import { getPresenceStatus } from '../services/presence'
 
-export function AuthorPage({ username, navigate, session, requestWithAuth, notify }) {
+export function AuthorPage({ username, navigate, session, requestWithAuth, notify, mutedUserIds = new Set(), onMuteToggle }) {
   const [state, setState] = useState({ loading: true, author: null, articles: [], error: '' })
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -19,6 +19,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
     following: false,
     blocked: false,
     mutualFollow: false,
+    pending: false,
     followers: 0,
     followingCount: 0,
     error: '',
@@ -28,6 +29,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
 
   const canCallTargetApis = Boolean(state.author?.id)
   const isSelf = Boolean(session?.user?.id && state.author?.id && session.user.id === state.author.id)
+  const isMuted = state.author ? mutedUserIds.has(state.author.id) : false
 
   // Close kebab menu on outside click
   useEffect(() => {
@@ -94,6 +96,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
             following: status?.following ?? false,
             blocked: blockStatus?.blocked ?? false,
             mutualFollow: status?.mutualFollow ?? false,
+            pending: status?.pending ?? false,
             followers: counts.followers,
             followingCount: counts.following,
             error: '',
@@ -122,7 +125,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
     setFollowState((current) => ({ ...current, busy: true, error: '' }))
     try {
       const relation = await requestWithAuth((token) => (
-        followState.following ? unfollowUser(author.id, token) : followUser(author.id, token)
+        (followState.following || followState.pending) ? unfollowUser(author.id, token) : followUser(author.id, token)
       ))
       const counts = await requestWithAuth((token) => getFollowCounts(author.id, token)).catch(() => null)
       const status = await requestWithAuth((token) => getFollowStatus(author.id, token)).catch(() => null)
@@ -130,6 +133,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         ...current,
         busy: false,
         following: relation.following,
+        pending: relation.pending,
         mutualFollow: status?.mutualFollow ?? false,
         followers: counts?.followers ?? current.followers + (relation.following ? 1 : -1),
         followingCount: counts?.following ?? current.followingCount,
@@ -152,6 +156,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         busy: false,
         blocked: true,
         following: false,
+        pending: false,
         mutualFollow: false,
         followers: counts?.followers ?? Math.max(0, current.followers - 1),
         followingCount: counts?.following ?? current.followingCount,
@@ -163,8 +168,31 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
     }
   }
 
+  const toggleMute = async () => {
+    if (!session || !author?.id) return
+    setMenuOpen(false)
+    setFollowState((current) => ({ ...current, busy: true, error: '' }))
+    try {
+      const { muteUser, unmuteUser } = await import('../services/follows')
+      if (isMuted) {
+        await requestWithAuth((token) => unmuteUser(author.id, token))
+        onMuteToggle?.(author.id, false)
+        notify?.(`Unmuted @${author.username}`, { title: 'Unmuted', type: 'success' })
+      } else {
+        await requestWithAuth((token) => muteUser(author.id, token))
+        onMuteToggle?.(author.id, true)
+        notify?.(`Muted @${author.username}`, { title: 'Muted', type: 'success' })
+      }
+      setFollowState((current) => ({ ...current, busy: false }))
+    } catch (error) {
+      setFollowState((current) => ({ ...current, busy: false, error: error.message }))
+      notify?.(error.message, { title: 'Mute failed' })
+    }
+  }
+
   const author = state.author
   const isOwnProfile = Boolean(session?.user?.id && author?.id && session.user.id === author.id)
+  const isLocked = author?.isPrivate && !followState.following && !isOwnProfile
 
   return (
     <main>
@@ -192,9 +220,14 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
                       {followState.blocked ? (
                         <p className="kebab-info">This user is blocked. Manage blocked users in your <a href="/profile" onClick={(e) => { e.preventDefault(); setMenuOpen(false); navigate('/profile') }}>Profile settings</a>.</p>
                       ) : (
-                        <button type="button" className="kebab-danger" onClick={doBlock} disabled={followState.busy}>
-                          Block @{author?.username}
-                        </button>
+                        <>
+                          <button type="button" className="kebab-danger" onClick={doBlock} disabled={followState.busy}>
+                            Block @{author?.username}
+                          </button>
+                          <button type="button" className="kebab-item" onClick={toggleMute} disabled={followState.busy}>
+                            {isMuted ? `Unmute @${author?.username}` : `Mute @${author?.username}`}
+                          </button>
+                        </>
                       )}
                     </div>
                   )}
@@ -217,12 +250,12 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
                   <span className="blocked-label">Blocked</span>
                 ) : (
                   <button
-                    className={followState.following ? 'outline-pill compact' : 'submit-button compact'}
+                    className={followState.following || followState.pending ? 'outline-pill compact' : 'submit-button compact'}
                     disabled={followState.loading || followState.busy}
                     type="button"
                     onClick={toggleFollow}
                   >
-                    {followState.busy ? 'Updating...' : followState.following ? 'Following' : 'Follow'}
+                    {followState.busy ? 'Updating...' : followState.following ? 'Following' : followState.pending ? 'Requested' : 'Follow'}
                   </button>
                 )}
                 {followState.error && <span>{followState.error}</span>}
@@ -243,9 +276,19 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
         {state.loading && <div className="loading-state">Loading author stories...</div>}
         {state.error && <div className="empty-state"><h2>Could not load author.</h2><p>{state.error}</p></div>}
         {!state.loading && !state.error && (
-          <ArticleList articles={state.articles} emptyText="This author has not published an article yet." navigate={navigate} />
+          isLocked ? (
+            <div className="empty-state" style={{ padding: '60px 20px', border: '1px dashed var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔒</div>
+              <h2>This Account is Private</h2>
+              <p>Follow @{author?.username} to see their articles.</p>
+            </div>
+          ) : (
+            <>
+              <ArticleList articles={state.articles} emptyText="This author has not published an article yet." navigate={navigate} />
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </>
+          )
         )}
-        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       </section>
 
       <SiteFooter />
