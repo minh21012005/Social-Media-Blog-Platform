@@ -201,19 +201,50 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
 
     setRepliesByComment((current) => ({
       ...current,
-      [commentId]: { error: '', items: [], loading: true },
+      [commentId]: { error: '', items: [], loading: true, page: 0, hasMore: false },
     }))
 
     try {
-      const replies = await onLoadReplies(commentId)
+      const data = await onLoadReplies(commentId, 0)
       setRepliesByComment((current) => ({
         ...current,
-        [commentId]: { error: '', items: replies, loading: false },
+        [commentId]: { error: '', items: data.items, page: data.page, hasMore: data.hasMore, loading: false },
       }))
     } catch (replyError) {
       setRepliesByComment((current) => ({
         ...current,
-        [commentId]: { error: replyError.message || 'Could not load replies.', items: [], loading: false },
+        [commentId]: { error: replyError.message || 'Could not load replies.', items: [], loading: false, page: 0, hasMore: false },
+      }))
+    }
+  }
+
+  const loadMoreReplies = async (commentId) => {
+    const currentState = repliesByComment[commentId]
+    if (!currentState || currentState.loadingMore) return
+
+    setRepliesByComment((current) => ({
+      ...current,
+      [commentId]: { ...currentState, loadingMore: true },
+    }))
+
+    try {
+      const nextPage = currentState.page + 1
+      const data = await onLoadReplies(commentId, nextPage)
+      setRepliesByComment((current) => ({
+        ...current,
+        [commentId]: { 
+          error: '', 
+          items: [...currentState.items, ...data.items], 
+          page: data.page, 
+          hasMore: data.hasMore, 
+          loading: false,
+          loadingMore: false 
+        },
+      }))
+    } catch (err) {
+      setRepliesByComment((current) => ({
+        ...current,
+        [commentId]: { ...currentState, error: 'Could not load more replies.', loadingMore: false },
       }))
     }
   }
@@ -231,6 +262,11 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
         {replyState?.loading && <p className="comment-reply-status">Loading replies...</p>}
         {replyState?.error && <p className="comment-reply-status error">{replyState.error}</p>}
         {replyState?.items?.map((reply) => renderReply(reply))}
+        {replyState?.hasMore && (
+          <button className="text-button" disabled={replyState.loadingMore} type="button" onClick={() => loadMoreReplies(commentId)}>
+            {replyState.loadingMore ? 'Loading more replies...' : 'Load more replies'}
+          </button>
+        )}
       </div>
     )
   }
@@ -600,6 +636,10 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [comments, setComments] = useState([])
   const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
+  const [commentPage, setCommentPage] = useState(0)
+  const [commentSortBy, setCommentSortBy] = useState('NEWEST')
+  const [hasMoreComments, setHasMoreComments] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -609,23 +649,6 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         recordArticleView(article.id, { source: 'web' }).catch(() => null)
         if (active) {
           setState({ loading: false, article, error: '' })
-          setCommentsState({ loading: true, error: '' })
-        }
-        try {
-          const articleComments = session
-            ? await requestWithAuth((token) => listArticleComments(article.id, token))
-            : await listArticleComments(article.id)
-          const enrichedComments = await enrichComments(articleComments)
-          if (active) {
-            setComments(enrichedComments)
-            setCommentsState({ loading: false, error: '' })
-          }
-        } catch (commentsError) {
-          console.error('Could not load comments.', commentsError)
-          if (active) {
-            setComments([])
-            setCommentsState({ loading: false, error: commentsError.message || 'Could not load comments.' })
-          }
         }
       } catch (error) {
         if (active) {
@@ -637,7 +660,63 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     return () => {
       active = false
     }
-  }, [requestWithAuth, session, slug])
+  }, [slug])
+
+  useEffect(() => {
+    let active = true
+    if (!state.article) return
+
+    async function loadComments() {
+      setCommentsState({ loading: true, error: '' })
+      try {
+        const pageResult = session
+          ? await requestWithAuth((token) => listArticleComments(state.article.id, token, 0, 10, commentSortBy))
+          : await listArticleComments(state.article.id, null, 0, 10, commentSortBy)
+        
+        // If the backend has not yet updated to return PageResult, fallback safely
+        const items = pageResult.items || pageResult
+        const enrichedComments = await enrichComments(items)
+        if (active) {
+          setComments(enrichedComments)
+          setCommentPage(0)
+          setHasMoreComments(pageResult.page !== undefined ? pageResult.page + 1 < pageResult.totalPages : false)
+          setCommentsState({ loading: false, error: '' })
+        }
+      } catch (commentsError) {
+        console.error('Could not load comments.', commentsError)
+        if (active) {
+          setComments([])
+          setHasMoreComments(false)
+          setCommentsState({ loading: false, error: commentsError.message || 'Could not load comments.' })
+        }
+      }
+    }
+    loadComments()
+    return () => {
+      active = false
+    }
+  }, [requestWithAuth, session, state.article, commentSortBy])
+
+  const handleLoadMoreComments = async () => {
+    if (!state.article) return
+    setLoadingMore(true)
+    try {
+      const nextPage = commentPage + 1
+      const pageResult = session
+        ? await requestWithAuth((token) => listArticleComments(state.article.id, token, nextPage, 10, commentSortBy))
+        : await listArticleComments(state.article.id, null, nextPage, 10, commentSortBy)
+      const items = pageResult.items || []
+      const enrichedComments = await enrichComments(items)
+      
+      setComments(prev => [...prev, ...enrichedComments])
+      setCommentPage(nextPage)
+      setHasMoreComments(pageResult.page !== undefined ? pageResult.page + 1 < pageResult.totalPages : false)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const currentUserId = useMemo(() => session?.user?.id, [session])
 
@@ -697,11 +776,16 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     setComments((current) => current.filter((item) => item.id !== comment.id))
   }
 
-  const handleLoadReplies = async (commentId) => {
-    const replies = session
-      ? await requestWithAuth((token) => listCommentReplies(commentId, token))
-      : await listCommentReplies(commentId)
-    return enrichComments(replies)
+  const handleLoadReplies = async (commentId, page = 0) => {
+    const repliesPage = session
+      ? await requestWithAuth((token) => listCommentReplies(commentId, token, page, 10))
+      : await listCommentReplies(commentId, null, page, 10)
+    const items = repliesPage.items || repliesPage
+    return {
+      items: await enrichComments(items),
+      page: repliesPage.page || 0,
+      hasMore: repliesPage.page !== undefined ? repliesPage.page + 1 < repliesPage.totalPages : false
+    }
   }
 
   const handleCommentReplied = async (comment, content) => {
@@ -777,6 +861,14 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           session={session}
         />
         <div className="comments-panel">
+          <div className="comments-filters" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <label htmlFor="commentSortBy" style={{ marginRight: '0.5rem', fontWeight: 500 }}>Sort by:</label>
+            <select id="commentSortBy" value={commentSortBy} onChange={(e) => setCommentSortBy(e.target.value)} style={{ padding: '0.25rem' }}>
+              <option value="NEWEST">Newest</option>
+              <option value="OLDEST">Oldest</option>
+              <option value="MOST_CLAPS">Most Clapped</option>
+            </select>
+          </div>
           {commentsState.loading && <p className="comment-loading">Loading comments...</p>}
           {commentsState.error && <p className="form-error">{commentsState.error}</p>}
           <CommentList
@@ -789,6 +881,11 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             onReply={handleCommentReplied}
             onRequireLogin={() => navigate('/login')}
           />
+          {hasMoreComments && (
+            <button className="text-button" disabled={loadingMore} type="button" onClick={handleLoadMoreComments} style={{ marginTop: '1rem', width: '100%' }}>
+              {loadingMore ? 'Loading more comments...' : 'Load more comments'}
+            </button>
+          )}
         </div>
       </section>
       <SiteFooter />

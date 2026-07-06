@@ -47,8 +47,7 @@ public class JpaCommentEntity extends BaseEntity {
             Instant editedAt,
             Instant deletedAt,
             Instant createdAt,
-            Instant updatedAt
-    ) {
+            Instant updatedAt) {
         super(id, createdAt, updatedAt);
         this.articleId = articleId;
         this.authorId = authorId;
@@ -70,8 +69,7 @@ public class JpaCommentEntity extends BaseEntity {
                 comment.editedAt(),
                 comment.deletedAt(),
                 comment.createdAt(),
-                comment.updatedAt()
-        );
+                comment.updatedAt());
     }
 
     public Comment toDomain() {
@@ -85,7 +83,6 @@ public class JpaCommentEntity extends BaseEntity {
                 editedAt,
                 deletedAt,
                 createdAt,
-                updatedAt
-        );
+                updatedAt);
     }
 }

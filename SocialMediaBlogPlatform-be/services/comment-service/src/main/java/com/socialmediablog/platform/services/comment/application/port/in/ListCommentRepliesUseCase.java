@@ -4,7 +4,9 @@ import com.socialmediablog.platform.services.comment.application.query.ListComme
 import com.socialmediablog.platform.services.comment.application.result.CommentView;
 import java.util.List;
 
+import com.socialmediablog.platform.services.comment.application.result.PageResult;
+
 public interface ListCommentRepliesUseCase {
 
-    List<CommentView> execute(ListCommentRepliesQuery query);
+    PageResult<CommentView> execute(ListCommentRepliesQuery query);
 }

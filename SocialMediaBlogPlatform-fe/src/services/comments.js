@@ -1,11 +1,13 @@
 import { apiRequest } from './api'
 
-export function listArticleComments(articleId, token) {
-  return apiRequest(`/api/v1/articles/${articleId}/comments`, { token })
+export function listArticleComments(articleId, token, page = 0, size = 10, sort = 'NEWEST') {
+  const query = new URLSearchParams({ page, size, sort }).toString()
+  return apiRequest(`/api/v1/articles/${articleId}/comments?${query}`, { token })
 }
 
-export function listCommentReplies(commentId, token) {
-  return apiRequest(`/api/v1/comments/${commentId}/replies`, { token })
+export function listCommentReplies(commentId, token, page = 0, size = 10) {
+  const query = new URLSearchParams({ page, size }).toString()
+  return apiRequest(`/api/v1/comments/${commentId}/replies?${query}`, { token })
 }
 
 export function createCommentReply(commentId, payload, token) {
