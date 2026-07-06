@@ -15,9 +15,10 @@ import com.socialmediablog.platform.services.comment.application.port.in.GetServ
 import com.socialmediablog.platform.services.comment.application.port.in.ListCommentRepliesUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ReplyCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.query.ListCommentRepliesQuery;
+import com.socialmediablog.platform.services.comment.api.dto.CommentPageResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -62,12 +63,14 @@ public class CommentController {
     }
 
     @GetMapping("/{commentId}/replies")
-    public ApiResponse<List<CommentResponse>> replies(@PathVariable UUID commentId) {
-        return ApiResponse.success("Replies loaded", listCommentRepliesUseCase.execute(
-                        new ListCommentRepliesQuery(commentId)
-                ).stream()
-                .map(CommentResponse::from)
-                .toList());
+    public ApiResponse<CommentPageResponse> replies(
+            @PathVariable UUID commentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ApiResponse.success("Replies loaded", CommentPageResponse.from(
+                listCommentRepliesUseCase.execute(new ListCommentRepliesQuery(commentId, page, size))
+        ));
     }
 
     @PostMapping("/{commentId}/replies")

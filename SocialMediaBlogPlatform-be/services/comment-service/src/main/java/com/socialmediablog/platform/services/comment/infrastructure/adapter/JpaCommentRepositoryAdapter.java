@@ -10,6 +10,8 @@ import com.socialmediablog.platform.services.comment.infrastructure.persistence.
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Repository
 public class JpaCommentRepositoryAdapter implements CommentRepository {
@@ -26,25 +28,39 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
     }
 
     @Override
-    public List<Comment> findByArticleId(ArticleId articleId) {
-        return repository.findByArticleId(articleId.value()).stream()
-                .map(JpaCommentEntity::toDomain)
-                .toList();
-    }
-
-    @Override
-    public List<Comment> findByParentCommentId(CommentId parentCommentId) {
-        return repository.findByParentCommentIdOrderByCreatedAtAsc(parentCommentId.value()).stream()
-                .map(JpaCommentEntity::toDomain)
-                .toList();
-    }
-
-    @Override
     public long countByParentCommentId(CommentId parentCommentId) {
         return repository.countByParentCommentIdAndStatusIn(
                 parentCommentId.value(),
-                List.of(CommentStatus.ACTIVE.name(), CommentStatus.EDITED.name())
-        );
+                List.of(CommentStatus.ACTIVE.name(), CommentStatus.EDITED.name()));
+    }
+
+    @Override
+    public List<Comment> findRootCommentsByArticleId(ArticleId articleId, int page, int size, String sortBy) {
+        Sort sort = switch (sortBy) {
+            case "OLDEST" -> Sort.by(Sort.Direction.ASC, "createdAt");
+            default -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+        return repository.findRootCommentsByArticleId(articleId.value(), PageRequest.of(page, size, sort)).stream()
+                .map(JpaCommentEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countRootCommentsByArticleId(ArticleId articleId) {
+        return repository.countRootCommentsByArticleId(articleId.value());
+    }
+
+    @Override
+    public List<Comment> findRepliesByParentCommentId(CommentId parentCommentId, int page, int size) {
+        Sort sort = Sort.by(Sort.Direction.ASC, "createdAt");
+        return repository.findByParentCommentIdOrderByCreatedAtAsc(parentCommentId.value(), PageRequest.of(page, size, sort)).stream()
+                .map(JpaCommentEntity::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countVisibleRepliesByParentCommentId(CommentId parentCommentId) {
+        return countByParentCommentId(parentCommentId);
     }
 
     @Override

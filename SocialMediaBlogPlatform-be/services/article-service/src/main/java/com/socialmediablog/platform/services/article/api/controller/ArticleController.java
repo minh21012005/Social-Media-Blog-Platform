@@ -35,6 +35,8 @@ import com.socialmediablog.platform.services.article.application.port.in.UpdateA
 import com.socialmediablog.platform.services.article.application.port.in.UploadArticleMediaUseCase;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase;
+import com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -63,6 +65,7 @@ public class ArticleController {
     private final ArchiveArticleUseCase archiveArticleUseCase;
     private final DeleteArticleUseCase deleteArticleUseCase;
     private final GetArticleBySlugUseCase getArticleBySlugUseCase;
+    private final GetArticleByIdUseCase getArticleByIdUseCase;
     private final ListPublishedArticlesUseCase listPublishedArticlesUseCase;
     private final ListMyArticlesUseCase listMyArticlesUseCase;
     private final ListFeaturedArticlesUseCase listFeaturedArticlesUseCase;
@@ -79,6 +82,7 @@ public class ArticleController {
             ArchiveArticleUseCase archiveArticleUseCase,
             DeleteArticleUseCase deleteArticleUseCase,
             GetArticleBySlugUseCase getArticleBySlugUseCase,
+            GetArticleByIdUseCase getArticleByIdUseCase,
             ListPublishedArticlesUseCase listPublishedArticlesUseCase,
             ListMyArticlesUseCase listMyArticlesUseCase,
             ListFeaturedArticlesUseCase listFeaturedArticlesUseCase,
@@ -94,6 +98,7 @@ public class ArticleController {
         this.archiveArticleUseCase = archiveArticleUseCase;
         this.deleteArticleUseCase = deleteArticleUseCase;
         this.getArticleBySlugUseCase = getArticleBySlugUseCase;
+        this.getArticleByIdUseCase = getArticleByIdUseCase;
         this.listPublishedArticlesUseCase = listPublishedArticlesUseCase;
         this.listMyArticlesUseCase = listMyArticlesUseCase;
         this.listFeaturedArticlesUseCase = listFeaturedArticlesUseCase;
@@ -143,6 +148,11 @@ public class ArticleController {
     @GetMapping("/slug/{slug}")
     public ApiResponse<ArticleResponse> detail(@PathVariable String slug) {
         return ApiResponse.success(ArticleResponse.from(getArticleBySlugUseCase.executeBySlug(slug)));
+    }
+
+    @GetMapping("/id/{articleId}")
+    public ApiResponse<ArticleResponse> detailById(@PathVariable UUID articleId) {
+        return ApiResponse.success(ArticleResponse.from(getArticleByIdUseCase.executeById(articleId)));
     }
 
     @GetMapping("/me")
@@ -275,7 +285,7 @@ public class ArticleController {
 
     private void ensureAdmin(CurrentUser currentUser) {
         if (currentUser == null || !currentUser.hasRole("ADMIN")) {
-            throw new com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException(
+            throw new ForbiddenArticleActionException(
                     "Only admins can curate articles"
             );
         }

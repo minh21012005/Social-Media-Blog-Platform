@@ -21,7 +21,7 @@ export function ArticleCard({ article, variant = 'grid', navigate, requestWithAu
         </h3>
         <p>{article.summary}</p>
         <div className="meta-row">
-          <ArticleMeta article={article} />
+          <ArticleMeta article={article} navigate={navigate} />
           <BookmarkButton articleId={article.id} saved={article.bookmarked} requestWithAuth={requestWithAuth} notify={notify} />
         </div>
       </div>
@@ -29,10 +29,19 @@ export function ArticleCard({ article, variant = 'grid', navigate, requestWithAu
   )
 }
 
-export function ArticleMeta({ article, withReadTime = false }) {
+export function ArticleMeta({ article, withReadTime = false, navigate }) {
   return (
     <div className="article-meta">
-      <strong>{article.author.name}</strong>
+      <strong 
+        style={{ cursor: 'pointer' }}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (navigate) navigate(`/author/${article.author.username}`)
+        }}
+      >
+        {article.author.name}
+      </strong>
       <span aria-hidden="true">&middot;</span>
       <span>{article.date}</span>
       {withReadTime && (

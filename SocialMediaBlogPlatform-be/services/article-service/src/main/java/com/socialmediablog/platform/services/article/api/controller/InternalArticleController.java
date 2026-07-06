@@ -2,6 +2,7 @@ package com.socialmediablog.platform.services.article.api.controller;
 
 import com.socialmediablog.platform.common.web.ApiResponse;
 import com.socialmediablog.platform.common.web.error.ErrorCode;
+import com.socialmediablog.platform.services.article.api.dto.ArticleAuthorResponse;
 import com.socialmediablog.platform.services.article.api.dto.ArticleCommentPolicyResponse;
 import com.socialmediablog.platform.services.article.domain.repository.ArticleRepository;
 import com.socialmediablog.platform.services.article.domain.vo.ArticleId;
@@ -27,6 +28,18 @@ public class InternalArticleController {
         return articleRepository.findById(ArticleId.of(articleId))
                 .map(ArticleCommentPolicyResponse::from)
                 .map(response -> ResponseEntity.ok(ApiResponse.success("Article comment policy loaded", response)))
+                .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse<>(
+                        404,
+                        ErrorCode.NOT_FOUND.defaultMessage(),
+                        null
+                )));
+    }
+
+    @GetMapping("/{articleId}/author")
+    public ResponseEntity<ApiResponse<ArticleAuthorResponse>> getAuthor(@PathVariable UUID articleId) {
+        return articleRepository.findById(ArticleId.of(articleId))
+                .map(article -> new ArticleAuthorResponse(article.authorId().value()))
+                .map(response -> ResponseEntity.ok(ApiResponse.success("Article author loaded", response)))
                 .orElseGet(() -> ResponseEntity.status(404).body(new ApiResponse<>(
                         404,
                         ErrorCode.NOT_FOUND.defaultMessage(),

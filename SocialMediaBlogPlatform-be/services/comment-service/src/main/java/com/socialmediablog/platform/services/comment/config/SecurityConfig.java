@@ -1,9 +1,12 @@
 package com.socialmediablog.platform.services.comment.config;
 
 import com.socialmediablog.platform.common.security.GatewayHeaderAuthenticationFilter;
+import com.socialmediablog.platform.common.web.correlation.CorrelationIdFilter;
 import java.time.Clock;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -23,7 +26,7 @@ public class SecurityConfig {
     ) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
@@ -38,6 +41,13 @@ public class SecurityConfig {
     @Bean
     GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter() {
         return new GatewayHeaderAuthenticationFilter();
+    }
+
+    @Bean
+    FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter() {
+        FilterRegistrationBean<CorrelationIdFilter> registration = new FilterRegistrationBean<>(new CorrelationIdFilter());
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 
     @Bean

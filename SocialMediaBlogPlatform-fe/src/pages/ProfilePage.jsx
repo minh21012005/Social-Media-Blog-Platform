@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MediaUploader } from '../components/MediaUploader'
 import { SiteFooter } from '../components/SiteFooter'
 import { authors } from '../data/editorial'
 import { updateProfile, uploadAvatar } from '../services/users'
+import { getFollowCounts } from '../services/follows'
 
 export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify }) {
   const [form, setForm] = useState({
@@ -12,6 +13,26 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 })
+
+  useEffect(() => {
+    let active = true
+    async function loadFollowSummary() {
+      if (!session?.user?.id) return
+      try {
+        const counts = await requestWithAuth((token) => getFollowCounts(session.user.id, token))
+        if (active) {
+          setFollowCounts({ followers: counts.followers, following: counts.following })
+        }
+      } catch (err) {
+        // silently ignore error on counts
+      }
+    }
+    loadFollowSummary()
+    return () => {
+      active = false
+    }
+  }, [session?.user?.id, requestWithAuth])
 
   const update = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -64,6 +85,10 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
             <img alt="" className="profile-avatar" src={session.user.avatarUrl || authors.sarah.avatar} />
             <h1>{session.user.displayName}</h1>
             <p>{session.user.bio || 'Add a short bio so readers can recognize your voice across Chronicle.'}</p>
+            <div className="follow-summary" aria-label="Follow counts" style={{ marginBottom: '24px' }}>
+              <span><strong>{followCounts.followers}</strong> followers</span>
+              <span><strong>{followCounts.following}</strong> following</span>
+            </div>
             <MediaUploader busy={uploading} label={session.user.avatarUrl ? 'Change avatar' : 'Upload avatar'} onUpload={upload} />
           </aside>
 

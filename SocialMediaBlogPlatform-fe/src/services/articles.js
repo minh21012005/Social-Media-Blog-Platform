@@ -100,6 +100,12 @@ export async function getArticleBySlug(slug) {
   return enriched
 }
 
+export async function getArticleById(id) {
+  const article = await apiRequest(`/api/v1/articles/id/${id}`)
+  const [enriched] = await enrichArticles([article])
+  return enriched
+}
+
 export async function listMyArticles({ status, page = 0, size = 20 } = {}, token) {
   const searchParams = new URLSearchParams({ page, size })
   if (status) {
@@ -162,6 +168,14 @@ export function uploadArticleMedia(file, token) {
   return apiRequest('/api/v1/articles/media', {
     method: 'POST',
     body: formData,
+    token,
+  })
+}
+
+export function curateArticle(articleId, payload, token) {
+  return apiRequest(`/api/v1/articles/${articleId}/curation`, {
+    method: 'PATCH',
+    body: payload,
     token,
   })
 }

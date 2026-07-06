@@ -31,8 +31,7 @@ public class Comment {
             Instant editedAt,
             Instant deletedAt,
             Instant createdAt,
-            Instant updatedAt
-    ) {
+            Instant updatedAt) {
         this.id = id;
         this.articleId = articleId;
         this.authorId = authorId;
@@ -50,8 +49,7 @@ public class Comment {
             AuthorId authorId,
             CommentId parentCommentId,
             CommentContent content,
-            Instant now
-    ) {
+            Instant now) {
         return new Comment(
                 CommentId.of(UUID.randomUUID()),
                 articleId,
@@ -62,8 +60,7 @@ public class Comment {
                 null,
                 null,
                 now,
-                now
-        );
+                now);
     }
 
     public static Comment restore(
@@ -76,8 +73,7 @@ public class Comment {
             Instant editedAt,
             Instant deletedAt,
             Instant createdAt,
-            Instant updatedAt
-    ) {
+            Instant updatedAt) {
         return new Comment(
                 CommentId.of(id),
                 ArticleId.of(articleId),
@@ -88,8 +84,7 @@ public class Comment {
                 editedAt,
                 deletedAt,
                 createdAt,
-                updatedAt
-        );
+                updatedAt);
     }
 
     public boolean isReply() {
@@ -125,8 +120,7 @@ public class Comment {
                 now,
                 deletedAt,
                 createdAt,
-                now
-        );
+                now);
     }
 
     public Comment delete(AuthorId requesterId, Instant now) {
@@ -143,8 +137,7 @@ public class Comment {
                 editedAt,
                 now,
                 createdAt,
-                now
-        );
+                now);
     }
 
     public CommentId id() {

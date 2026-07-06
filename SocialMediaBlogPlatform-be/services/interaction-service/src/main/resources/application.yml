@@ -19,6 +19,19 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+
+outbox:
+  relay:
+    topic: interaction.events
+    batch-size: ${OUTBOX_RELAY_BATCH_SIZE:100}
+    fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:5000}
 
 eureka:
   instance:
@@ -35,3 +48,7 @@ management:
     web:
       exposure:
         include: health,info
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId}]"

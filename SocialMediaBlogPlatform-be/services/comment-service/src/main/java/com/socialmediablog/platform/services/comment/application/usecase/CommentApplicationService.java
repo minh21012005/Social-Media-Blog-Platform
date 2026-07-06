@@ -21,6 +21,7 @@ import com.socialmediablog.platform.services.comment.application.query.ListArtic
 import com.socialmediablog.platform.services.comment.application.query.ListCommentRepliesQuery;
 import com.socialmediablog.platform.services.comment.application.result.CommentStatsView;
 import com.socialmediablog.platform.services.comment.application.result.CommentView;
+import com.socialmediablog.platform.services.comment.application.result.PageResult;
 import com.socialmediablog.platform.services.comment.application.result.ServiceStatus;
 import com.socialmediablog.platform.services.comment.domain.aggregate.Comment;
 import com.socialmediablog.platform.services.comment.domain.aggregate.CommentStats;
@@ -191,25 +192,30 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommentView> execute(ListArticleCommentsQuery query) {
-        return commentRepository.findByArticleId(ArticleId.of(query.articleId())).stream()
-                .filter(comment -> comment.parentCommentId() == null)
-                .sorted(Comparator.comparing(Comment::createdAt).reversed())
+    public PageResult<CommentView> execute(ListArticleCommentsQuery query) {
+        ArticleId articleId = ArticleId.of(query.articleId());
+        List<CommentView> items = commentRepository.findRootCommentsByArticleId(
+                        articleId, query.page(), query.size(), query.sortBy().name()).stream()
                 .map(this::visibleRootCommentView)
                 .flatMap(Optional::stream)
                 .toList();
+        long totalItems = commentRepository.countRootCommentsByArticleId(articleId);
+        return PageResult.of(items, query.page(), query.size(), totalItems);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommentView> execute(ListCommentRepliesQuery query) {
+    public PageResult<CommentView> execute(ListCommentRepliesQuery query) {
         CommentId parentCommentId = CommentId.of(query.commentId());
         commentRepository.findById(parentCommentId)
                 .orElseThrow(() -> new CommentNotFoundException(query.commentId()));
-        return commentRepository.findByParentCommentId(parentCommentId).stream()
+        List<CommentView> items = commentRepository.findRepliesByParentCommentId(
+                        parentCommentId, query.page(), query.size()).stream()
                 .filter(this::isVisibleComment)
                 .map(comment -> CommentView.from(comment, statsWithComputedReplyCount(comment)))
                 .toList();
+        long totalItems = commentRepository.countVisibleRepliesByParentCommentId(parentCommentId);
+        return PageResult.of(items, query.page(), query.size(), totalItems);
     }
 
     private boolean canDelete(Comment comment, AuthorId requesterId) {
