@@ -201,19 +201,50 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
 
     setRepliesByComment((current) => ({
       ...current,
-      [commentId]: { error: '', items: [], loading: true },
+      [commentId]: { error: '', items: [], loading: true, page: 0, hasMore: false },
     }))
 
     try {
-      const replies = await onLoadReplies(commentId)
+      const data = await onLoadReplies(commentId, 0)
       setRepliesByComment((current) => ({
         ...current,
-        [commentId]: { error: '', items: replies, loading: false },
+        [commentId]: { error: '', items: data.items, page: data.page, hasMore: data.hasMore, loading: false },
       }))
     } catch (replyError) {
       setRepliesByComment((current) => ({
         ...current,
-        [commentId]: { error: replyError.message || 'Could not load replies.', items: [], loading: false },
+        [commentId]: { error: replyError.message || 'Could not load replies.', items: [], loading: false, page: 0, hasMore: false },
+      }))
+    }
+  }
+
+  const loadMoreReplies = async (commentId) => {
+    const currentState = repliesByComment[commentId]
+    if (!currentState || currentState.loadingMore) return
+
+    setRepliesByComment((current) => ({
+      ...current,
+      [commentId]: { ...currentState, loadingMore: true },
+    }))
+
+    try {
+      const nextPage = currentState.page + 1
+      const data = await onLoadReplies(commentId, nextPage)
+      setRepliesByComment((current) => ({
+        ...current,
+        [commentId]: { 
+          error: '', 
+          items: [...currentState.items, ...data.items], 
+          page: data.page, 
+          hasMore: data.hasMore, 
+          loading: false,
+          loadingMore: false 
+        },
+      }))
+    } catch (err) {
+      setRepliesByComment((current) => ({
+        ...current,
+        [commentId]: { ...currentState, error: 'Could not load more replies.', loadingMore: false },
       }))
     }
   }
@@ -231,6 +262,11 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
         {replyState?.loading && <p className="comment-reply-status">Loading replies...</p>}
         {replyState?.error && <p className="comment-reply-status error">{replyState.error}</p>}
         {replyState?.items?.map((reply) => renderReply(reply))}
+        {replyState?.hasMore && (
+          <button className="text-button" disabled={replyState.loadingMore} type="button" onClick={() => loadMoreReplies(commentId)}>
+            {replyState.loadingMore ? 'Loading more replies...' : 'Load more replies'}
+          </button>
+        )}
       </div>
     )
   }
@@ -431,139 +467,139 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     <>
       <div className="comment-list">
         {comments.map((comment) => {
-        const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
-        const isArticleOwner = currentUserId && String(articleAuthorId) === String(currentUserId)
-        const canDelete = isMine || isArticleOwner
-        const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
-        const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
-        const isEditing = editingId === comment.id
-        const isReplying = replyingToId === comment.id
-        const remaining = COMMENT_MAX_LENGTH - draft.length
-        const replyRemaining = COMMENT_MAX_LENGTH - replyDraft.length
-        const isDeleted = comment.status === 'DELETED'
-        const replyCount = getReplyCount(comment)
+          const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
+          const isArticleOwner = currentUserId && String(articleAuthorId) === String(currentUserId)
+          const canDelete = isMine || isArticleOwner
+          const authorName = comment.author?.displayName || comment.author?.username || `Reader ${String(comment.authorId || '').slice(0, 6)}`
+          const avatarLabel = (isMine ? 'You' : authorName).charAt(0).toUpperCase()
+          const isEditing = editingId === comment.id
+          const isReplying = replyingToId === comment.id
+          const remaining = COMMENT_MAX_LENGTH - draft.length
+          const replyRemaining = COMMENT_MAX_LENGTH - replyDraft.length
+          const isDeleted = comment.status === 'DELETED'
+          const replyCount = getReplyCount(comment)
 
-        if (isDeleted) {
-          return (
-            <article className="comment-item comment-item-deleted" key={comment.id}>
-              <div className="deleted-comment-card">
-                <div className="deleted-comment-header">
-                  <div>
-                    <p className="deleted-comment-title">Comment deleted</p>
-                    {replyCount > 0 && (
-                      <p className="deleted-comment-count">
-                        ({replyCount} {replyCount === 1 ? 'reply' : 'replies'})
-                      </p>
-                    )}
+          if (isDeleted) {
+            return (
+              <article className="comment-item comment-item-deleted" key={comment.id}>
+                <div className="deleted-comment-card">
+                  <div className="deleted-comment-header">
+                    <div>
+                      <p className="deleted-comment-title">Comment deleted</p>
+                      {replyCount > 0 && (
+                        <p className="deleted-comment-count">
+                          ({replyCount} {replyCount === 1 ? 'reply' : 'replies'})
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  {renderRepliesToggle(comment)}
+                  {renderReplies(comment)}
                 </div>
-                {renderRepliesToggle(comment)}
-                {renderReplies(comment)}
+              </article>
+            )
+          }
+
+          return (
+            <article className="comment-item" key={comment.id}>
+              {comment.author?.avatarUrl ? (
+                <img alt="" className="comment-avatar" src={comment.author.avatarUrl} />
+              ) : (
+                <div className="comment-avatar" aria-hidden="true">
+                  {avatarLabel}
+                </div>
+              )}
+              <div>
+                <div className="comment-item-meta">
+                  <strong>{isMine ? 'You' : authorName}</strong>
+                  <span>{formatCommentDate(comment.createdAt)}</span>
+                  {comment.editedAt && <span>edited</span>}
+                  {isMine && !isEditing && (
+                    <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
+                      Edit
+                    </button>
+                  )}
+                  {canDelete && !isEditing && (
+                    <>
+                      <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={() => requestDeleteComment(comment)}>
+                        {deletingId === comment.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </>
+                  )}
+                  {!isEditing && (
+                    <button className="comment-action-button" disabled={replyingId === comment.id} type="button" onClick={() => startReplying(comment)}>
+                      Reply
+                    </button>
+                  )}
+                </div>
+                {isEditing ? (
+                  <form className="comment-edit-form" onSubmit={(event) => saveCommentEditing(event, comment)}>
+                    <textarea
+                      aria-invalid={Boolean(error)}
+                      disabled={savingId === comment.id}
+                      maxLength={COMMENT_MAX_LENGTH}
+                      onChange={(event) => {
+                        setDraft(event.target.value)
+                        if (error) {
+                          setError('')
+                        }
+                      }}
+                      rows="4"
+                      value={draft}
+                    />
+                    <div className="comment-edit-actions">
+                      <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                        {remaining} characters left
+                      </span>
+                      <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
+                        Cancel
+                      </button>
+                      <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
+                        {savingId === comment.id ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                    {error && <p className="form-error">{error}</p>}
+                  </form>
+                ) : (
+                  <>
+                    <p>{comment.content}</p>
+                    {isReplying && (
+                      <form className="comment-reply-form" onSubmit={(event) => submitReply(event, comment)}>
+                        <textarea
+                          aria-invalid={Boolean(replyError)}
+                          disabled={replyingId === comment.id}
+                          maxLength={COMMENT_MAX_LENGTH}
+                          onChange={(event) => {
+                            setReplyDraft(event.target.value)
+                            if (replyError) {
+                              setReplyError('')
+                            }
+                          }}
+                          placeholder="Write a reply..."
+                          rows="3"
+                          value={replyDraft}
+                        />
+                        <div className="comment-reply-actions">
+                          <span className={replyRemaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                            {replyRemaining} characters left
+                          </span>
+                          <button className="text-button muted" disabled={replyingId === comment.id} type="button" onClick={cancelReplying}>
+                            Cancel
+                          </button>
+                          <button className="submit-button" disabled={replyingId === comment.id || !replyDraft.trim()} type="submit">
+                            {replyingId === comment.id ? 'Replying...' : 'Reply'}
+                          </button>
+                        </div>
+                        {replyError && <p className="form-error">{replyError}</p>}
+                      </form>
+                    )}
+                    {renderRepliesToggle(comment)}
+                    {renderReplies(comment)}
+                  </>
+                )}
               </div>
             </article>
           )
-        }
-
-        return (
-          <article className="comment-item" key={comment.id}>
-            {comment.author?.avatarUrl ? (
-              <img alt="" className="comment-avatar" src={comment.author.avatarUrl} />
-            ) : (
-              <div className="comment-avatar" aria-hidden="true">
-                {avatarLabel}
-              </div>
-            )}
-            <div>
-              <div className="comment-item-meta">
-                <strong>{isMine ? 'You' : authorName}</strong>
-                <span>{formatCommentDate(comment.createdAt)}</span>
-                {comment.editedAt && <span>edited</span>}
-                {isMine && !isEditing && (
-                  <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
-                    Edit
-                  </button>
-                )}
-                {canDelete && !isEditing && (
-                  <>
-                    <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={() => requestDeleteComment(comment)}>
-                      {deletingId === comment.id ? 'Deleting...' : 'Delete'}
-                    </button>
-                  </>
-                )}
-                {!isEditing && (
-                  <button className="comment-action-button" disabled={replyingId === comment.id} type="button" onClick={() => startReplying(comment)}>
-                    Reply
-                  </button>
-                )}
-              </div>
-              {isEditing ? (
-                <form className="comment-edit-form" onSubmit={(event) => saveCommentEditing(event, comment)}>
-                  <textarea
-                    aria-invalid={Boolean(error)}
-                    disabled={savingId === comment.id}
-                    maxLength={COMMENT_MAX_LENGTH}
-                    onChange={(event) => {
-                      setDraft(event.target.value)
-                      if (error) {
-                        setError('')
-                      }
-                    }}
-                    rows="4"
-                    value={draft}
-                  />
-                  <div className="comment-edit-actions">
-                    <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
-                      {remaining} characters left
-                    </span>
-                    <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
-                      Cancel
-                    </button>
-                    <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
-                      {savingId === comment.id ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                  {error && <p className="form-error">{error}</p>}
-                </form>
-              ) : (
-                <>
-                  <p>{comment.content}</p>
-                  {isReplying && (
-                    <form className="comment-reply-form" onSubmit={(event) => submitReply(event, comment)}>
-                      <textarea
-                        aria-invalid={Boolean(replyError)}
-                        disabled={replyingId === comment.id}
-                        maxLength={COMMENT_MAX_LENGTH}
-                        onChange={(event) => {
-                          setReplyDraft(event.target.value)
-                          if (replyError) {
-                            setReplyError('')
-                          }
-                        }}
-                        placeholder="Write a reply..."
-                        rows="3"
-                        value={replyDraft}
-                      />
-                      <div className="comment-reply-actions">
-                        <span className={replyRemaining < 0 ? 'comment-count danger' : 'comment-count'}>
-                          {replyRemaining} characters left
-                        </span>
-                        <button className="text-button muted" disabled={replyingId === comment.id} type="button" onClick={cancelReplying}>
-                          Cancel
-                        </button>
-                        <button className="submit-button" disabled={replyingId === comment.id || !replyDraft.trim()} type="submit">
-                          {replyingId === comment.id ? 'Replying...' : 'Reply'}
-                        </button>
-                      </div>
-                      {replyError && <p className="form-error">{replyError}</p>}
-                    </form>
-                  )}
-                  {renderRepliesToggle(comment)}
-                  {renderReplies(comment)}
-                </>
-              )}
-            </div>
-          </article>
-        )
         })}
       </div>
       {confirmDeleteComment && (
@@ -600,6 +636,10 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [comments, setComments] = useState([])
   const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
+  const [commentPage, setCommentPage] = useState(0)
+  const [commentSortBy, setCommentSortBy] = useState('NEWEST')
+  const [hasMoreComments, setHasMoreComments] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -609,23 +649,6 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         recordArticleView(article.id, { source: 'web' }).catch(() => null)
         if (active) {
           setState({ loading: false, article, error: '' })
-          setCommentsState({ loading: true, error: '' })
-        }
-        try {
-          const articleComments = session
-            ? await requestWithAuth((token) => listArticleComments(article.id, token))
-            : await listArticleComments(article.id)
-          const enrichedComments = await enrichComments(articleComments)
-          if (active) {
-            setComments(enrichedComments)
-            setCommentsState({ loading: false, error: '' })
-          }
-        } catch (commentsError) {
-          console.error('Could not load comments.', commentsError)
-          if (active) {
-            setComments([])
-            setCommentsState({ loading: false, error: commentsError.message || 'Could not load comments.' })
-          }
         }
       } catch (error) {
         if (active) {
@@ -637,7 +660,63 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     return () => {
       active = false
     }
-  }, [requestWithAuth, session, slug])
+  }, [slug])
+
+  useEffect(() => {
+    let active = true
+    if (!state.article) return
+
+    async function loadComments() {
+      setCommentsState({ loading: true, error: '' })
+      try {
+        const pageResult = session
+          ? await requestWithAuth((token) => listArticleComments(state.article.id, token, 0, 10, commentSortBy))
+          : await listArticleComments(state.article.id, null, 0, 10, commentSortBy)
+        
+        // If the backend has not yet updated to return PageResult, fallback safely
+        const items = pageResult.items || pageResult
+        const enrichedComments = await enrichComments(items)
+        if (active) {
+          setComments(enrichedComments)
+          setCommentPage(0)
+          setHasMoreComments(pageResult.page !== undefined ? pageResult.page + 1 < pageResult.totalPages : false)
+          setCommentsState({ loading: false, error: '' })
+        }
+      } catch (commentsError) {
+        console.error('Could not load comments.', commentsError)
+        if (active) {
+          setComments([])
+          setHasMoreComments(false)
+          setCommentsState({ loading: false, error: commentsError.message || 'Could not load comments.' })
+        }
+      }
+    }
+    loadComments()
+    return () => {
+      active = false
+    }
+  }, [requestWithAuth, session, state.article, commentSortBy])
+
+  const handleLoadMoreComments = async () => {
+    if (!state.article) return
+    setLoadingMore(true)
+    try {
+      const nextPage = commentPage + 1
+      const pageResult = session
+        ? await requestWithAuth((token) => listArticleComments(state.article.id, token, nextPage, 10, commentSortBy))
+        : await listArticleComments(state.article.id, null, nextPage, 10, commentSortBy)
+      const items = pageResult.items || []
+      const enrichedComments = await enrichComments(items)
+      
+      setComments(prev => [...prev, ...enrichedComments])
+      setCommentPage(nextPage)
+      setHasMoreComments(pageResult.page !== undefined ? pageResult.page + 1 < pageResult.totalPages : false)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const currentUserId = useMemo(() => session?.user?.id, [session])
 
@@ -684,12 +763,12 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
       setComments((current) => current.map((item) => (
         item.id === comment.id
           ? {
-              ...item,
-              content: 'Comment deleted',
-              deletedAt: new Date().toISOString(),
-              editedAt: null,
-              status: 'DELETED',
-            }
+            ...item,
+            content: 'Comment deleted',
+            deletedAt: new Date().toISOString(),
+            editedAt: null,
+            status: 'DELETED',
+          }
           : item
       )))
       return
@@ -697,11 +776,16 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     setComments((current) => current.filter((item) => item.id !== comment.id))
   }
 
-  const handleLoadReplies = async (commentId) => {
-    const replies = session
-      ? await requestWithAuth((token) => listCommentReplies(commentId, token))
-      : await listCommentReplies(commentId)
-    return enrichComments(replies)
+  const handleLoadReplies = async (commentId, page = 0) => {
+    const repliesPage = session
+      ? await requestWithAuth((token) => listCommentReplies(commentId, token, page, 10))
+      : await listCommentReplies(commentId, null, page, 10)
+    const items = repliesPage.items || repliesPage
+    return {
+      items: await enrichComments(items),
+      page: repliesPage.page || 0,
+      hasMore: repliesPage.page !== undefined ? repliesPage.page + 1 < repliesPage.totalPages : false
+    }
   }
 
   const handleCommentReplied = async (comment, content) => {
@@ -760,7 +844,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           <p>{article.summary}</p>
           <div className="article-detail-meta">
             <AuthorBadge author={article.author} navigate={navigate} />
-            <ArticleMeta article={article} />
+            <span style={{ color: 'var(--ink-light)' }}>&middot; {article.date}</span>
           </div>
         </header>
         <img alt="" className="article-detail-cover" src={article.image} />
@@ -777,6 +861,14 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           session={session}
         />
         <div className="comments-panel">
+          <div className="comments-filters" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <label htmlFor="commentSortBy" style={{ marginRight: '0.5rem', fontWeight: 500 }}>Sort by:</label>
+            <select id="commentSortBy" value={commentSortBy} onChange={(e) => setCommentSortBy(e.target.value)} style={{ padding: '0.25rem' }}>
+              <option value="NEWEST">Newest</option>
+              <option value="OLDEST">Oldest</option>
+              <option value="MOST_CLAPS">Most Clapped</option>
+            </select>
+          </div>
           {commentsState.loading && <p className="comment-loading">Loading comments...</p>}
           {commentsState.error && <p className="form-error">{commentsState.error}</p>}
           <CommentList
@@ -789,6 +881,11 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             onReply={handleCommentReplied}
             onRequireLogin={() => navigate('/login')}
           />
+          {hasMoreComments && (
+            <button className="text-button" disabled={loadingMore} type="button" onClick={handleLoadMoreComments} style={{ marginTop: '1rem', width: '100%' }}>
+              {loadingMore ? 'Loading more comments...' : 'Load more comments'}
+            </button>
+          )}
         </div>
       </section>
       <SiteFooter />

@@ -220,26 +220,26 @@ export function SiteHeader({ session, navigate, onLogout }) {
           {notifOpen && (
             <div className="notif-dropdown">
               <div className="notif-dropdown-header">
-                <span>Thông báo</span>
+                <span>Notifications</span>
                 {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
                   <div className="notif-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <span className="notif-unread-count">
-                      {notifications.filter((n) => n.status === 'UNREAD').length} chưa đọc
+                      {notifications.filter((n) => n.status === 'UNREAD').length} unread
                     </span>
-                    <button 
-                      className="text-button" 
-                      type="button" 
+                    <button
+                      className="text-button"
+                      type="button"
                       onClick={handleMarkAllRead}
                       style={{ fontSize: '0.85rem', cursor: 'pointer', background: 'none', border: 'none', color: '#03a87c', padding: 0 }}
                     >
-                      Đánh dấu tất cả đã đọc
+                      Mark all as read
                     </button>
                   </div>
                 )}
               </div>
               <ul className="notif-list">
                 {notifications.length === 0 ? (
-                  <li className="notif-empty">Bạn chưa có thông báo nào</li>
+                  <li className="notif-empty">You don&apos;t have any notifications yet</li>
                 ) : (
                   notifications.map((n) => (
                     <li
@@ -255,8 +255,8 @@ export function SiteHeader({ session, navigate, onLogout }) {
                         <p className="notif-title">{n.title}</p>
                         {n.body && <p className="notif-body">{n.body}</p>}
                         <time className="notif-time" dateTime={n.createdAt}>
-                          {new Date(n.createdAt).toLocaleString('vi-VN', {
-                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                          {new Date(n.createdAt).toLocaleString('en-US', {
+                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
                           })}
                         </time>
                       </div>
@@ -283,6 +283,14 @@ export function SiteHeader({ session, navigate, onLogout }) {
               </button>
               {menuOpen && (
                 <div className="header-dropdown">
+                  {session?.user?.roles?.includes('ADMIN') && (
+                    <button type="button" onClick={() => {
+                      setMenuOpen(false)
+                      navigate('/admin')
+                    }}>
+                      Admin Dashboard
+                    </button>
+                  )}
                   <button type="button" onClick={() => {
                     setMenuOpen(false)
                     navigate('/articles/me')
