@@ -69,10 +69,12 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
 
   return (
     <main>
-      <section className="writer-hero page-container">
-        <span className="form-eyebrow">Dashboard</span>
-        <h1>My articles.</h1>
-        <p>Manage drafts, published stories, and archived pieces from one calm desk.</p>
+      <section className="writer-hero dashboard-hero page-container">
+        <div>
+          <span className="form-eyebrow">Dashboard</span>
+          <h1>My articles.</h1>
+          <p>Manage drafts, published stories, and archived pieces from one calm desk.</p>
+        </div>
         <button className="pill-button" type="button" onClick={() => navigate('/write')}>New story</button>
       </section>
 

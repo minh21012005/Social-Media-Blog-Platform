@@ -377,10 +377,20 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.editor-grid .article-card {
+  max-width: 520px;
+  width: 100%;
+}
+
 .category-grid {
   display: grid;
   gap: 32px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.category-grid .article-card {
+  max-width: 340px;
+  width: 100%;
 }
 
 .article-card {
@@ -443,7 +453,7 @@
   align-items: center;
   display: grid;
   gap: 32px;
-  grid-template-columns: 330px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   max-width: 900px;
 }
 
@@ -744,7 +754,7 @@
 }
 
 .profile-shell {
-  align-items: start;
+  align-items: stretch;
   display: grid;
   gap: clamp(28px, 4vw, 56px);
   grid-template-columns: minmax(260px, 360px) minmax(0, 680px);
@@ -769,9 +779,9 @@
   border: 5px solid #fff;
   border-radius: 50%;
   box-shadow: 0 0 0 1px var(--border), 0 22px 45px rgba(17, 24, 39, 0.12);
-  margin: 24px 0 22px;
+  margin: 14px 0 12px;
   object-fit: cover;
-  width: min(210px, 58vw);
+  width: min(170px, 58vw);
 }
 
 .profile-card h1 {
@@ -785,7 +795,7 @@
   color: var(--muted);
   font-size: 17px;
   line-height: 1.65;
-  margin: 18px 0 26px;
+  margin: 10px 0 14px;
 }
 
 .profile-panel {
@@ -798,8 +808,8 @@
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 300px);
-  margin-bottom: 30px;
-  padding-bottom: 26px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
 }
 
 .profile-panel-header h2 {
@@ -818,7 +828,7 @@
 
 .profile-form {
   display: grid;
-  gap: 20px;
+  gap: 14px;
 }
 
 .profile-form label {
@@ -826,7 +836,7 @@
   display: grid;
   font-size: 15px;
   font-weight: 780;
-  gap: 10px;
+  gap: 6px;
 }
 
 .profile-form input:not([type="checkbox"]),
@@ -887,7 +897,7 @@
 .profile-actions {
   display: flex;
   justify-content: flex-end;
-  padding-top: 4px;
+  padding-top: 6px;
 }
 
 .profile-actions .submit-button {
@@ -1896,14 +1906,15 @@
   align-items: center;
   display: grid;
   gap: 20px;
-  grid-template-columns: 160px minmax(0, 1fr) auto;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
   padding: 18px;
 }
 
 .article-table-row img {
-  aspect-ratio: 1.35 / 1;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   width: 100%;
+  border-radius: 4px;
 }
 
 .article-table-row h3 {
@@ -3268,13 +3279,15 @@ img.comment-avatar {
 .comments-filters select {
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 999px; /* Pill styled select dropdown */
+  border-radius: 999px;
+  /* Pill styled select dropdown */
   color: var(--ink);
   font: inherit;
   font-size: 14px;
   font-weight: 650;
   outline: 0;
-  padding: 8px 36px 8px 16px; /* Extra padding on right for the arrow */
+  padding: 8px 36px 8px 16px;
+  /* Extra padding on right for the arrow */
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
   appearance: none;
@@ -3394,14 +3407,45 @@ img.comment-avatar {
     grid-template-columns: 1fr;
     gap: 32px;
   }
-  
+
   .author-articles-grid .article-card-row {
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .author-articles-grid .article-card-row .article-image {
     width: 100%;
     aspect-ratio: 16 / 9;
   }
-}
+}
+
+/* Dashboard Hero Layout (My Articles page) */
+.dashboard-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+}
+
+.dashboard-hero>div {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-hero .pill-button {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  /* Align slightly above baseline */
+}
+
+@media (max-width: 768px) {
+  .dashboard-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .dashboard-hero .pill-button {
+    margin-bottom: 0;
+  }
+}
