@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArticleMeta } from '../components/ArticleCard'
 import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
-import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies } from '../services/comments'
+import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies, getArticleCommentCount } from '../services/comments'
 import { getPublicUsers } from '../services/users'
 import { CommentClapButton } from '../components/CommentClapButton'
 
@@ -63,21 +62,38 @@ function CommentComposer({ articleId, session, requestWithAuth, navigate, onCrea
     }
   }
 
+  if (!session) {
+    return (
+      <div className="comment-login-cta" style={{
+        textAlign: 'center',
+        padding: '32px 24px',
+        border: '1px solid var(--border)',
+        borderRadius: '12px',
+        backgroundColor: '#f8fafc',
+        marginBottom: '40px',
+      }}>
+        <p style={{ margin: '0 0 16px 0', color: 'var(--muted)', fontWeight: '600', fontSize: '15px' }}>
+          Log in to share your thoughts and join the discussion.
+        </p>
+        <button className="pill-button" type="button" onClick={() => navigate('/login')} style={{
+          backgroundColor: 'var(--ink)',
+          color: '#fff',
+          borderRadius: '999px',
+          padding: '12px 28px',
+          fontWeight: '700',
+          fontSize: '14px',
+          cursor: 'pointer',
+          border: 'none',
+        }}>
+          Log In to Comment
+        </button>
+      </div>
+    )
+  }
+
   return (
     <form className="comment-composer" onSubmit={handleSubmit}>
-      <div className="comment-composer-header">
-        <div>
-          <span className="form-eyebrow">Join the discussion</span>
-          <h2 id="comments-title">Comments</h2>
-        </div>
-        {!session && (
-          <button className="text-button" type="button" onClick={() => navigate('/login')}>
-            Log in to comment
-          </button>
-        )}
-      </div>
-      <label>
-        <span className="editor-field-label">Your comment</span>
+      <div style={{ marginBottom: '16px' }}>
         <textarea
           aria-invalid={Boolean(error)}
           disabled={submitting}
@@ -88,20 +104,34 @@ function CommentComposer({ articleId, session, requestWithAuth, navigate, onCrea
               setError('')
             }
           }}
-          placeholder={session ? 'Share your thoughts...' : 'Log in before posting a comment.'}
-          rows="5"
+          placeholder="Share your thoughts..."
+          rows="4"
           value={content}
+          style={{
+            width: '100%',
+            padding: '16px',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            fontFamily: 'inherit',
+            fontSize: '15px',
+            color: 'var(--ink)',
+            outline: 'none',
+            resize: 'vertical',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+          }}
         />
-      </label>
-      <div className="comment-composer-actions">
-        <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
-          {remaining} characters left
-        </span>
+      </div>
+      <div className="comment-composer-actions" style={{ display: 'flex', justifyContent: remaining <= 1000 ? 'space-between' : 'flex-end', alignItems: 'center' }}>
+        {remaining <= 1000 && (
+          <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'} style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>
+            {remaining} characters left
+          </span>
+        )}
         <button className="submit-button" disabled={submitting || !content.trim()} type="submit">
           {submitting ? 'Posting...' : 'Post comment'}
         </button>
       </div>
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="form-error" style={{ color: 'var(--red, #ef4444)', marginTop: '8px', fontSize: '14px' }}>{error}</p>}
     </form>
   )
 }
@@ -600,16 +630,20 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
                       rows="4"
                       value={draft}
                     />
-                    <div className="comment-edit-actions">
-                      <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
-                        {remaining} characters left
-                      </span>
-                      <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
-                        Cancel
-                      </button>
-                      <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
-                        {savingId === comment.id ? 'Saving...' : 'Save'}
-                      </button>
+                    <div className="comment-edit-actions" style={{ display: 'flex', justifyContent: remaining <= 1000 ? 'space-between' : 'flex-end', alignItems: 'center', gap: '8px' }}>
+                      {remaining <= 1000 && (
+                        <span className={remaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                          {remaining} characters left
+                        </span>
+                      )}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button className="text-button muted" disabled={savingId === comment.id} type="button" onClick={cancelEditing}>
+                          Cancel
+                        </button>
+                        <button className="submit-button" disabled={savingId === comment.id || !draft.trim()} type="submit">
+                          {savingId === comment.id ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
                     </div>
                     {error && <p className="form-error">{error}</p>}
                   </form>
@@ -638,16 +672,20 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
                           rows="3"
                           value={replyDraft}
                         />
-                        <div className="comment-reply-actions">
-                          <span className={replyRemaining < 0 ? 'comment-count danger' : 'comment-count'}>
-                            {replyRemaining} characters left
-                          </span>
-                          <button className="text-button muted" disabled={replyingId === comment.id} type="button" onClick={cancelReplying}>
-                            Cancel
-                          </button>
-                          <button className="submit-button" disabled={replyingId === comment.id || !replyDraft.trim()} type="submit">
-                            {replyingId === comment.id ? 'Replying...' : 'Reply'}
-                          </button>
+                        <div className="comment-reply-actions" style={{ display: 'flex', justifyContent: replyRemaining <= 1000 ? 'space-between' : 'flex-end', alignItems: 'center', gap: '8px' }}>
+                          {replyRemaining <= 1000 && (
+                            <span className={replyRemaining < 0 ? 'comment-count danger' : 'comment-count'}>
+                              {replyRemaining} characters left
+                            </span>
+                          )}
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="text-button muted" disabled={replyingId === comment.id} type="button" onClick={cancelReplying}>
+                              Cancel
+                            </button>
+                            <button className="submit-button" disabled={replyingId === comment.id || !replyDraft.trim()} type="submit">
+                              {replyingId === comment.id ? 'Replying...' : 'Reply'}
+                            </button>
+                          </div>
                         </div>
                         {replyError && <p className="form-error">{replyError}</p>}
                       </form>
@@ -700,6 +738,8 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
   const [hasMoreComments, setHasMoreComments] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
 
+  const [commentCount, setCommentCount] = useState(0)
+
   useEffect(() => {
     let active = true
     async function load() {
@@ -720,6 +760,23 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
       active = false
     }
   }, [slug])
+
+  useEffect(() => {
+    let active = true
+    if (!state.article) return
+
+    getArticleCommentCount(state.article.id)
+      .then((res) => {
+        if (active && res && typeof res.commentCount === 'number') {
+          setCommentCount(res.commentCount)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, [state.article])
 
   useEffect(() => {
     let active = true
@@ -780,6 +837,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
   const currentUserId = useMemo(() => session?.user?.id, [session])
 
   const handleCommentCreated = (comment) => {
+    setCommentCount((prev) => prev + 1)
     setComments((current) => [
       {
         ...comment,
@@ -801,6 +859,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
 
   const handleCommentDeleted = async (comment) => {
     await requestWithAuth((token) => deleteComment(comment.id, token))
+    setCommentCount((prev) => Math.max(0, prev - 1))
     if (comment.parentCommentId) {
       setComments((current) => current.map((item) => {
         if (item.id !== comment.parentCommentId) {
@@ -849,6 +908,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
 
   const handleCommentReplied = async (comment, content) => {
     const created = await requestWithAuth((token) => createCommentReply(comment.id, { content }, token))
+    setCommentCount((prev) => prev + 1)
     const enrichedReply = {
       ...created,
       author: session?.user || null,
@@ -964,7 +1024,32 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
           <MarkdownPreview content={article.content} />
         </section>
       </article>
-      <section className="comments-section page-container" aria-labelledby="comments-title">
+      <section className="comments-section page-container" id="comments-title" aria-labelledby="comments-title">
+        <div className="comments-section-header">
+          <h2 style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '24px', fontWeight: '800' }}>
+            Comments
+            <span className="detail-comment-count-badge-inline" style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              backgroundColor: '#f4f4f5',
+              border: '1px solid var(--border)',
+              color: 'var(--muted)',
+            }}>
+              {commentCount}
+            </span>
+          </h2>
+          <div className="comments-filters" style={{ margin: 0 }}>
+            <label htmlFor="commentSortBy">Sort by:</label>
+            <select id="commentSortBy" value={commentSortBy} onChange={(e) => setCommentSortBy(e.target.value)}>
+              <option value="NEWEST">Newest</option>
+              <option value="OLDEST">Oldest</option>
+              <option value="MOST_CLAPS">Most Clapped</option>
+            </select>
+          </div>
+        </div>
+
         <CommentComposer
           articleId={article.id}
           navigate={navigate}
@@ -973,14 +1058,6 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
           session={session}
         />
         <div className="comments-panel">
-          <div className="comments-filters" style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-            <label htmlFor="commentSortBy" style={{ marginRight: '0.5rem', fontWeight: 500 }}>Sort by:</label>
-            <select id="commentSortBy" value={commentSortBy} onChange={(e) => setCommentSortBy(e.target.value)} style={{ padding: '0.25rem' }}>
-              <option value="NEWEST">Newest</option>
-              <option value="OLDEST">Oldest</option>
-              <option value="MOST_CLAPS">Most Clapped</option>
-            </select>
-          </div>
           {commentsState.loading && <p className="comment-loading">Loading comments...</p>}
           {commentsState.error && <p className="form-error">{commentsState.error}</p>}
           <CommentList

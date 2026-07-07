@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { getArticleCommentCount } from '../services/comments'
 
 export function ArticleCard({ article, variant = 'grid', navigate }) {
   const open = (event) => {
@@ -48,37 +47,6 @@ export function ArticleMeta({ article, withReadTime = false, navigate }) {
           <span>{article.readTime}</span>
         </>
       )}
-      <span aria-hidden="true">&middot;</span>
-      <CommentCountBadge articleId={article.id} />
     </div>
-  )
-}
-
-function CommentCountBadge({ articleId }) {
-  const [count, setCount] = useState(null)
-
-  useEffect(() => {
-    let active = true
-    getArticleCommentCount(articleId)
-      .then(res => {
-        if (active && res && typeof res.commentCount === 'number') {
-          setCount(res.commentCount)
-        }
-      })
-      .catch(() => {})
-    
-    return () => {
-      active = false
-    }
-  }, [articleId])
-
-  if (count === null) {
-    return null
-  }
-
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-      💬 {count} {count === 1 ? 'comment' : 'comments'}
-    </span>
   )
 }
