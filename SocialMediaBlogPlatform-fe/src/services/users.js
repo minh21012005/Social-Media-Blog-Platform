@@ -13,6 +13,7 @@ export function normalizeProfile(profile) {
     bio: profile.bio || '',
     avatarUrl: profile.avatarUrl || '',
     roles: profile.roles || [],
+    isPrivate: profile.isPrivate || false,
     createdAt: profile.createdAt,
   }
 }
@@ -55,4 +56,12 @@ export async function updateProfile(payload, token) {
     body: payload,
     token,
   }))
+}
+
+export async function searchUsers(query) {
+  if (!query) {
+    return []
+  }
+  const results = await apiRequest(`/api/v1/users/search?q=${encodeURIComponent(query)}`)
+  return (results || []).map(normalizeProfile)
 }

@@ -6,7 +6,7 @@ import { ArticleCard } from '../components/ArticleCard'
 import { Newsletter } from '../components/Newsletter'
 import { SiteFooter } from '../components/SiteFooter'
 
-export function HomePage({ navigate }) {
+export function HomePage({ navigate, mutedUserIds = new Set() }) {
   const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], trending: [], error: '' })
 
   useEffect(() => {
@@ -60,53 +60,64 @@ export function HomePage({ navigate }) {
 
   const { featured, editorPicks, trending } = state
 
+  // Filter out articles by muted authors
+  const filteredFeatured = featured && (!featured.author || !mutedUserIds.has(featured.author.id)) ? featured : null
+
+  const filteredEditorPicks = editorPicks.filter(
+    (article) => !article.author || !mutedUserIds.has(article.author.id)
+  )
+
+  const filteredTrending = trending.filter(
+    (article) => !article.author || !mutedUserIds.has(article.author.id)
+  )
+
   return (
     <main>
       {state.loading && <section className="page-container loading-state">Loading latest stories...</section>}
       {state.error && <section className="page-container empty-state"><h2>Stories could not be loaded.</h2><p>{state.error}</p></section>}
 
-      {!state.loading && !state.error && featured && (
+      {!state.loading && !state.error && filteredFeatured && (
         <section className="hero-section page-container">
-          <img 
-            alt="" 
-            className="hero-image" 
-            src={featured.image} 
+          <img
+            alt=""
+            className="hero-image"
+            src={filteredFeatured.image}
             style={{ cursor: 'pointer' }}
-            onClick={() => navigate(featured.path)}
+            onClick={() => navigate(filteredFeatured.path)}
           />
           <article className="hero-copy">
             <div className="eyebrow-row">
-              <span>{featured.category}</span>
+              <span>{filteredFeatured.category}</span>
               <span aria-hidden="true">&middot;</span>
-              <span>{featured.date}</span>
+              <span>{filteredFeatured.date}</span>
             </div>
-            <h1 
-              style={{ cursor: 'pointer' }} 
-              onClick={() => navigate(featured.path)}
+            <h1
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate(filteredFeatured.path)}
             >
-              {featured.title}
+              {filteredFeatured.title}
             </h1>
-            <p>{featured.summary}</p>
-            <div 
+            <p>{filteredFeatured.summary}</p>
+            <div
               className="author-line"
               style={{ cursor: 'pointer' }}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                navigate(`/author/${featured.author.username}`)
+                navigate(`/author/${filteredFeatured.author.username}`)
               }}
             >
-              <img alt="" src={featured.author.avatar} />
+              <img alt="" src={filteredFeatured.author.avatar} />
               <div>
-                <strong>{featured.author.name}</strong>
-                <span>{featured.readTime}</span>
+                <strong>{filteredFeatured.author.name}</strong>
+                <span>{filteredFeatured.readTime}</span>
               </div>
             </div>
           </article>
         </section>
       )}
 
-      {!state.loading && !state.error && !featured && (
+      {!state.loading && !state.error && !filteredFeatured && (
         <section className="page-container empty-state">
           <h2>No published stories yet.</h2>
           <p>Create and publish the first Chronicle story from the writer desk.</p>
@@ -114,7 +125,7 @@ export function HomePage({ navigate }) {
         </section>
       )}
 
-      {editorPicks.length > 0 && (
+      {filteredEditorPicks.length > 0 && (
         <section className="section-band">
           <div className="page-container">
             <div className="section-heading">
@@ -125,7 +136,7 @@ export function HomePage({ navigate }) {
               </a>
             </div>
             <div className="editor-grid">
-              {editorPicks.map((article) => (
+              {filteredEditorPicks.map((article) => (
                 <ArticleCard article={article} key={article.id} navigate={navigate} />
               ))}
             </div>
@@ -135,11 +146,11 @@ export function HomePage({ navigate }) {
 
       <div className="homepage-bottom-grid page-container">
         <div className="homepage-main-column">
-          {trending.length > 0 && (
+          {filteredTrending.length > 0 && (
             <section className="latest-section">
               <h2>Trending Now</h2>
               <div className="story-list" style={{ display: 'grid', gap: '32px', marginBottom: '32px' }}>
-                {trending.map((article) => (
+                {filteredTrending.map((article) => (
                   <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
                 ))}
               </div>

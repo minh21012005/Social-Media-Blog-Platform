@@ -11,17 +11,23 @@ import org.springframework.data.domain.Pageable;
 
 public interface SpringDataJpaCommentRepository extends JpaRepository<JpaCommentEntity, UUID> {
 
-        @Query("SELECT c FROM JpaCommentEntity c WHERE c.articleId = :articleId AND c.parentCommentId IS NULL")
-        Page<JpaCommentEntity> findRootCommentsByArticleId(@Param("articleId") UUID articleId, Pageable pageable);
+       @Query("SELECT c FROM JpaCommentEntity c WHERE c.articleId = :articleId AND c.parentCommentId IS NULL")
+       Page<JpaCommentEntity> findRootCommentsByArticleId(@Param("articleId") UUID articleId, Pageable pageable);
 
-        @Query("SELECT COUNT(c) FROM JpaCommentEntity c WHERE c.articleId = :articleId AND c.parentCommentId IS NULL")
-        long countRootCommentsByArticleId(@Param("articleId") UUID articleId);
+       @Query(value = "SELECT c FROM JpaCommentEntity c LEFT JOIN c.stats s WHERE c.articleId = :articleId AND c.parentCommentId IS NULL ORDER BY c.pinnedAt DESC NULLS LAST, s.clapCount DESC, c.createdAt DESC", countQuery = "SELECT COUNT(c) FROM JpaCommentEntity c WHERE c.articleId = :articleId AND c.parentCommentId IS NULL")
+       Page<JpaCommentEntity> findRootCommentsByArticleIdOrderByMostClaps(@Param("articleId") UUID articleId, Pageable pageable);
 
-        Page<JpaCommentEntity> findByParentCommentIdOrderByCreatedAtAsc(UUID parentCommentId, Pageable pageable);
+       @Query(value = "SELECT c FROM JpaCommentEntity c LEFT JOIN c.stats s WHERE c.articleId = :articleId AND c.parentCommentId IS NULL ORDER BY c.pinnedAt DESC NULLS LAST, s.replyCount DESC, c.createdAt DESC", countQuery = "SELECT COUNT(c) FROM JpaCommentEntity c WHERE c.articleId = :articleId AND c.parentCommentId IS NULL")
+       Page<JpaCommentEntity> findRootCommentsByArticleIdOrderByMostReplies(@Param("articleId") UUID articleId, Pageable pageable);
 
-        long countByParentCommentIdAndStatusIn(UUID parentCommentId, List<String> statuses);
+       @Query("SELECT COUNT(c) FROM JpaCommentEntity c WHERE c.articleId = :articleId AND c.parentCommentId IS NULL")
+       long countRootCommentsByArticleId(@Param("articleId") UUID articleId);
 
-        long countByArticleIdAndStatusIn(UUID articleId, List<String> statuses);
+       Page<JpaCommentEntity> findByParentCommentIdOrderByCreatedAtAsc(UUID parentCommentId, Pageable pageable);
 
-        java.util.Optional<JpaCommentEntity> findByArticleIdAndPinnedAtIsNotNull(UUID articleId);
+       long countByParentCommentIdAndStatusIn(UUID parentCommentId, List<String> statuses);
+
+       long countByArticleIdAndStatusIn(UUID articleId, List<String> statuses);
+
+       java.util.Optional<JpaCommentEntity> findByArticleIdAndPinnedAtIsNotNull(UUID articleId);
 }

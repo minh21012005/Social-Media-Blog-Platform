@@ -15,7 +15,7 @@ import { MyArticlesPage } from './pages/MyArticlesPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
-import { FollowLabPage } from './pages/FollowLabPage'
+
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
 import { EditorsPicksPage } from './pages/EditorsPicksPage'
 import './App.css'
@@ -24,7 +24,6 @@ function isProtectedRoute(route) {
   return route === '/write'
     || route === '/articles/me'
     || route === '/profile'
-    || route === '/follow-lab'
     || route === '/admin'
     || /^\/articles\/[^/]+\/edit$/.test(route)
 }
@@ -36,6 +35,7 @@ function App() {
   const [auth, setAuth] = useState(loadAuth)
   const [authChecking, setAuthChecking] = useState(() => Boolean(loadAuth()?.accessToken || isProtectedRoute(window.location.pathname)))
   const [toasts, setToasts] = useState([])
+  const [mutedUserIds, setMutedUserIds] = useState(new Set())
   const authRestoreInFlight = useRef(null)
 
   const session = useMemo(() => {
@@ -63,79 +63,6 @@ function App() {
     }
     return authRestoreInFlight.current
   }, [])
-
-  useEffect(() => {
-    let active = true
-
-    async function verifySession() {
-      const storedAuth = loadAuth()
-      if (!storedAuth?.accessToken) {
-        if (isProtectedRoute(window.location.pathname) && !authRestoreInFlight.current) {
-          await restoreSessionFromRefresh().catch(() => null)
-        }
-        if (active) {
-          setAuthChecking(false)
-        }
-        return
-      }
-
-      try {
-        const user = await apiRequest('/api/v1/users/me', { token: storedAuth.accessToken })
-        if (!active) {
-          return
-        }
-        const verifiedAuth = saveAuth({ ...storedAuth, user })
-        setAuth(verifiedAuth)
-      } catch {
-        try {
-          await restoreSessionFromRefresh()
-        } catch {
-          if (!active) {
-            return
-          }
-          clearAuth()
-          setAuth(null)
-        }
-      } finally {
-        if (active) {
-          setAuthChecking(false)
-        }
-      }
-    }
-
-    verifySession()
-
-    return () => {
-      active = false
-    }
-  }, [restoreSessionFromRefresh])
-
-  useEffect(() => {
-    if (!isProtectedRoute(route) || session || authChecking || authRestoreInFlight.current) {
-      return
-    }
-
-    let active = true
-    setAuthChecking(true)
-
-    restoreSessionFromRefresh()
-      .catch(() => null)
-      .finally(() => {
-        if (active) {
-          setAuthChecking(false)
-        }
-      })
-
-    return () => {
-      active = false
-    }
-  }, [authChecking, restoreSessionFromRefresh, route, session])
-
-  const handleAuthenticated = (authResponse) => {
-    const savedAuth = saveAuth(authResponse)
-    setAuth(savedAuth)
-    navigate('/')
-  }
 
   const notify = useCallback((message, options = {}) => {
     const id = crypto.randomUUID()
@@ -193,6 +120,103 @@ function App() {
       }
     }
   }, [auth, navigate, restoreSessionFromRefresh])
+
+  const handleAuthenticated = (authResponse) => {
+    const savedAuth = saveAuth(authResponse)
+    setAuth(savedAuth)
+    navigate('/')
+  }
+
+  useEffect(() => {
+    let active = true
+
+    async function verifySession() {
+      const storedAuth = loadAuth()
+      if (!storedAuth?.accessToken) {
+        if (isProtectedRoute(window.location.pathname) && !authRestoreInFlight.current) {
+          await restoreSessionFromRefresh().catch(() => null)
+        }
+        if (active) {
+          setAuthChecking(false)
+        }
+        return
+      }
+
+      try {
+        const user = await apiRequest('/api/v1/users/me', { token: storedAuth.accessToken })
+        if (!active) {
+          return
+        }
+        const verifiedAuth = saveAuth({ ...storedAuth, user })
+        setAuth(verifiedAuth)
+      } catch {
+        try {
+          await restoreSessionFromRefresh()
+        } catch {
+          if (!active) {
+            return
+          }
+          clearAuth()
+          setAuth(null)
+        }
+      } finally {
+        if (active) {
+          setAuthChecking(false)
+        }
+      }
+    }
+
+    verifySession()
+
+    return () => {
+      active = false
+    }
+  }, [restoreSessionFromRefresh])
+
+  useEffect(() => {
+    if (!session) {
+      setMutedUserIds(new Set())
+      return
+    }
+
+    let active = true
+    requestWithAuth(async (token) => {
+      try {
+        const { listMutedUserIds } = await import('./services/follows')
+        const response = await listMutedUserIds(token)
+        if (active && response && response.data) {
+          setMutedUserIds(new Set(response.data))
+        }
+      } catch (error) {
+        console.error('Failed to load muted user IDs:', error)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [session, requestWithAuth])
+
+  useEffect(() => {
+    if (!isProtectedRoute(route) || session || authChecking || authRestoreInFlight.current) {
+      return
+    }
+
+    let active = true
+    setAuthChecking(true)
+
+    restoreSessionFromRefresh()
+      .catch(() => null)
+      .finally(() => {
+        if (active) {
+          setAuthChecking(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [authChecking, restoreSessionFromRefresh, route, session])
 
   const handleLogout = async () => {
     await apiRequest('/api/v1/auth/logout', {
@@ -256,12 +280,19 @@ function App() {
     }
 
     if (pathname === '/profile') {
-      return protectedPage(<ProfilePage session={session} requestWithAuth={requestWithAuth} onProfileUpdated={handleProfileUpdated} notify={notify} />)
+      return protectedPage(
+        <ProfilePage
+          session={session}
+          requestWithAuth={requestWithAuth}
+          onProfileUpdated={handleProfileUpdated}
+          notify={notify}
+          mutedUserIds={mutedUserIds}
+          onMutedUsersChanged={setMutedUserIds}
+        />
+      )
     }
 
-    if (route === '/follow-lab') {
-      return protectedPage(<FollowLabPage session={session} requestWithAuth={requestWithAuth} notify={notify} />)
-    }
+
 
     if (pathname === '/admin') {
       return adminPage(
@@ -293,6 +324,7 @@ function App() {
           requestWithAuth={requestWithAuth}
           session={session}
           slug={articleMatch[1]}
+          mutedUserIds={mutedUserIds}
         />
       )
     }
@@ -305,6 +337,18 @@ function App() {
           session={session}
           requestWithAuth={requestWithAuth}
           notify={notify}
+          mutedUserIds={mutedUserIds}
+          onMuteToggle={(userId, isMuted) => {
+            setMutedUserIds(prev => {
+              const next = new Set(prev)
+              if (isMuted) {
+                next.add(userId)
+              } else {
+                next.delete(userId)
+              }
+              return next
+            })
+          }}
         />
       )
     }
@@ -320,10 +364,20 @@ function App() {
 
     if (pathname === '/search') {
       const query = routeUrl.searchParams.get('q')?.trim() || ''
-      return <SearchPage key={query} query={query} navigate={navigate} />
+      return (
+        <SearchPage
+          key={query}
+          query={query}
+          navigate={navigate}
+          session={session}
+          requestWithAuth={requestWithAuth}
+          notify={notify}
+          mutedUserIds={mutedUserIds}
+        />
+      )
     }
 
-    return <HomePage navigate={navigate} />
+    return <HomePage navigate={navigate} mutedUserIds={mutedUserIds} />
   }
 
   return (

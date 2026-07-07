@@ -46,34 +46,79 @@ public class FollowerEventConsumer {
             JsonNode payload = objectMapper.readTree(message);
             String eventType = payload.path("eventType").asText();
 
-            if (!"user.followed".equals(eventType)) {
-                return;
+            if ("user.followed".equals(eventType)) {
+                UUID eventId = UUID.fromString(payload.path("eventId").asText());
+                if (processedEventRepository.existsById(eventId)) {
+                    log.info("[FollowerEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
+                    return;
+                }
+                processedEventRepository.save(new JpaProcessedEventEntity(eventId));
+
+                UUID followerId = UUID.fromString(payload.path("followerId").asText());
+                UUID followedUserId = UUID.fromString(payload.path("followedUserId").asText());
+                Instant now = Instant.now();
+
+                Notification notification = Notification.create(
+                        RecipientId.of(followedUserId),
+                        followerId,
+                        NotificationType.USER_FOLLOWED,
+                        "User",
+                        followerId,
+                        "Bạn có người theo dõi mới",
+                        null,
+                        now
+                );
+                notificationRepository.save(notification);
+                log.info("[FollowerEventConsumer] Saved USER_FOLLOWED notification: recipient={} actor={}", followedUserId, followerId);
+            } else if ("user.follow-requested".equals(eventType)) {
+                UUID eventId = UUID.fromString(payload.path("eventId").asText());
+                if (processedEventRepository.existsById(eventId)) {
+                    log.info("[FollowerEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
+                    return;
+                }
+                processedEventRepository.save(new JpaProcessedEventEntity(eventId));
+
+                UUID followerId = UUID.fromString(payload.path("followerId").asText());
+                UUID followedUserId = UUID.fromString(payload.path("followedUserId").asText());
+                Instant now = Instant.now();
+
+                Notification notification = Notification.create(
+                        RecipientId.of(followedUserId),
+                        followerId,
+                        NotificationType.USER_FOLLOW_REQUESTED,
+                        "User",
+                        followerId,
+                        "Yêu cầu theo dõi mới",
+                        "muốn theo dõi bạn",
+                        now
+                );
+                notificationRepository.save(notification);
+                log.info("[FollowerEventConsumer] Saved USER_FOLLOW_REQUESTED notification: recipient={} actor={}", followedUserId, followerId);
+            } else if ("user.follow-accepted".equals(eventType)) {
+                UUID eventId = UUID.fromString(payload.path("eventId").asText());
+                if (processedEventRepository.existsById(eventId)) {
+                    log.info("[FollowerEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
+                    return;
+                }
+                processedEventRepository.save(new JpaProcessedEventEntity(eventId));
+
+                UUID followerId = UUID.fromString(payload.path("followerId").asText());
+                UUID followedUserId = UUID.fromString(payload.path("followedUserId").asText());
+                Instant now = Instant.now();
+
+                Notification notification = Notification.create(
+                        RecipientId.of(followerId),
+                        followedUserId,
+                        NotificationType.USER_FOLLOW_ACCEPTED,
+                        "User",
+                        followedUserId,
+                        "Yêu cầu theo dõi được chấp nhận",
+                        "đã chấp nhận yêu cầu theo dõi của bạn",
+                        now
+                );
+                notificationRepository.save(notification);
+                log.info("[FollowerEventConsumer] Saved USER_FOLLOW_ACCEPTED notification: recipient={} actor={}", followerId, followedUserId);
             }
-
-            UUID eventId = UUID.fromString(payload.path("eventId").asText());
-            if (processedEventRepository.existsById(eventId)) {
-                log.info("[FollowerEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
-                return;
-            }
-            processedEventRepository.save(new JpaProcessedEventEntity(eventId));
-
-            UUID followerId = UUID.fromString(payload.path("followerId").asText());
-            UUID followedUserId = UUID.fromString(payload.path("followedUserId").asText());
-            Instant now = Instant.now();
-
-            // Gửi thông báo cho người ĐƯỢC follow (followedUserId)
-            Notification notification = Notification.create(
-                    RecipientId.of(followedUserId),
-                    followerId,                      // actor = người thực hiện follow
-                    NotificationType.USER_FOLLOWED,
-                    "User",
-                    followerId,
-                    "Bạn có người theo dõi mới",
-                    null,
-                    now
-            );
-            notificationRepository.save(notification);
-            log.info("[FollowerEventConsumer] Saved USER_FOLLOWED notification: recipient={} actor={}", followedUserId, followerId);
 
         } catch (Exception e) {
             log.error("[FollowerEventConsumer] Failed to process follower event: {}", e.getMessage(), e);

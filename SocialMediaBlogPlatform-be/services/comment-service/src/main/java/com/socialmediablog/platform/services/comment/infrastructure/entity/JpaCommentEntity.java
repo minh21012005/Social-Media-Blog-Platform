@@ -37,6 +37,10 @@ public class JpaCommentEntity extends BaseEntity {
     @Column(name = "pinned_at")
     private Instant pinnedAt;
 
+    @jakarta.persistence.OneToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "id", referencedColumnName = "comment_id", insertable = false, updatable = false)
+    private JpaCommentStatsEntity stats;
+
     protected JpaCommentEntity() {
     }
 
