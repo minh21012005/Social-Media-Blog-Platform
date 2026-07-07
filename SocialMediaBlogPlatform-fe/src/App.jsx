@@ -364,7 +364,17 @@ function App() {
 
     if (pathname === '/search') {
       const query = routeUrl.searchParams.get('q')?.trim() || ''
-      return <SearchPage key={query} query={query} navigate={navigate} mutedUserIds={mutedUserIds} />
+      return (
+        <SearchPage
+          key={query}
+          query={query}
+          navigate={navigate}
+          session={session}
+          requestWithAuth={requestWithAuth}
+          notify={notify}
+          mutedUserIds={mutedUserIds}
+        />
+      )
     }
 
     return <HomePage navigate={navigate} mutedUserIds={mutedUserIds} />

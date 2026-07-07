@@ -274,9 +274,10 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                 Bio
                 <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: '16px 0', fontWeight: 'normal' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: '16px 0', fontWeight: '500', color: 'var(--ink)' }}>
                 <input
                   type="checkbox"
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--copper)' }}
                   checked={form.isPrivate}
                   onChange={(e) => setForm((c) => ({ ...c, isPrivate: e.target.checked }))}
                 />

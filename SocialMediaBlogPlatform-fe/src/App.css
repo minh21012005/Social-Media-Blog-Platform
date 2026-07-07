@@ -822,7 +822,7 @@
   gap: 10px;
 }
 
-.profile-form input,
+.profile-form input:not([type="checkbox"]),
 .profile-form textarea {
   background: #fff;
   border: 1px solid var(--border);
@@ -858,7 +858,7 @@
   resize: vertical;
 }
 
-.profile-form input:focus,
+.profile-form input:not([type="checkbox"]):focus,
 .profile-form textarea:focus {
   background: #fff;
   border-color: var(--copper);

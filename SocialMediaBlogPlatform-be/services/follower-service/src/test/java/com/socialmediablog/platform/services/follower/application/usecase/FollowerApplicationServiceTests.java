@@ -18,6 +18,11 @@ import com.socialmediablog.platform.services.follower.domain.repository.FollowRe
 import com.socialmediablog.platform.services.follower.domain.vo.FollowedUserId;
 import com.socialmediablog.platform.services.follower.domain.vo.FollowRelationId;
 import com.socialmediablog.platform.services.follower.domain.vo.FollowerId;
+import com.socialmediablog.platform.common.web.ApiResponse;
+import com.socialmediablog.platform.services.follower.application.port.out.FollowerEventPublisher;
+import com.socialmediablog.platform.services.follower.domain.aggregate.Mute;
+import com.socialmediablog.platform.services.follower.domain.repository.MuteRepository;
+import com.socialmediablog.platform.services.follower.infrastructure.feign.UserServiceFeignClient;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,7 +40,12 @@ class FollowerApplicationServiceTests {
     @BeforeEach
     void setUp() {
         repository = new InMemoryFollowRelationRepository();
-        service = new FollowerApplicationService(repository);
+        service = new FollowerApplicationService(
+                repository,
+                new DummyFollowerEventPublisher(),
+                new DummyUserServiceFeignClient(),
+                new DummyMuteRepository()
+        );
     }
 
     @Test
@@ -184,11 +194,70 @@ class FollowerApplicationServiceTests {
             return followRelation;
         }
 
+        @Override
+        public List<FollowRelation> findBlockedByUser(FollowerId blockerId, int page, int size) {
+            return relations.values().stream()
+                    .filter(r -> r.followerId().equals(blockerId) && r.isBlocked())
+                    .skip((long) page * size)
+                    .limit(size)
+                    .toList();
+        }
+
+        @Override
+        public long countBlockedByUser(FollowerId blockerId) {
+            return relations.values().stream()
+                    .filter(r -> r.followerId().equals(blockerId) && r.isBlocked())
+                    .count();
+        }
+
+        @Override
+        public List<FollowRelation> findPendingFollowRequests(FollowedUserId followedUserId, int page, int size) {
+            return relations.values().stream()
+                    .filter(r -> r.followedUserId().equals(followedUserId) && r.isPending())
+                    .skip((long) page * size)
+                    .limit(size)
+                    .toList();
+        }
+
+        @Override
+        public long countPendingFollowRequests(FollowedUserId followedUserId) {
+            return relations.values().stream()
+                    .filter(r -> r.followedUserId().equals(followedUserId) && r.isPending())
+                    .count();
+        }
+
         private List<FollowRelation> activeRelations() {
             return relations.values().stream()
                     .filter(FollowRelation::isActive)
                     .sorted(Comparator.comparing(FollowRelation::followedAt).reversed())
                     .toList();
         }
+    }
+
+    private static class DummyFollowerEventPublisher implements FollowerEventPublisher {
+        @Override
+        public void publish(UUID aggregateId, com.socialmediablog.platform.common.events.DomainEvent event) {}
+    }
+
+    private static class DummyUserServiceFeignClient implements UserServiceFeignClient {
+        @Override
+        public ApiResponse<UserResponse> getPublicUser(UUID userId) {
+            return ApiResponse.success(new UserResponse(userId, "test", "test", "test", "test", false));
+        }
+    }
+
+    private static class DummyMuteRepository implements MuteRepository {
+        @Override
+        public Optional<Mute> findByMuterIdAndMutedUserId(UUID muterId, UUID mutedUserId) { return Optional.empty(); }
+        @Override
+        public List<Mute> findByMuterId(UUID muterId, int page, int size) { return List.of(); }
+        @Override
+        public long countByMuterId(UUID muterId) { return 0; }
+        @Override
+        public List<UUID> findMutedUserIdsByMuterId(UUID muterId) { return List.of(); }
+        @Override
+        public Mute save(Mute mute) { return mute; }
+        @Override
+        public void delete(Mute mute) {}
     }
 }

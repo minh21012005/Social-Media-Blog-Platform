@@ -57,3 +57,11 @@ export async function updateProfile(payload, token) {
     token,
   }))
 }
+
+export async function searchUsers(query) {
+  if (!query) {
+    return []
+  }
+  const results = await apiRequest(`/api/v1/users/search?q=${encodeURIComponent(query)}`)
+  return (results || []).map(normalizeProfile)
+}

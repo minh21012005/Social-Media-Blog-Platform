@@ -22,4 +22,6 @@ public interface UserRepository {
     Optional<User> findByEmailOrUsername(String identifier);
 
     User save(User user);
+
+    List<User> searchUsers(String query);
 }

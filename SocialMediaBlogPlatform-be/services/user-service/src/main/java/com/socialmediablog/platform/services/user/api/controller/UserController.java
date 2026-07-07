@@ -68,9 +68,18 @@ public class UserController {
         this.refreshTokenCookies = refreshTokenCookies;
     }
 
-    @GetMapping("/{userId}")
-    public ApiResponse<PublicUserProfileResponse> publicProfile(@PathVariable UUID userId) {
-        return ApiResponse.success(PublicUserProfileResponse.from(getPublicUserProfileUseCase.executePublic(userId)));
+    @GetMapping("/public")
+    public ApiResponse<List<PublicUserProfileResponse>> publicProfiles(@RequestParam(name = "ids") List<UUID> ids) {
+        return ApiResponse.success(listPublicUsersUseCase.executeBatch(ids).stream()
+                .map(PublicUserProfileResponse::from)
+                .toList());
+    }
+
+    @GetMapping("/search")
+    public ApiResponse<List<PublicUserProfileResponse>> searchUsers(@RequestParam(name = "q") String query) {
+        return ApiResponse.success(listPublicUsersUseCase.searchUsers(query).stream()
+                .map(PublicUserProfileResponse::from)
+                .toList());
     }
 
     @GetMapping("/by-username/{username}")
@@ -78,11 +87,9 @@ public class UserController {
         return ApiResponse.success(PublicUserProfileResponse.from(getPublicUserByUsernameUseCase.executeByUsername(username)));
     }
 
-    @GetMapping("/public")
-    public ApiResponse<List<PublicUserProfileResponse>> publicProfiles(@RequestParam(name = "ids") List<UUID> ids) {
-        return ApiResponse.success(listPublicUsersUseCase.executeBatch(ids).stream()
-                .map(PublicUserProfileResponse::from)
-                .toList());
+    @GetMapping("/{userId}")
+    public ApiResponse<PublicUserProfileResponse> publicProfile(@PathVariable UUID userId) {
+        return ApiResponse.success(PublicUserProfileResponse.from(getPublicUserProfileUseCase.executePublic(userId)));
     }
 
     @GetMapping("/me")

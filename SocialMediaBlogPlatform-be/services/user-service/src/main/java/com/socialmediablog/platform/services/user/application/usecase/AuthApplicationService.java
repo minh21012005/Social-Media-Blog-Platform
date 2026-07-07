@@ -212,6 +212,17 @@ public class AuthApplicationService implements
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PublicUserProfile> searchUsers(String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return userRepository.searchUsers(query).stream()
+                .map(PublicUserProfile::from)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public UserProfile execute(UpdateUserProfileCommand command) {
         User user = userRepository.findById(command.userId())
