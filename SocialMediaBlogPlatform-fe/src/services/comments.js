@@ -58,3 +58,17 @@ export function unpinComment(commentId, token) {
     token,
   })
 }
+
+export function clapComment(commentId, token) {
+  return apiRequest(`/api/v1/comments/${commentId}/clap`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export function undoClapComment(commentId, token) {
+  return apiRequest(`/api/v1/comments/${commentId}/clap`, {
+    method: 'DELETE',
+    token,
+  })
+}

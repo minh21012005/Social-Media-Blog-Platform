@@ -88,6 +88,30 @@ public class CommentStats {
         );
     }
 
+    public CommentStats incrementClapCount(Instant now) {
+        return new CommentStats(
+                id,
+                commentId,
+                clapCount + 1,
+                replyCount,
+                now,
+                createdAt,
+                now
+        );
+    }
+
+    public CommentStats decrementClapCount(long clapsToRemove, Instant now) {
+        return new CommentStats(
+                id,
+                commentId,
+                Math.max(0, clapCount - clapsToRemove),
+                replyCount,
+                now,
+                createdAt,
+                now
+        );
+    }
+
     public CommentStatsId id() {
         return id;
     }

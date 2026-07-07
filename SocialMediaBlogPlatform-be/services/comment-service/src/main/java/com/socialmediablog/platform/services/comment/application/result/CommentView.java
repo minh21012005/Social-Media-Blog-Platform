@@ -16,17 +16,18 @@ public record CommentView(
         Instant createdAt,
         Instant updatedAt,
         Instant pinnedAt,
-        CommentStatsView stats) {
+        CommentStatsView stats,
+        boolean clappedByCurrentUser) {
 
-    public static CommentView from(Comment comment, CommentStatsView stats) {
-        return from(comment, comment.content().value(), stats);
+    public static CommentView from(Comment comment, CommentStatsView stats, boolean clappedByCurrentUser) {
+        return from(comment, comment.content().value(), stats, clappedByCurrentUser);
     }
 
     public static CommentView deletedPlaceholder(Comment comment, CommentStatsView stats) {
-        return from(comment, "Comment deleted", stats);
+        return from(comment, "Comment deleted", stats, false);
     }
 
-    private static CommentView from(Comment comment, String content, CommentStatsView stats) {
+    private static CommentView from(Comment comment, String content, CommentStatsView stats, boolean clappedByCurrentUser) {
         return new CommentView(
                 comment.id().value(),
                 comment.articleId().value(),
@@ -39,6 +40,7 @@ public record CommentView(
                 comment.createdAt(),
                 comment.updatedAt(),
                 comment.pinnedAt(),
-                stats);
+                stats,
+                clappedByCurrentUser);
     }
 }

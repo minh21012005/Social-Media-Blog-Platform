@@ -40,14 +40,16 @@ public class ArticleCommentController {
 
     @GetMapping("/{articleId}/comments")
     public ApiResponse<CommentPageResponse> list(
+            @AuthenticationPrincipal CurrentUser currentUser,
             @PathVariable UUID articleId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "NEWEST") String sort
     ) {
         CommentSortBy sortBy = CommentSortBy.valueOf(sort.toUpperCase());
+        UUID userId = currentUser != null ? currentUserId(currentUser) : null;
         return ApiResponse.success("Comments loaded", CommentPageResponse.from(
-                listArticleCommentsUseCase.execute(new ListArticleCommentsQuery(articleId, page, size, sortBy))
+                listArticleCommentsUseCase.execute(new ListArticleCommentsQuery(articleId, page, size, sortBy, userId))
         ));
     }
 
