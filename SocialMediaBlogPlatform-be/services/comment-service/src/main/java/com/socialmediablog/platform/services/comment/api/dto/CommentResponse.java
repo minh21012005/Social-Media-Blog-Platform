@@ -16,7 +16,8 @@ public record CommentResponse(
         Instant createdAt,
         Instant updatedAt,
         Instant pinnedAt,
-        CommentStatsResponse stats) {
+        CommentStatsResponse stats,
+        boolean clappedByCurrentUser) {
 
     public static CommentResponse from(CommentView comment) {
         return new CommentResponse(
@@ -31,6 +32,7 @@ public record CommentResponse(
                 comment.createdAt(),
                 comment.updatedAt(),
                 comment.pinnedAt(),
-                CommentStatsResponse.from(comment.stats()));
+                CommentStatsResponse.from(comment.stats()),
+                comment.clappedByCurrentUser());
     }
 }

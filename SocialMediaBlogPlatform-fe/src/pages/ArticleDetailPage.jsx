@@ -6,6 +6,7 @@ import { SiteFooter } from '../components/SiteFooter'
 import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
 import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies } from '../services/comments'
 import { getPublicUsers } from '../services/users'
+import { CommentClapButton } from '../components/CommentClapButton'
 
 const COMMENT_MAX_LENGTH = 5000
 
@@ -113,7 +114,7 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, onPin, onUnpin }) {
+function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, onPin, onUnpin, onClap, onUndoClap }) {
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState('')
   const [deletingId, setDeletingId] = useState('')
@@ -126,6 +127,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
   const [expandedReplies, setExpandedReplies] = useState({})
   const [repliesByComment, setRepliesByComment] = useState({})
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
 
   const getReplyCount = (comment) => Number(comment.stats?.replyCount || 0)
 
@@ -232,13 +234,13 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
       const data = await onLoadReplies(commentId, nextPage)
       setRepliesByComment((current) => ({
         ...current,
-        [commentId]: { 
-          error: '', 
-          items: [...currentState.items, ...data.items], 
-          page: data.page, 
-          hasMore: data.hasMore, 
+        [commentId]: {
+          error: '',
+          items: [...currentState.items, ...data.items],
+          page: data.page,
+          hasMore: data.hasMore,
           loading: false,
-          loadingMore: false 
+          loadingMore: false
         },
       }))
     } catch (err) {
@@ -246,6 +248,23 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
         ...current,
         [commentId]: { ...currentState, error: 'Could not load more replies.', loadingMore: false },
       }))
+    }
+  }
+
+  const handleClapAction = async (comment, isUndo) => {
+    const updated = isUndo ? await onUndoClap(comment) : await onClap(comment)
+    if (updated && comment.parentCommentId) {
+      setRepliesByComment((current) => {
+        const parentState = current[comment.parentCommentId]
+        if (!parentState) return current
+        return {
+          ...current,
+          [comment.parentCommentId]: {
+            ...parentState,
+            items: parentState.items.map((reply) => reply.id === comment.id ? updated : reply),
+          },
+        }
+      })
     }
   }
 
@@ -294,16 +313,25 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
             <strong>{isMine ? 'You' : authorName}</strong>
             <span>{formatCommentDate(reply.createdAt)}</span>
             {reply.editedAt && <span>edited</span>}
-            {isMine && !isEditing && (
-              <button className="comment-action-button" disabled={deletingId === reply.id} type="button" onClick={() => startEditingComment(reply)}>
-                Edit
-              </button>
-            )}
-            {canDelete && !isEditing && (
-              <button className="comment-action-button danger" disabled={deletingId === reply.id} type="button" onClick={() => requestDeleteComment(reply)}>
-                {deletingId === reply.id ? 'Deleting...' : 'Delete'}
-              </button>
-            )}
+            <div style={{ position: 'relative', display: 'inline-block', marginLeft: 'auto' }}>
+              <button className="comment-action-button" type="button" onClick={() => setOpenMenuId(openMenuId === reply.id ? null : reply.id)}>...</button>
+              {openMenuId === reply.id && (
+                <div className="comment-menu-popup" style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--surface)', border: '1px solid var(--border)', padding: '4px', borderRadius: '4px', zIndex: 10, minWidth: '120px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                  {isMine && !isEditing && (
+                    <button className="comment-action-button" disabled={deletingId === reply.id} type="button" onClick={() => { startEditingComment(reply); setOpenMenuId(null); }} style={{ display: 'block', width: '100%', textAlign: 'left' }}>Edit</button>
+                  )}
+                  {canDelete && !isEditing && (
+                    <button className="comment-action-button danger" disabled={deletingId === reply.id} type="button" onClick={() => { requestDeleteComment(reply); setOpenMenuId(null); }} style={{ display: 'block', width: '100%', textAlign: 'left' }}>Delete</button>
+                  )}
+                  {reply.clappedByCurrentUser && (
+                    <button className="comment-action-button" type="button" onClick={() => { handleClapAction(reply, true); setOpenMenuId(null); }} style={{ display: 'block', width: '100%', textAlign: 'left' }}>Undo claps</button>
+                  )}
+                  {!isMine && !canDelete && !reply.clappedByCurrentUser && (
+                    <span style={{ padding: '4px 8px', color: 'var(--ink-light)', fontSize: '0.875rem', display: 'block' }}>No actions</span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           {isEditing ? (
             <form className="comment-edit-form" onSubmit={(event) => saveCommentEditing(event, reply)}>
@@ -334,7 +362,12 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
               {error && <p className="form-error">{error}</p>}
             </form>
           ) : (
-            <p>{reply.content}</p>
+            <>
+              <p>{reply.content}</p>
+              <div className="comment-item-actions" style={{ display: 'flex', alignItems: 'center', marginTop: '8px' }}>
+                <CommentClapButton comment={reply} onClap={handleClapAction} currentUserId={currentUserId} />
+              </div>
+            </>
           )}
         </div>
       </article>
@@ -522,23 +555,25 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
                       {comment.pinnedAt ? 'Unpin' : 'Pin'}
                     </button>
                   )}
-                  {isMine && !isEditing && (
-                    <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
-                      Edit
-                    </button>
-                  )}
-                  {canDelete && !isEditing && (
-                    <>
-                      <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={() => requestDeleteComment(comment)}>
-                        {deletingId === comment.id ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </>
-                  )}
-                  {!isEditing && (
-                    <button className="comment-action-button" disabled={replyingId === comment.id} type="button" onClick={() => startReplying(comment)}>
-                      Reply
-                    </button>
-                  )}
+                  <div style={{ position: 'relative', display: 'inline-block', marginLeft: 'auto' }}>
+                    <button className="comment-action-button" type="button" onClick={() => setOpenMenuId(openMenuId === comment.id ? null : comment.id)}>...</button>
+                    {openMenuId === comment.id && (
+                      <div className="comment-menu-popup" style={{ position: 'absolute', top: '100%', right: 0, background: 'var(--surface)', border: '1px solid var(--border)', padding: '4px', borderRadius: '4px', zIndex: 10, minWidth: '120px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                        {isMine && !isEditing && (
+                          <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => { startEditingComment(comment); setOpenMenuId(null); }} style={{ display: 'block', width: '100%', textAlign: 'left' }}>Edit</button>
+                        )}
+                        {canDelete && !isEditing && (
+                          <button className="comment-action-button danger" disabled={deletingId === comment.id} type="button" onClick={() => { requestDeleteComment(comment); setOpenMenuId(null); }} style={{ display: 'block', width: '100%', textAlign: 'left' }}>Delete</button>
+                        )}
+                        {comment.clappedByCurrentUser && (
+                          <button className="comment-action-button" type="button" onClick={() => { handleClapAction(comment, true); setOpenMenuId(null); }} style={{ display: 'block', width: '100%', textAlign: 'left' }}>Undo claps</button>
+                        )}
+                        {!isMine && !canDelete && !comment.clappedByCurrentUser && (
+                          <span style={{ padding: '4px 8px', color: 'var(--ink-light)', fontSize: '0.875rem', display: 'block' }}>No actions</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {isEditing ? (
                   <form className="comment-edit-form" onSubmit={(event) => saveCommentEditing(event, comment)}>
@@ -571,6 +606,12 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
                 ) : (
                   <>
                     <p>{comment.content}</p>
+                    <div className="comment-item-actions" style={{ display: 'flex', alignItems: 'center', marginTop: '8px', marginBottom: '8px' }}>
+                      <CommentClapButton comment={comment} onClap={handleClapAction} currentUserId={currentUserId} />
+                      <button className="comment-action-button" disabled={replyingId === comment.id} type="button" onClick={() => startReplying(comment)}>
+                        Reply
+                      </button>
+                    </div>
                     {isReplying && (
                       <form className="comment-reply-form" onSubmit={(event) => submitReply(event, comment)}>
                         <textarea
@@ -680,7 +721,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         const pageResult = session
           ? await requestWithAuth((token) => listArticleComments(state.article.id, token, 0, 10, commentSortBy))
           : await listArticleComments(state.article.id, null, 0, 10, commentSortBy)
-        
+
         // If the backend has not yet updated to return PageResult, fallback safely
         const items = pageResult.items || pageResult
         const enrichedComments = await enrichComments(items)
@@ -715,7 +756,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         : await listArticleComments(state.article.id, null, nextPage, 10, commentSortBy)
       const items = pageResult.items || []
       const enrichedComments = await enrichComments(items)
-      
+
       setComments(prev => [...prev, ...enrichedComments])
       setCommentPage(nextPage)
       setHasMoreComments(pageResult.page !== undefined ? pageResult.page + 1 < pageResult.totalPages : false)
@@ -836,6 +877,41 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
     )))
   }
 
+  const handleCommentClap = async (comment) => {
+    if (!session) {
+      navigate('/login')
+      return null
+    }
+    const { clapComment } = await import('../services/comments')
+    await requestWithAuth((token) => clapComment(comment.id, token))
+
+    const count = Number(comment.stats?.clapCount || 0)
+    const updated = {
+      ...comment,
+      clappedByCurrentUser: true,
+      stats: { ...comment.stats, clapCount: count + 1 }
+    }
+
+    setComments((current) => current.map((item) => item.id === comment.id ? updated : item))
+    return updated
+  }
+
+  const handleCommentUndoClap = async (comment) => {
+    const { undoClapComment } = await import('../services/comments')
+    const response = await requestWithAuth((token) => undoClapComment(comment.id, token))
+    const removedCount = Number(response || 1) // default to 1 if api doesn't return data
+
+    const count = Number(comment.stats?.clapCount || 0)
+    const updated = {
+      ...comment,
+      clappedByCurrentUser: false,
+      stats: { ...comment.stats, clapCount: Math.max(0, count - removedCount) }
+    }
+
+    setComments((current) => current.map((item) => item.id === comment.id ? updated : item))
+    return updated
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -908,6 +984,8 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             onRequireLogin={() => navigate('/login')}
             onPin={handleCommentPinned}
             onUnpin={handleCommentUnpinned}
+            onClap={handleCommentClap}
+            onUndoClap={handleCommentUndoClap}
           />
           {hasMoreComments && (
             <button className="text-button" disabled={loadingMore} type="button" onClick={handleLoadMoreComments} style={{ marginTop: '1rem', width: '100%' }}>
