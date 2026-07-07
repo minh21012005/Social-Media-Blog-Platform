@@ -13,6 +13,7 @@ public record UserProfileResponse(
         String bio,
         String avatarUrl,
         Set<String> roles,
+        boolean isPrivate,
         Instant createdAt
 ) {
 
@@ -25,6 +26,7 @@ public record UserProfileResponse(
                 userProfile.bio(),
                 userProfile.avatarUrl(),
                 userProfile.roles(),
+                userProfile.isPrivate(),
                 userProfile.createdAt()
         );
     }

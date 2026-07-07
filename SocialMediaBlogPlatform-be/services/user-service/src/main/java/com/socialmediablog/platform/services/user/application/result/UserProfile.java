@@ -15,6 +15,7 @@ public record UserProfile(
         String bio,
         String avatarUrl,
         Set<String> roles,
+        boolean isPrivate,
         Instant createdAt
 ) {
 
@@ -27,6 +28,7 @@ public record UserProfile(
                 user.bio(),
                 user.avatarUrl(),
                 user.roles().stream().map(Role::name).collect(Collectors.toUnmodifiableSet()),
+                user.isPrivate(),
                 user.createdAt()
         );
     }

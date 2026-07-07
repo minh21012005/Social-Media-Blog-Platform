@@ -8,7 +8,8 @@ public record PublicUserProfile(
         String username,
         String displayName,
         String bio,
-        String avatarUrl
+        String avatarUrl,
+        boolean isPrivate
 ) {
 
     public static PublicUserProfile from(User user) {
@@ -17,7 +18,8 @@ public record PublicUserProfile(
                 user.username().value(),
                 user.displayName(),
                 user.bio(),
-                user.avatarUrl()
+                user.avatarUrl(),
+                user.isPrivate()
         );
     }
 }

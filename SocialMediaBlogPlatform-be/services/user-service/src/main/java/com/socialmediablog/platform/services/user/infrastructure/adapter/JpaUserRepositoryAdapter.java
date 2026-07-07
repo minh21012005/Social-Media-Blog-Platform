@@ -62,4 +62,14 @@ public class JpaUserRepositoryAdapter implements UserRepository {
     public User save(User user) {
         return repository.save(JpaUserEntity.fromDomain(user)).toDomain();
     }
+
+    @Override
+    public List<User> searchUsers(String query) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return repository.searchActiveUsers(query.trim()).stream()
+                .map(JpaUserEntity::toDomain)
+                .toList();
+    }
 }

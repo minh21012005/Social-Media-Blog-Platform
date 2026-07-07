@@ -114,7 +114,8 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, onPin, onUnpin, onClap, onUndoClap }) {
+function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, mutedUserIds = new Set(), onPin, onUnpin, onClap, onUndoClap }) {
+
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState('')
   const [deletingId, setDeletingId] = useState('')
@@ -276,11 +277,13 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
       return null
     }
 
+    const filteredReplies = replyState?.items?.filter((reply) => !reply.author || !mutedUserIds.has(reply.author.id)) || []
+
     return (
       <div className="comment-replies">
         {replyState?.loading && <p className="comment-reply-status">Loading replies...</p>}
         {replyState?.error && <p className="comment-reply-status error">{replyState.error}</p>}
-        {replyState?.items?.map((reply) => renderReply(reply))}
+        {filteredReplies.map((reply) => renderReply(reply))}
         {replyState?.hasMore && (
           <button className="text-button" disabled={replyState.loadingMore} type="button" onClick={() => loadMoreReplies(commentId)}>
             {replyState.loadingMore ? 'Loading more replies...' : 'Load more replies'}
@@ -490,7 +493,14 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     }
   }
 
-  if (!comments.length) {
+  const filteredComments = comments.filter((comment) => {
+    if (comment.status === 'DELETED') {
+      return true
+    }
+    return !comment.author || !mutedUserIds.has(comment.author.id)
+  })
+
+  if (!filteredComments.length) {
     return (
       <div className="comment-empty">
         <p>No comments yet. Start the conversation.</p>
@@ -501,7 +511,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
   return (
     <>
       <div className="comment-list">
-        {comments.map((comment) => {
+        {filteredComments.map((comment) => {
           const isMine = currentUserId && String(comment.authorId) === String(currentUserId)
           const isArticleOwner = currentUserId && String(articleAuthorId) === String(currentUserId)
           const canDelete = isMine || isArticleOwner
@@ -681,7 +691,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
   )
 }
 
-export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) {
+export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mutedUserIds = new Set() }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [comments, setComments] = useState([])
   const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
@@ -982,6 +992,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             onLoadReplies={handleLoadReplies}
             onReply={handleCommentReplied}
             onRequireLogin={() => navigate('/login')}
+            mutedUserIds={mutedUserIds}
             onPin={handleCommentPinned}
             onUnpin={handleCommentUnpinned}
             onClap={handleCommentClap}

@@ -22,6 +22,7 @@ public class User {
     private final String avatarUrl;
     private final UserStatus status;
     private final Set<Role> roles;
+    private final boolean isPrivate;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -35,6 +36,7 @@ public class User {
             String avatarUrl,
             UserStatus status,
             Set<Role> roles,
+            boolean isPrivate,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -47,6 +49,7 @@ public class User {
         this.avatarUrl = normalizeAvatarUrl(avatarUrl);
         this.status = status;
         this.roles = Set.copyOf(roles);
+        this.isPrivate = isPrivate;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -68,6 +71,7 @@ public class User {
                 null,
                 UserStatus.ACTIVE,
                 new LinkedHashSet<>(Set.of(Role.USER)),
+                false,
                 now,
                 now
         );
@@ -83,10 +87,11 @@ public class User {
             String avatarUrl,
             UserStatus status,
             Set<Role> roles,
+            boolean isPrivate,
             Instant createdAt,
             Instant updatedAt
     ) {
-        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, createdAt, updatedAt);
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, isPrivate, createdAt, updatedAt);
     }
 
     public UserRegisteredEvent registeredEvent(Instant occurredAt) {
@@ -97,12 +102,16 @@ public class User {
         return status == UserStatus.ACTIVE;
     }
 
+    public User updateProfile(String displayName, String bio, String avatarUrl, boolean isPrivate, Instant now) {
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, isPrivate, createdAt, now);
+    }
+
     public User updateProfile(String displayName, String bio, String avatarUrl, Instant now) {
-        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, createdAt, now);
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, isPrivate, createdAt, now);
     }
 
     public User changePassword(PasswordHash passwordHash, Instant now) {
-        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, createdAt, now);
+        return new User(id, username, email, passwordHash, displayName, bio, avatarUrl, status, roles, isPrivate, createdAt, now);
     }
 
     private static String normalizeDisplayName(String displayName, String fallback) {
@@ -169,6 +178,10 @@ public class User {
 
     public Set<Role> roles() {
         return roles;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
     }
 
     public Instant createdAt() {
