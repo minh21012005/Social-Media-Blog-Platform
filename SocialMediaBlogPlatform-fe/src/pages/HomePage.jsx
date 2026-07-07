@@ -7,7 +7,7 @@ import { Newsletter } from '../components/Newsletter'
 import { SiteFooter } from '../components/SiteFooter'
 
 export function HomePage({ navigate }) {
-  const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], trending: [], latest: [], error: '' })
+  const [state, setState] = useState({ loading: true, featured: null, editorPicks: [], trending: [], error: '' })
 
   useEffect(() => {
     let active = true
@@ -16,8 +16,8 @@ export function HomePage({ navigate }) {
         const [featuredArticles, editorPickArticles, trendingArticles, latestPage] = await Promise.all([
           listFeaturedArticles({ size: 1 }),
           listEditorPicks({ size: 5 }),
-          listTrendingArticles({ size: 6 }).catch(() => []),
-          listPublishedArticles({ size: 8, sort: 'latest' }),
+          listTrendingArticles({ size: 8 }).catch(() => []),
+          listPublishedArticles({ size: 10, sort: 'latest' }).catch(() => ({ items: [] })),
         ])
         if (active) {
           const [featured] = featuredArticles
@@ -30,20 +30,20 @@ export function HomePage({ navigate }) {
           editorPicks = editorPicks.slice(0, 2)
           editorPicks.forEach((article) => usedIds.add(article.id))
 
-          const trending = trendingArticles.filter((article) => !usedIds.has(article.id)).slice(0, 6)
-          trending.forEach((article) => usedIds.add(article.id))
-          
-          let latest = latestPage.items.filter((article) => !usedIds.has(article.id))
-          if (latest.length === 0) {
-            latest = latestPage.items
+          let trending = trendingArticles.filter((article) => !usedIds.has(article.id))
+          if (trending.length < 2) {
+            const latestArticles = (latestPage?.items || []).filter(
+              (article) => !usedIds.has(article.id) && !trending.some((t) => t.id === article.id)
+            )
+            trending = [...trending, ...latestArticles]
           }
-          latest = latest.slice(0, 2)
+          trending = trending.slice(0, 6)
           
-          setState({ loading: false, featured, editorPicks, trending, latest, error: '' })
+          setState({ loading: false, featured, editorPicks, trending, error: '' })
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, featured: null, editorPicks: [], latest: [], error: error.message })
+          setState({ loading: false, featured: null, editorPicks: [], trending: [], error: error.message })
         }
       }
     }
@@ -58,7 +58,7 @@ export function HomePage({ navigate }) {
     navigate(path)
   }
 
-  const { featured, editorPicks, trending, latest } = state
+  const { featured, editorPicks, trending } = state
 
   return (
     <main>
@@ -133,49 +133,15 @@ export function HomePage({ navigate }) {
         </section>
       )}
 
-      {trending.length > 0 && (
-        <section className="section-band trending-band">
-          <div className="page-container">
-            <div className="section-heading">
-              <h2>Trending Now 🔥</h2>
-              <a href="/articles" onClick={open('/articles')}>
-                View all
-                <ArrowRightIcon />
-              </a>
-            </div>
-            <div className="trending-grid">
-              {trending.map((article, index) => (
-                <div className="trending-card" key={article.id} onClick={() => navigate(article.path)}>
-                  <span className="trending-rank">#{index + 1}</span>
-                  <div className="trending-card-body">
-                    <span className="trending-category">{article.category}</span>
-                    <h3 className="trending-title">{article.title}</h3>
-                    <div className="trending-meta">
-                      <img alt="" className="trending-avatar" src={article.author.avatar} />
-                      <span>{article.author.name}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{article.readTime}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       <div className="homepage-bottom-grid page-container">
         <div className="homepage-main-column">
-          {latest.length > 0 && (
+          {trending.length > 0 && (
             <section className="latest-section">
-              <h2>Latest Stories</h2>
+              <h2>Trending Now</h2>
               <div className="story-list" style={{ display: 'grid', gap: '32px', marginBottom: '32px' }}>
-                {latest.map((article) => (
+                {trending.map((article) => (
                   <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
                 ))}
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <button className="outline-pill" type="button" onClick={() => navigate('/category/design')}>Load More Stories</button>
               </div>
             </section>
           )}
