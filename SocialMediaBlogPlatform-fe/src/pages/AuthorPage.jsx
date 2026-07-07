@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { ArticleList } from '../components/ArticleList'
 import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
-import { SocialIcon } from '../components/icons'
 import { authors } from '../data/editorial'
 import { listPublishedArticles } from '../services/articles'
 import { blockUser, followUser, getBlockStatus, getFollowCounts, getFollowStatus, unfollowUser } from '../services/follows'
@@ -202,50 +201,66 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
             <img alt="" src={author?.avatarUrl || authors.sarah.avatar} />
           </div>
           <div>
-            <div className="author-title-row">
-              <h1>{author?.displayName || (state.loading ? 'Loading author' : 'Author not found')}</h1>
-              {author && !isOwnProfile && session && (
-                <div className="author-kebab-menu" ref={menuRef}>
-                  <button
-                    aria-expanded={menuOpen}
-                    aria-label="More actions"
-                    className="icon-button kebab-button"
-                    type="button"
-                    onClick={() => setMenuOpen((c) => !c)}
-                  >
-                    ⋯
-                  </button>
-                  {menuOpen && (
-                    <div className="kebab-dropdown">
-                      {followState.blocked ? (
-                        <p className="kebab-info">This user is blocked. Manage blocked users in your <a href="/profile" onClick={(e) => { e.preventDefault(); setMenuOpen(false); navigate('/profile') }}>Profile settings</a>.</p>
-                      ) : (
-                        <>
-                          <button type="button" className="kebab-danger" onClick={doBlock} disabled={followState.busy}>
-                            Block @{author?.username}
-                          </button>
-                          <button type="button" className="kebab-item" onClick={toggleMute} disabled={followState.busy}>
-                            {isMuted ? `Unmute @${author?.username}` : `Mute @${author?.username}`}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+            <div className="author-header-info" style={{ marginBottom: '8px' }}>
+              <div className="author-title-row" style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                <h1 style={{ margin: 0 }}>{author?.displayName || (state.loading ? 'Loading author' : 'Author not found')}</h1>
+                {author && (
+                  <span className="author-handle" style={{ color: 'var(--muted)', fontSize: '15px', fontWeight: '500', marginRight: '4px' }}>
+                    @{author.username}
+                  </span>
+                )}
+                {author && !isOwnProfile && session && (
+                  <div className="author-kebab-menu" ref={menuRef} style={{ display: 'inline-block', alignSelf: 'center' }}>
+                    <button
+                      aria-expanded={menuOpen}
+                      aria-label="More actions"
+                      className="icon-button kebab-button"
+                      type="button"
+                      onClick={() => setMenuOpen((c) => !c)}
+                    >
+                      ⋯
+                    </button>
+                    {menuOpen && (
+                      <div className="kebab-dropdown">
+                        {followState.blocked ? (
+                          <p className="kebab-info">This user is blocked. Manage blocked users in your <a href="/profile" onClick={(e) => { e.preventDefault(); setMenuOpen(false); navigate('/profile') }}>Profile settings</a>.</p>
+                        ) : (
+                          <>
+                            <button type="button" className="kebab-danger" onClick={doBlock} disabled={followState.busy}>
+                              Block @{author?.username}
+                            </button>
+                            <button type="button" className="kebab-item" onClick={toggleMute} disabled={followState.busy}>
+                              {isMuted ? `Unmute @${author?.username}` : `Mute @${author?.username}`}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <p>{author?.bio || 'An editorial voice writing across design, culture, technology, and lifestyle.'}</p>
+
+            <p className="author-bio" style={{ margin: '0 0 12px 0', color: 'var(--ink)', fontSize: '15.5px', lineHeight: '1.5', maxWidth: '680px' }}>
+              {author?.bio || 'An editorial voice writing across design, culture, technology, and lifestyle.'}
+            </p>
+
             {author && (
-              <div className="follow-summary" aria-label="Follow counts">
-                <span><strong>{followState.followers}</strong> followers</span>
-                <span><strong>{followState.followingCount}</strong> following</span>
+              <div className="follow-summary-line" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', color: 'var(--muted)', fontSize: '14.5px', marginBottom: '16px' }}>
+                <span><strong style={{ color: 'var(--ink)', fontWeight: '700' }}>{followState.followers}</strong> followers</span>
+                <span aria-hidden="true" style={{ color: 'var(--border)' }}>&middot;</span>
+                <span><strong style={{ color: 'var(--ink)', fontWeight: '700' }}>{followState.followingCount}</strong> following</span>
                 {followState.mutualFollow && (
-                  <span className="mutual-badge">Follows you</span>
+                  <>
+                    <span aria-hidden="true" style={{ color: 'var(--border)' }}>&middot;</span>
+                    <span className="mutual-badge" style={{ backgroundColor: '#f4f4f5', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', color: 'var(--muted)' }}>Follows you</span>
+                  </>
                 )}
               </div>
             )}
+
             {author && !isOwnProfile && (
-              <div className="follow-actions">
+              <div className="follow-actions" style={{ margin: '0' }}>
                 {followState.blocked ? (
                   <span className="blocked-label">Blocked</span>
                 ) : (
@@ -254,19 +269,19 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
                     disabled={followState.loading || followState.busy}
                     type="button"
                     onClick={toggleFollow}
+                    style={{
+                      minHeight: '36px',
+                      padding: '0 20px',
+                      fontSize: '13.5px',
+                      fontWeight: '650'
+                    }}
                   >
                     {followState.busy ? 'Updating...' : followState.following ? 'Following' : followState.pending ? 'Requested' : 'Follow'}
                   </button>
                 )}
-                {followState.error && <span>{followState.error}</span>}
+                {followState.error && <span style={{ marginLeft: '12px', color: 'var(--red, #ef4444)', fontSize: '14px' }}>{followState.error}</span>}
               </div>
             )}
-            <div className="author-socials">
-              <SocialIcon label="Profile" />
-              <span>{author?.username ? `@${author.username}` : username}</span>
-              <SocialIcon label="Website" />
-              <SocialIcon label="Email" />
-            </div>
           </div>
         </div>
       </section>
@@ -284,7 +299,7 @@ export function AuthorPage({ username, navigate, session, requestWithAuth, notif
             </div>
           ) : (
             <>
-              <ArticleList articles={state.articles} emptyText="This author has not published an article yet." navigate={navigate} />
+              <ArticleList articles={state.articles} emptyText="This author has not published an article yet." navigate={navigate} variant="row" className="author-articles-grid" />
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </>
           )

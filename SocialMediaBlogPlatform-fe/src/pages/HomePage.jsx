@@ -146,16 +146,26 @@ export function HomePage({ navigate, mutedUserIds = new Set() }) {
 
       <div className="homepage-bottom-grid page-container">
         <div className="homepage-main-column">
-          {filteredTrending.length > 0 && (
-            <section className="latest-section">
-              <h2>Trending Now</h2>
-              <div className="story-list" style={{ display: 'grid', gap: '32px', marginBottom: '32px' }}>
-                {filteredTrending.map((article) => (
-                  <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
-                ))}
-              </div>
-            </section>
-          )}
+            {filteredTrending.length > 0 && (
+              <section className="latest-section">
+                <h2>Trending Now</h2>
+                <div className="story-list" style={{ display: 'grid', gap: '32px', marginBottom: '32px', marginTop: '24px' }}>
+                  {filteredTrending.slice(0, 2).map((article) => (
+                    <ArticleCard article={article} key={article.id} navigate={navigate} variant="horizontal" />
+                  ))}
+                </div>
+                {filteredTrending.length > 2 && (
+                  <button
+                    type="button"
+                    className="outline-pill"
+                    onClick={() => navigate('/trending')}
+                    style={{ display: 'block', margin: '24px auto 0', minHeight: '46px', padding: '0 32px', fontSize: '15px', fontWeight: '500' }}
+                  >
+                    Load more stories
+                  </button>
+                )}
+              </section>
+            )}
         </div>
         <div className="homepage-sidebar">
           <Newsletter />

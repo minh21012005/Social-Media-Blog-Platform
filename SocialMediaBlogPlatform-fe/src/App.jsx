@@ -18,6 +18,7 @@ import { WritePage } from './pages/WritePage'
 
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
 import { EditorsPicksPage } from './pages/EditorsPicksPage'
+import { TrendingPage } from './pages/TrendingPage'
 import './App.css'
 
 function isProtectedRoute(route) {
@@ -360,6 +361,10 @@ function App() {
 
     if (pathname === '/editors-picks') {
       return <EditorsPicksPage navigate={navigate} />
+    }
+
+    if (pathname === '/trending') {
+      return <TrendingPage navigate={navigate} mutedUserIds={mutedUserIds} />
     }
 
     if (pathname === '/search') {

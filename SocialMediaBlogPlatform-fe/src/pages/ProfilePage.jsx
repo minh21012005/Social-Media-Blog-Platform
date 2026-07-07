@@ -247,9 +247,12 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
       <section className="profile-page">
         <div className="page-container profile-shell">
           <aside className="profile-card">
-            <span className="form-eyebrow">Public profile</span>
+            <span className="form-eyebrow">{session.user.isPrivate ? 'Private profile' : 'Public profile'}</span>
             <img alt="" className="profile-avatar" src={session.user.avatarUrl || authors.sarah.avatar} />
             <h1>{session.user.displayName}</h1>
+            {session.user.username && (
+              <span style={{ color: 'var(--muted)', fontSize: '14px', fontWeight: '400', marginTop: '2px', display: 'block' }}>@{session.user.username}</span>
+            )}
             <p>{session.user.bio || 'Add a short bio so readers can recognize your voice across Chronicle.'}</p>
             <div className="profile-counts">
               <span><strong>{counts.followers}</strong> followers</span>
@@ -274,7 +277,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                 Bio
                 <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: '16px 0', fontWeight: '500', color: 'var(--ink)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: '10px 0 16px', fontWeight: '500', color: 'var(--ink)' }}>
                 <input
                   type="checkbox"
                   style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--copper)' }}
@@ -349,7 +352,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                   <div className="follow-user-row" key={item.userId}>
                     <a className="follow-user-info" href={profile?.username ? `/author/${profile.username}` : '#'} onClick={(e) => { e.preventDefault(); if (profile?.username) window.history.pushState({}, '', `/author/${profile.username}`); window.dispatchEvent(new PopStateEvent('popstate')) }}>
                       <img alt="" className="follow-user-avatar" src={profile?.avatarUrl || authors.sarah.avatar} />
-                      <div className="follow-user-text">
+                      <div className="follow-user-text" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                         <strong>{profile?.displayName || profile?.username || 'Unknown'}</strong>
                         <span>{profile?.username ? `@${profile.username}` : ''}</span>
                       </div>
