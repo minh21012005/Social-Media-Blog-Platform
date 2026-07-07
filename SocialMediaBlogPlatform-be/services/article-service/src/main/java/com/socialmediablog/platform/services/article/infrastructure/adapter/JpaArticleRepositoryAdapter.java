@@ -12,21 +12,32 @@ import com.socialmediablog.platform.services.article.infrastructure.persistence.
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaArticleRepositoryAdapter implements ArticleRepository {
 
-    private final SpringDataJpaArticleRepository repository;
+    private static final Logger log = LoggerFactory.getLogger(JpaArticleRepositoryAdapter.class);
 
-    public JpaArticleRepositoryAdapter(SpringDataJpaArticleRepository repository) {
+    private final SpringDataJpaArticleRepository repository;
+    private final RedisTemplate<String, String> redisTemplate;
+
+    public JpaArticleRepositoryAdapter(
+            SpringDataJpaArticleRepository repository,
+            RedisTemplate<String, String> redisTemplate) {
         this.repository = repository;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -40,15 +51,15 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
     }
 
     @Override
-    public List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, String sort, int page, int size) {
+    public List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, String sort,
+            int page, int size) {
         return repository.findPublished(
-                        category == null ? null : category.slug(),
-                        authorId,
-                        normalizeNullable(tag),
-                        normalizeNullable(query),
-                        normalizeSort(sort),
-                        PageRequest.of(page, size)
-                )
+                category == null ? null : category.slug(),
+                authorId,
+                normalizeNullable(tag),
+                normalizeNullable(query),
+                normalizeSort(sort),
+                PageRequest.of(page, size))
                 .stream()
                 .map(JpaArticleEntity::toDomain)
                 .toList();
@@ -78,9 +89,8 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
     @Override
     public List<Article> findByAuthor(AuthorId authorId, ArticleStatus status, int page, int size) {
         return repository.findAll(
-                        authorSpecification(authorId, status),
-                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"))
-                )
+                authorSpecification(authorId, status),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt")))
                 .stream()
                 .map(JpaArticleEntity::toDomain)
                 .toList();
@@ -106,6 +116,37 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
         return repository.save(JpaArticleEntity.fromDomain(article)).toDomain();
     }
 
+    @Override
+    public List<Article> findTrending(int size) {
+        int limit = Math.max(size, 1);
+        try {
+            // Read the ordered ID list from Redis
+            List<String> rawIds = redisTemplate.opsForList().range(TrendingScoreJob.TRENDING_IDS_KEY, 0, limit - 1);
+            if (rawIds != null && !rawIds.isEmpty()) {
+                List<UUID> ids = rawIds.stream().map(UUID::fromString).toList();
+                Map<UUID, Article> byId = repository.findAllById(ids).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                e -> e.id(),
+                                JpaArticleEntity::toDomain,
+                                (a, b) -> a,
+                                LinkedHashMap::new));
+                // Return in Redis score order, skipping any IDs that no longer exist
+                return ids.stream()
+                        .filter(byId::containsKey)
+                        .map(byId::get)
+                        .limit(limit)
+                        .toList();
+            }
+        } catch (Exception ex) {
+            log.warn("[findTrending] Could not read from Redis, falling back to latest: {}", ex.getMessage());
+        }
+        // Fallback: return latest published articles when Redis is unavailable
+        return repository.findPublished(null, null, null, null, "latest", PageRequest.of(0, limit))
+                .stream()
+                .map(JpaArticleEntity::toDomain)
+                .toList();
+    }
+
     private String normalizeNullable(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -125,8 +166,7 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
             ArticleCategory category,
             UUID authorId,
             String tag,
-            String query
-    ) {
+            String query) {
         String normalizedTag = normalizeNullable(tag);
         String normalizedQuery = normalizeNullable(query);
         return (root, criteriaQuery, criteriaBuilder) -> {
@@ -149,8 +189,7 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
                 predicates.add(criteriaBuilder.or(
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), pattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("content")), pattern)
-                ));
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("content")), pattern)));
             }
 
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));

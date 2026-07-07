@@ -8,6 +8,8 @@ import com.socialmediablog.platform.services.comment.application.command.ReplyCo
 import com.socialmediablog.platform.services.comment.application.exception.CommentAlreadyDeletedException;
 import com.socialmediablog.platform.services.comment.application.exception.CommentNotFoundException;
 import com.socialmediablog.platform.services.comment.application.exception.CommentPermissionDeniedException;
+import com.socialmediablog.platform.services.comment.application.port.in.CountArticleCommentsUseCase;
+import com.socialmediablog.platform.services.comment.application.query.CountArticleCommentsQuery;
 import com.socialmediablog.platform.services.comment.application.port.in.CreateCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.DeleteCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.EditCommentUseCase;
@@ -15,6 +17,10 @@ import com.socialmediablog.platform.services.comment.application.port.in.GetServ
 import com.socialmediablog.platform.services.comment.application.port.in.ListArticleCommentsUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListCommentRepliesUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ReplyCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.PinCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.UnpinCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.command.PinCommentCommand;
+import com.socialmediablog.platform.services.comment.application.command.UnpinCommentCommand;
 import com.socialmediablog.platform.services.comment.application.port.out.ArticleCommentPolicyPort;
 import com.socialmediablog.platform.services.comment.application.port.out.CommentEventPublisher;
 import com.socialmediablog.platform.services.comment.application.query.ListArticleCommentsQuery;
@@ -45,7 +51,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase, ListArticleCommentsUseCase, ListCommentRepliesUseCase, ReplyCommentUseCase {
+public class CommentApplicationService implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase, ListArticleCommentsUseCase, ListCommentRepliesUseCase, ReplyCommentUseCase, CountArticleCommentsUseCase, PinCommentUseCase, UnpinCommentUseCase {
 
     private final CommentRepository commentRepository;
     private final CommentStatsRepository commentStatsRepository;
@@ -191,6 +197,57 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
     }
 
     @Override
+    @Transactional
+    public CommentView execute(PinCommentCommand command) {
+        Instant now = clock.instant();
+        Comment comment = commentRepository.findById(CommentId.of(command.commentId()))
+                .orElseThrow(() -> new CommentNotFoundException(command.commentId()));
+        
+        // Verify requester is the article author
+        boolean isArticleAuthor = articleCommentPolicyPort.findByArticleId(comment.articleId().value())
+                .map(policy -> command.requesterId().equals(policy.authorId()))
+                .orElse(false);
+                
+        if (!isArticleAuthor) {
+            throw new CommentPermissionDeniedException();
+        }
+        
+        // Unpin existing pinned comment if any
+        commentRepository.findPinnedByArticleId(comment.articleId())
+                .filter(existing -> !existing.id().equals(comment.id()))
+                .ifPresent(existing -> commentRepository.save(existing.unpin(now)));
+        
+        Comment savedComment = commentRepository.save(comment.pin(now));
+        CommentStatsView stats = commentStatsRepository.findByCommentId(savedComment.id())
+                .map(CommentStatsView::from)
+                .orElseGet(CommentStatsView::empty);
+        return CommentView.from(savedComment, stats);
+    }
+
+    @Override
+    @Transactional
+    public CommentView execute(UnpinCommentCommand command) {
+        Instant now = clock.instant();
+        Comment comment = commentRepository.findById(CommentId.of(command.commentId()))
+                .orElseThrow(() -> new CommentNotFoundException(command.commentId()));
+        
+        // Verify requester is the article author
+        boolean isArticleAuthor = articleCommentPolicyPort.findByArticleId(comment.articleId().value())
+                .map(policy -> command.requesterId().equals(policy.authorId()))
+                .orElse(false);
+                
+        if (!isArticleAuthor) {
+            throw new CommentPermissionDeniedException();
+        }
+        
+        Comment savedComment = commentRepository.save(comment.unpin(now));
+        CommentStatsView stats = commentStatsRepository.findByCommentId(savedComment.id())
+                .map(CommentStatsView::from)
+                .orElseGet(CommentStatsView::empty);
+        return CommentView.from(savedComment, stats);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PageResult<CommentView> execute(ListArticleCommentsQuery query) {
         ArticleId articleId = ArticleId.of(query.articleId());
@@ -248,5 +305,10 @@ public class CommentApplicationService implements GetServiceStatusUseCase, Creat
                 .orElseGet(CommentStatsView::empty);
         long replyCount = commentRepository.countByParentCommentId(comment.id());
         return new CommentStatsView(storedStats.clapCount(), replyCount, storedStats.lastInteractionAt());
+    }
+
+    @Override
+    public long execute(CountArticleCommentsQuery query) {
+        return commentRepository.countVisibleByArticleId(ArticleId.of(query.articleId()));
     }
 }

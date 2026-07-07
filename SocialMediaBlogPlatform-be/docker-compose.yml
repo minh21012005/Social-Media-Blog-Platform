@@ -136,9 +136,12 @@ services:
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/social_blog_articles
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - postgres
       - kafka
+      - redis
       - config-server
       - discovery-server
 

@@ -40,3 +40,21 @@ export function deleteComment(commentId, token) {
     token,
   })
 }
+
+export function getArticleCommentCount(articleId) {
+  return apiRequest(`/api/v1/articles/${articleId}/comments/count`)
+}
+
+export function pinComment(commentId, token) {
+  return apiRequest(`/api/v1/comments/${commentId}/pin`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export function unpinComment(commentId, token) {
+  return apiRequest(`/api/v1/comments/${commentId}/unpin`, {
+    method: 'POST',
+    token,
+  })
+}

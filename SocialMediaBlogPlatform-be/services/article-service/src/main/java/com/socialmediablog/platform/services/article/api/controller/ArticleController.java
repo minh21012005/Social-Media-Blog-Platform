@@ -29,6 +29,7 @@ import com.socialmediablog.platform.services.article.application.port.in.ListEdi
 import com.socialmediablog.platform.services.article.application.port.in.ListFeaturedArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListMyArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListPublishedArticlesUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.ListTrendingArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.PublishArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.RecordArticleViewUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.UpdateArticleUseCase;
@@ -70,6 +71,7 @@ public class ArticleController {
     private final ListMyArticlesUseCase listMyArticlesUseCase;
     private final ListFeaturedArticlesUseCase listFeaturedArticlesUseCase;
     private final ListEditorPicksUseCase listEditorPicksUseCase;
+    private final ListTrendingArticlesUseCase listTrendingArticlesUseCase;
     private final CurateArticleUseCase curateArticleUseCase;
     private final UploadArticleMediaUseCase uploadArticleMediaUseCase;
     private final RecordArticleViewUseCase recordArticleViewUseCase;
@@ -87,6 +89,7 @@ public class ArticleController {
             ListMyArticlesUseCase listMyArticlesUseCase,
             ListFeaturedArticlesUseCase listFeaturedArticlesUseCase,
             ListEditorPicksUseCase listEditorPicksUseCase,
+            ListTrendingArticlesUseCase listTrendingArticlesUseCase,
             CurateArticleUseCase curateArticleUseCase,
             UploadArticleMediaUseCase uploadArticleMediaUseCase,
             RecordArticleViewUseCase recordArticleViewUseCase
@@ -103,6 +106,7 @@ public class ArticleController {
         this.listMyArticlesUseCase = listMyArticlesUseCase;
         this.listFeaturedArticlesUseCase = listFeaturedArticlesUseCase;
         this.listEditorPicksUseCase = listEditorPicksUseCase;
+        this.listTrendingArticlesUseCase = listTrendingArticlesUseCase;
         this.curateArticleUseCase = curateArticleUseCase;
         this.uploadArticleMediaUseCase = uploadArticleMediaUseCase;
         this.recordArticleViewUseCase = recordArticleViewUseCase;
@@ -141,6 +145,13 @@ public class ArticleController {
     @GetMapping("/editor-picks")
     public ApiResponse<List<ArticleResponse>> editorPicks(@RequestParam(defaultValue = "2") int size) {
         return ApiResponse.success(listEditorPicksUseCase.executeEditorPicks(new ListCuratedArticlesCommand(size)).stream()
+                .map(ArticleResponse::from)
+                .toList());
+    }
+
+    @GetMapping("/trending")
+    public ApiResponse<List<ArticleResponse>> trending(@RequestParam(defaultValue = "6") int size) {
+        return ApiResponse.success(listTrendingArticlesUseCase.executeTrending(new ListCuratedArticlesCommand(size)).stream()
                 .map(ArticleResponse::from)
                 .toList());
     }

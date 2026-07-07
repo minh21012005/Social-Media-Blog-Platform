@@ -14,6 +14,10 @@ import com.socialmediablog.platform.services.comment.application.port.in.EditCom
 import com.socialmediablog.platform.services.comment.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListCommentRepliesUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ReplyCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.PinCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.UnpinCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.command.PinCommentCommand;
+import com.socialmediablog.platform.services.comment.application.command.UnpinCommentCommand;
 import com.socialmediablog.platform.services.comment.application.query.ListCommentRepliesQuery;
 import com.socialmediablog.platform.services.comment.api.dto.CommentPageResponse;
 import jakarta.validation.Valid;
@@ -40,19 +44,25 @@ public class CommentController {
     private final DeleteCommentUseCase deleteCommentUseCase;
     private final ListCommentRepliesUseCase listCommentRepliesUseCase;
     private final ReplyCommentUseCase replyCommentUseCase;
+    private final PinCommentUseCase pinCommentUseCase;
+    private final UnpinCommentUseCase unpinCommentUseCase;
 
     public CommentController(
             GetServiceStatusUseCase getServiceStatusUseCase,
             EditCommentUseCase editCommentUseCase,
             DeleteCommentUseCase deleteCommentUseCase,
             ListCommentRepliesUseCase listCommentRepliesUseCase,
-            ReplyCommentUseCase replyCommentUseCase
+            ReplyCommentUseCase replyCommentUseCase,
+            PinCommentUseCase pinCommentUseCase,
+            UnpinCommentUseCase unpinCommentUseCase
     ) {
         this.getServiceStatusUseCase = getServiceStatusUseCase;
         this.editCommentUseCase = editCommentUseCase;
         this.deleteCommentUseCase = deleteCommentUseCase;
         this.listCommentRepliesUseCase = listCommentRepliesUseCase;
         this.replyCommentUseCase = replyCommentUseCase;
+        this.pinCommentUseCase = pinCommentUseCase;
+        this.unpinCommentUseCase = unpinCommentUseCase;
     }
 
     @GetMapping("/status")
@@ -114,6 +124,32 @@ public class CommentController {
                 commentId,
                 currentUserId(currentUser)
         ));
+    }
+
+    @PostMapping("/{commentId}/pin")
+    public ApiResponse<CommentResponse> pin(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID commentId
+    ) {
+        return ApiResponse.success("Comment pinned", CommentResponse.from(pinCommentUseCase.execute(
+                new PinCommentCommand(
+                        commentId,
+                        currentUserId(currentUser)
+                )
+        )));
+    }
+
+    @PostMapping("/{commentId}/unpin")
+    public ApiResponse<CommentResponse> unpin(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID commentId
+    ) {
+        return ApiResponse.success("Comment unpinned", CommentResponse.from(unpinCommentUseCase.execute(
+                new UnpinCommentCommand(
+                        commentId,
+                        currentUserId(currentUser)
+                )
+        )));
     }
 
     private UUID currentUserId(CurrentUser currentUser) {

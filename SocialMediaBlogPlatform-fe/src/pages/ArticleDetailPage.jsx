@@ -113,7 +113,7 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, mutedUserIds = new Set() }) {
+function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, mutedUserIds = new Set(), onPin, onUnpin }) {
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState('')
   const [deletingId, setDeletingId] = useState('')
@@ -232,13 +232,13 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
       const data = await onLoadReplies(commentId, nextPage)
       setRepliesByComment((current) => ({
         ...current,
-        [commentId]: { 
-          error: '', 
-          items: [...currentState.items, ...data.items], 
-          page: data.page, 
-          hasMore: data.hasMore, 
+        [commentId]: {
+          error: '',
+          items: [...currentState.items, ...data.items],
+          page: data.page,
+          hasMore: data.hasMore,
           loading: false,
-          loadingMore: false 
+          loadingMore: false
         },
       }))
     } catch (err) {
@@ -390,13 +390,15 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     setReplyError('')
     try {
       const createdReply = await onReply(comment, trimmed)
-      const refreshedReplies = await onLoadReplies(comment.id).catch(() => [createdReply])
+      const data = await onLoadReplies(comment.id).catch(() => ({ items: [createdReply], page: 0, hasMore: false }))
       setExpandedReplies((current) => ({ ...current, [comment.id]: true }))
       setRepliesByComment((current) => ({
         ...current,
         [comment.id]: {
           error: '',
-          items: refreshedReplies,
+          items: data.items,
+          page: data.page,
+          hasMore: data.hasMore,
           loading: false,
         },
       }))
@@ -521,8 +523,14 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
               <div>
                 <div className="comment-item-meta">
                   <strong>{isMine ? 'You' : authorName}</strong>
+                  {comment.pinnedAt && <span className="comment-pinned-badge" title="Pinned by author" style={{ background: 'var(--accent-light)', color: 'var(--accent)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>📌 Pinned</span>}
                   <span>{formatCommentDate(comment.createdAt)}</span>
                   {comment.editedAt && <span>edited</span>}
+                  {isArticleOwner && !isEditing && (
+                    <button className="comment-action-button" type="button" onClick={() => comment.pinnedAt ? onUnpin(comment) : onPin(comment)}>
+                      {comment.pinnedAt ? 'Unpin' : 'Pin'}
+                    </button>
+                  )}
                   {isMine && !isEditing && (
                     <button className="comment-action-button" disabled={deletingId === comment.id} type="button" onClick={() => startEditingComment(comment)}>
                       Edit
@@ -681,7 +689,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
         const pageResult = session
           ? await requestWithAuth((token) => listArticleComments(state.article.id, token, 0, 10, commentSortBy))
           : await listArticleComments(state.article.id, null, 0, 10, commentSortBy)
-        
+
         // If the backend has not yet updated to return PageResult, fallback safely
         const items = pageResult.items || pageResult
         const enrichedComments = await enrichComments(items)
@@ -716,7 +724,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
         : await listArticleComments(state.article.id, null, nextPage, 10, commentSortBy)
       const items = pageResult.items || []
       const enrichedComments = await enrichComments(items)
-      
+
       setComments(prev => [...prev, ...enrichedComments])
       setCommentPage(nextPage)
       setHasMoreComments(pageResult.page !== undefined ? pageResult.page + 1 < pageResult.totalPages : false)
@@ -819,6 +827,24 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
     return enrichedReply
   }
 
+  const handleCommentPinned = async (comment) => {
+    const pinnedComment = await requestWithAuth((token) => import('../services/comments').then(m => m.pinComment(comment.id, token)))
+    setComments((current) => current.map((item) => (
+      item.id === comment.id
+        ? { ...pinnedComment, author: item.author }
+        : { ...item, pinnedAt: null } // unpin others
+    )))
+  }
+
+  const handleCommentUnpinned = async (comment) => {
+    const unpinnedComment = await requestWithAuth((token) => import('../services/comments').then(m => m.unpinComment(comment.id, token)))
+    setComments((current) => current.map((item) => (
+      item.id === comment.id
+        ? { ...unpinnedComment, author: item.author }
+        : item
+    )))
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -890,6 +916,8 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
             onReply={handleCommentReplied}
             onRequireLogin={() => navigate('/login')}
             mutedUserIds={mutedUserIds}
+            onPin={handleCommentPinned}
+            onUnpin={handleCommentUnpinned}
           />
           {hasMoreComments && (
             <button className="text-button" disabled={loadingMore} type="button" onClick={handleLoadMoreComments} style={{ marginTop: '1rem', width: '100%' }}>

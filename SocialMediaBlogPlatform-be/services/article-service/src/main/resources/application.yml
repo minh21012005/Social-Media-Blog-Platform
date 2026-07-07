@@ -30,6 +30,10 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       retries: 3
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 outbox:
   relay:
@@ -62,3 +66,10 @@ cloudinary:
 logging:
   pattern:
     level: "%5p [correlationId:%X{correlationId}]"
+
+trending:
+  job:
+    cron: "${TRENDING_JOB_CRON:0 */15 * * * *}"
+    page-size: ${TRENDING_JOB_PAGE_SIZE:200}
+  cache:
+    ttl-minutes: ${TRENDING_CACHE_TTL_MINUTES:20}

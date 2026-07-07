@@ -3059,3 +3059,112 @@ img.comment-avatar {
   cursor: wait;
   opacity: 0.7;
 }
+
+/* ─── Trending Now Section ─────────────────────────────────────── */
+.trending-band {
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a1209 50%, #0f0f0f 100%);
+}
+
+.trending-band .section-heading h2 {
+  color: #fff;
+}
+
+.trending-band .section-heading a {
+  color: rgba(255, 255, 255, 0.6);
+  transition: color 0.15s ease;
+}
+
+.trending-band .section-heading a:hover {
+  color: var(--copper);
+}
+
+.trending-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 900px) {
+  .trending-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trending-card {
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 16px;
+  padding: 18px 20px;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.trending-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(193, 139, 100, 0.35);
+  transform: translateY(-2px);
+}
+
+.trending-rank {
+  color: var(--copper);
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  min-width: 36px;
+  opacity: 0.8;
+  padding-top: 2px;
+}
+
+.trending-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.trending-category {
+  background: rgba(193, 139, 100, 0.15);
+  border-radius: 4px;
+  color: var(--copper);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.trending-title {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.trending-meta {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  font-size: 12px;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.trending-avatar {
+  border-radius: 50%;
+  height: 18px;
+  object-fit: cover;
+  width: 18px;
+}
