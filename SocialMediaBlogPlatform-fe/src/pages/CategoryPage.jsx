@@ -71,7 +71,7 @@ export function CategoryPage({ slug, navigate }) {
         </select>
       </section>
 
-      <section className="category-grid page-container">
+      <section className="page-container">
         {state.loading && <div className="loading-state">Loading {category.label.toLowerCase()} stories...</div>}
         {state.error && <div className="empty-state"><h2>Could not load this category.</h2><p>{state.error}</p></div>}
         {!state.loading && !state.error && (

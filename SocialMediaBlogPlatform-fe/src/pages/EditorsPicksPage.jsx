@@ -42,7 +42,7 @@ export function EditorsPicksPage({ navigate }) {
         <p>Handpicked stories, insightful perspectives, and deep-dives recommended by our editorial team.</p>
       </section>
 
-      <section className="category-grid page-container">
+      <section className="page-container">
         {state.loading && <div className="loading-state">Loading curated stories...</div>}
         {state.error && <div className="empty-state"><h2>Could not load curated stories.</h2><p>{state.error}</p></div>}
         {!state.loading && !state.error && (

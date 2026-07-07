@@ -172,7 +172,7 @@ export function SearchPage({ query, navigate, session, requestWithAuth, notify, 
         </section>
       )}
 
-      <section className="category-grid page-container" style={{ minHeight: '300px' }}>
+      <section className="page-container" style={{ minHeight: '300px' }}>
         {searchMode === 'stories' ? (
           <>
             {state.loading && <div className="loading-state">Searching stories...</div>}
