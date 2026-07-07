@@ -117,16 +117,28 @@ export function SiteHeader({ session, navigate, onLogout }) {
       )
       setNotifOpen(false)
 
-      if (notif.type === 'NEW_COMMENT' || notif.type === 'NEW_ARTICLE') {
+      if (
+        notif.type === 'NEW_COMMENT' ||
+        notif.type === 'NEW_ARTICLE' ||
+        notif.type === 'COMMENT_CREATED' ||
+        notif.type === 'COMMENT_REPLIED' ||
+        notif.type === 'ARTICLE_PUBLISHED'
+      ) {
         const article = await getArticleById(notif.subjectId)
         if (article?.slug) {
           navigate(`/articles/${article.slug}`)
         }
-      } else if (notif.type === 'NEW_FOLLOWER') {
+      } else if (
+        notif.type === 'NEW_FOLLOWER' ||
+        notif.type === 'USER_FOLLOWED' ||
+        notif.type === 'USER_FOLLOW_ACCEPTED'
+      ) {
         const user = await getPublicUser(notif.actorId)
         if (user?.username) {
           navigate(`/author/${user.username}`)
         }
+      } else if (notif.type === 'USER_FOLLOW_REQUESTED') {
+        navigate('/profile')
       }
     } catch {
       // bỏ qua lỗi đơn lẻ
@@ -226,9 +238,9 @@ export function SiteHeader({ session, navigate, onLogout }) {
                     <span className="notif-unread-count">
                       {notifications.filter((n) => n.status === 'UNREAD').length} unread
                     </span>
-                    <button 
-                      className="text-button" 
-                      type="button" 
+                    <button
+                      className="text-button"
+                      type="button"
                       onClick={handleMarkAllRead}
                       style={{ fontSize: '0.85rem', cursor: 'pointer', background: 'none', border: 'none', color: '#03a87c', padding: 0 }}
                     >
@@ -269,6 +281,7 @@ export function SiteHeader({ session, navigate, onLogout }) {
         </div>
         {session ? (
           <>
+            <button className="header-link-button" type="button" onClick={() => navigate('/articles/me')}>My articles</button>
             <button className="header-write-button" type="button" onClick={() => navigate('/write')}>Write</button>
             <div className="header-user-menu" ref={menuRef}>
               <button

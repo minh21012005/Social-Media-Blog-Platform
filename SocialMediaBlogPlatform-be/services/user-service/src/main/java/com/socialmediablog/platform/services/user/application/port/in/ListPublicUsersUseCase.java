@@ -7,4 +7,6 @@ import java.util.UUID;
 public interface ListPublicUsersUseCase {
 
     List<PublicUserProfile> executeBatch(List<UUID> userIds);
+
+    List<PublicUserProfile> searchUsers(String query);
 }
