@@ -140,7 +140,7 @@ export function SearchPage({ query, navigate, session, requestWithAuth, notify, 
 
   return (
     <main>
-      <section className="search-hero page-container">
+      <section className="search-hero page-container" style={{ borderBottom: query ? 'none' : undefined, paddingBottom: query ? 0 : undefined }}>
         <span className="form-eyebrow">Search</span>
         <h1>{query ? `Results for "${query}"` : 'Search Chronicle.'}</h1>
         <p>
@@ -148,29 +148,27 @@ export function SearchPage({ query, navigate, session, requestWithAuth, notify, 
             ? `${state.totalItems} ${state.totalItems === 1 ? 'story' : 'stories'} and ${users.length} ${users.length === 1 ? 'person' : 'people'} found.`
             : 'Use the search icon above to find stories or people.'}
         </p>
-      </section>
 
-      {/* Tabs */}
-      {query && (
-        <section className="profile-follow-section page-container" style={{ marginTop: '20px', paddingBottom: 0 }}>
-          <div className="profile-tabs" style={{ marginBottom: '20px', borderBottom: '1px solid var(--border)' }}>
+        {/* Tabs */}
+        {query && (
+          <div className="profile-tabs" style={{ marginTop: '32px' }}>
             <button
               className={`profile-tab${searchMode === 'stories' ? ' profile-tab--active' : ''}`}
               type="button"
               onClick={() => setSearchMode('stories')}
             >
-              Stories <span className="tab-count">{state.totalItems}</span>
+              Stories <span className="tab-count" style={{ marginLeft: '4px', fontSize: '12px', opacity: 0.7 }}>({state.totalItems})</span>
             </button>
             <button
               className={`profile-tab${searchMode === 'people' ? ' profile-tab--active' : ''}`}
               type="button"
               onClick={() => setSearchMode('people')}
             >
-              People <span className="tab-count">{users.length}</span>
+              People <span className="tab-count" style={{ marginLeft: '4px', fontSize: '12px', opacity: 0.7 }}>({users.length})</span>
             </button>
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       <section className="page-container" style={{ minHeight: '300px' }}>
         {searchMode === 'stories' ? (

@@ -16,7 +16,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
   const [error, setError] = useState('')
 
   // Follow tabs
-  const [activeTab, setActiveTab] = useState('followers')
+  const [activeTab, setActiveTab] = useState('about')
   const [counts, setCounts] = useState({ followers: 0, following: 0 })
   const [tabData, setTabData] = useState({ users: [], profiles: new Map(), page: 0, total: 0, loading: false })
   const [tabBusy, setTabBusy] = useState({})
@@ -81,6 +81,9 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
 
   // Load tab data
   useEffect(() => {
+    if (['about', 'settings'].includes(activeTab)) {
+      return
+    }
     let active = true
     async function loadTab() {
       setTabData((prev) => ({ ...prev, loading: true }))
@@ -245,175 +248,201 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
   return (
     <main>
       <section className="profile-page">
-        <div className="page-container profile-shell">
-          <aside className="profile-card">
-            <span className="form-eyebrow">{session.user.isPrivate ? 'Private profile' : 'Public profile'}</span>
-            <img alt="" className="profile-avatar" src={session.user.avatarUrl || authors.sarah.avatar} />
-            <h1>{session.user.displayName}</h1>
-            {session.user.username && (
-              <span style={{ color: 'var(--muted)', fontSize: '14px', fontWeight: '400', marginTop: '2px', display: 'block' }}>@{session.user.username}</span>
-            )}
-            <p>{session.user.bio || 'Add a short bio so readers can recognize your voice across Chronicle.'}</p>
-            <div className="profile-counts">
-              <span><strong>{counts.followers}</strong> followers</span>
-              <span><strong>{counts.following}</strong> following</span>
-            </div>
-            <MediaUploader busy={uploading} label={session.user.avatarUrl ? 'Change avatar' : 'Upload avatar'} onUpload={upload} />
-          </aside>
-
-          <section className="profile-panel" aria-labelledby="profile-settings-title">
-            <div className="profile-panel-header">
-              <div>
-                <span className="form-eyebrow">Account settings</span>
-              </div>
-            </div>
-
-            <form className="profile-form" onSubmit={save}>
-              <label>
-                Display name
-                <input maxLength="80" required value={form.displayName} onChange={update('displayName')} />
-              </label>
-              <label>
-                Bio
-                <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: '10px 0 16px', fontWeight: '500', color: 'var(--ink)' }}>
-                <input
-                  type="checkbox"
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--copper)' }}
-                  checked={form.isPrivate}
-                  onChange={(e) => setForm((c) => ({ ...c, isPrivate: e.target.checked }))}
-                />
-                Private account (requires approval for new followers)
-              </label>
-              {error && <p className="form-error">{error}</p>}
-              <div className="profile-actions">
-                <button className="submit-button" disabled={saving} type="submit">
-                  {saving ? 'Saving...' : 'Save profile'}
+        <div className="profile-header-section page-container">
+          <div className="profile-header-main">
+            <div className="profile-header-info">
+              <span className="form-eyebrow" style={{ display: 'inline-block', marginBottom: '8px' }}>
+                {session.user.isPrivate ? 'Private profile' : 'Public profile'}
+              </span>
+              <h1>{session.user.displayName}</h1>
+              {session.user.username && (
+                <span className="profile-username" style={{ color: 'var(--muted)', fontSize: '15px', fontWeight: '400', display: 'block', marginTop: '4px' }}>
+                  @{session.user.username}
+                </span>
+              )}
+              <p className="profile-bio-snippet" style={{ color: 'var(--muted)', fontSize: '16px', lineHeight: '1.5', margin: '14px 0 16px', maxWidth: '600px' }}>
+                {session.user.bio || 'Add a short bio so readers can recognize your voice across Chronicle.'}
+              </p>
+              <div className="profile-header-stats" style={{ display: 'flex', gap: '8px', fontSize: '14px', color: 'var(--ink)' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('followers')}
+                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit' }}
+                >
+                  <strong style={{ fontWeight: '700' }}>{counts.followers}</strong> followers
+                </button>
+                <span className="dot-separator" style={{ color: 'var(--border)' }}>·</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('following')}
+                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit' }}
+                >
+                  <strong style={{ fontWeight: '700' }}>{counts.following}</strong> following
                 </button>
               </div>
-            </form>
-          </section>
-        </div>
-      </section>
-
-      <section className="profile-follow-section page-container">
-        <div className="profile-tabs">
-          <button
-            className={`profile-tab${activeTab === 'followers' ? ' profile-tab--active' : ''}`}
-            type="button"
-            onClick={() => setActiveTab('followers')}
-          >
-            Followers <span className="tab-count">{counts.followers}</span>
-          </button>
-          <button
-            className={`profile-tab${activeTab === 'following' ? ' profile-tab--active' : ''}`}
-            type="button"
-            onClick={() => setActiveTab('following')}
-          >
-            Following <span className="tab-count">{counts.following}</span>
-          </button>
-          <button
-            className={`profile-tab${activeTab === 'requests' ? ' profile-tab--active' : ''}`}
-            type="button"
-            onClick={() => setActiveTab('requests')}
-          >
-            Requests
-          </button>
-          <button
-            className={`profile-tab${activeTab === 'muted' ? ' profile-tab--active' : ''}`}
-            type="button"
-            onClick={() => setActiveTab('muted')}
-          >
-            Muted
-          </button>
-          <button
-            className={`profile-tab${activeTab === 'blocked' ? ' profile-tab--active' : ''}`}
-            type="button"
-            onClick={() => setActiveTab('blocked')}
-          >
-            Blocked
-          </button>
-        </div>
-
-        <div className="profile-tab-content">
-          {tabData.loading ? (
-            <div className="loading-state">Loading...</div>
-          ) : tabData.users.length === 0 ? (
-            <div className="empty-state">
-              <p>{activeTab === 'followers' ? 'No followers yet.' : activeTab === 'following' ? 'Not following anyone yet.' : activeTab === 'requests' ? 'No pending follow requests.' : activeTab === 'muted' ? 'No muted users.' : 'No blocked users.'}</p>
             </div>
-          ) : (
-            <div className="follow-user-list">
-              {tabData.users.map((item) => {
-                const profile = tabData.profiles?.get(item.userId)
-                const isBusy = tabBusy[item.userId]
-                return (
-                  <div className="follow-user-row" key={item.userId}>
-                    <a className="follow-user-info" href={profile?.username ? `/author/${profile.username}` : '#'} onClick={(e) => { e.preventDefault(); if (profile?.username) window.history.pushState({}, '', `/author/${profile.username}`); window.dispatchEvent(new PopStateEvent('popstate')) }}>
-                      <img alt="" className="follow-user-avatar" src={profile?.avatarUrl || authors.sarah.avatar} />
-                      <div className="follow-user-text" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <strong>{profile?.displayName || profile?.username || 'Unknown'}</strong>
-                        <span>{profile?.username ? `@${profile.username}` : ''}</span>
-                      </div>
-                    </a>
-                    <div className="follow-user-actions">
-                      {activeTab === 'blocked' ? (
-                        <button
-                          className="outline-pill compact"
-                          disabled={isBusy}
-                          type="button"
-                          onClick={() => handleUnblock(item.userId)}
-                        >
-                          {isBusy ? 'Unblocking...' : 'Unblock'}
-                        </button>
-                      ) : activeTab === 'following' ? (
-                        <button
-                          className="outline-pill compact"
-                          disabled={isBusy}
-                          type="button"
-                          onClick={() => handleFollowToggle(item.userId, true)}
-                        >
-                          {isBusy ? 'Updating...' : 'Unfollow'}
-                        </button>
-                      ) : activeTab === 'requests' ? (
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <button
-                            className="submit-button compact"
-                            style={{ margin: 0, padding: '4px 12px', fontSize: '12px' }}
-                            disabled={isBusy}
-                            type="button"
-                            onClick={() => handleAcceptRequest(item.userId)}
-                          >
-                            {isBusy ? 'Accepting...' : 'Accept'}
-                          </button>
-                          <button
-                            className="outline-pill compact"
-                            disabled={isBusy}
-                            type="button"
-                            onClick={() => handleRejectRequest(item.userId)}
-                          >
-                            {isBusy ? 'Rejecting...' : 'Reject'}
-                          </button>
-                        </div>
-                      ) : activeTab === 'muted' ? (
-                        <button
-                          className="outline-pill compact"
-                          disabled={isBusy}
-                          type="button"
-                          onClick={() => handleUnmute(item.userId)}
-                        >
-                          {isBusy ? 'Unmuting...' : 'Unmute'}
-                        </button>
-                      ) : null}
-                      <time>{item.followedAt ? new Date(item.followedAt).toLocaleDateString() : ''}</time>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="profile-header-avatar-container" style={{ flexShrink: 0 }}>
+              <img alt="" className="profile-avatar-large" src={session.user.avatarUrl || authors.sarah.avatar} style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+            </div>
+          </div>
+
+          <div className="profile-tabs">
+            {[
+              { id: 'about', label: 'About' },
+              { id: 'settings', label: 'Edit Profile' },
+              { id: 'followers', label: `Followers (${counts.followers})` },
+              { id: 'following', label: `Following (${counts.following})` },
+              ...(session.user.isPrivate ? [{ id: 'requests', label: 'Requests' }] : []),
+              { id: 'muted', label: 'Muted' },
+              { id: 'blocked', label: 'Blocked' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                className={`profile-tab${activeTab === tab.id ? ' profile-tab--active' : ''}`}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <section className="profile-body-section page-container" style={{ minHeight: '300px', paddingBottom: '80px', marginTop: '32px' }}>
+          {activeTab === 'about' && (
+            <div className="profile-about-tab" style={{ maxWidth: '680px' }}>
+              <div className="profile-about-card" style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid var(--border)', padding: '24px', borderRadius: '8px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '12px', color: 'var(--ink)' }}>Bio</h3>
+                <p style={{ fontSize: '15px', color: 'var(--ink)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  {session.user.bio || 'No bio written yet. Click on "Edit Profile" tab to add one!'}
+                </p>
+              </div>
             </div>
           )}
-        </div>
+
+          {activeTab === 'settings' && (
+            <div className="profile-settings-tab">
+              <div className="profile-settings-grid">
+                <div className="profile-settings-form-wrapper">
+                  <form className="profile-form" onSubmit={save}>
+                    <label>
+                      Display name
+                      <input maxLength="80" required value={form.displayName} onChange={update('displayName')} />
+                    </label>
+                    <label>
+                      Bio
+                      <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: '10px 0 16px', fontWeight: '500', color: 'var(--ink)' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--copper)' }}
+                        checked={form.isPrivate}
+                        onChange={(e) => setForm((c) => ({ ...c, isPrivate: e.target.checked }))}
+                      />
+                      Private account (requires approval for new followers)
+                    </label>
+                    {error && <p className="form-error">{error}</p>}
+                    <div className="profile-actions">
+                      <button className="submit-button" disabled={saving} type="submit">
+                        {saving ? 'Saving...' : 'Save profile'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+                <div className="profile-settings-avatar-wrapper">
+                  <span className="editor-field-label" style={{ display: 'block', fontWeight: '780', fontSize: '15px', marginBottom: '12px' }}>Profile photo</span>
+                  <img alt="" className="profile-avatar-medium" src={session.user.avatarUrl || authors.sarah.avatar} />
+                  <div style={{ marginTop: '16px' }}>
+                    <MediaUploader busy={uploading} label={session.user.avatarUrl ? 'Change photo' : 'Upload photo'} onUpload={upload} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* List Content */}
+          {!['about', 'settings'].includes(activeTab) && (
+            <div className="profile-list-tab">
+              {tabData.loading ? (
+                <div className="loading-state">Loading...</div>
+              ) : tabData.users.length === 0 ? (
+                <div className="empty-state">
+                  <p>{activeTab === 'followers' ? 'No followers yet.' : activeTab === 'following' ? 'Not following anyone yet.' : activeTab === 'requests' ? 'No pending follow requests.' : activeTab === 'muted' ? 'No muted users.' : 'No blocked users.'}</p>
+                </div>
+              ) : (
+                <div className="follow-user-list">
+                  {tabData.users.map((item) => {
+                    const profile = tabData.profiles?.get(item.userId)
+                    const isBusy = tabBusy[item.userId]
+                    return (
+                      <div className="follow-user-row" key={item.userId}>
+                        <a className="follow-user-info" href={profile?.username ? `/author/${profile.username}` : '#'} onClick={(e) => { e.preventDefault(); if (profile?.username) window.history.pushState({}, '', `/author/${profile.username}`); window.dispatchEvent(new PopStateEvent('popstate')) }}>
+                          <img alt="" className="follow-user-avatar" src={profile?.avatarUrl || authors.sarah.avatar} />
+                          <div className="follow-user-text" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <strong>{profile?.displayName || profile?.username || 'Unknown'}</strong>
+                            <span>{profile?.username ? `@${profile.username}` : ''}</span>
+                          </div>
+                        </a>
+                        <div className="follow-user-actions">
+                          {activeTab === 'blocked' ? (
+                            <button
+                              className="outline-pill compact"
+                              disabled={isBusy}
+                              type="button"
+                              onClick={() => handleUnblock(item.userId)}
+                            >
+                              {isBusy ? 'Unblocking...' : 'Unblock'}
+                            </button>
+                          ) : activeTab === 'following' ? (
+                            <button
+                              className="outline-pill compact"
+                              disabled={isBusy}
+                              type="button"
+                              onClick={() => handleFollowToggle(item.userId, true)}
+                            >
+                              {isBusy ? 'Updating...' : 'Unfollow'}
+                            </button>
+                          ) : activeTab === 'requests' ? (
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <button
+                                className="submit-button compact"
+                                style={{ margin: 0, padding: '4px 12px', fontSize: '12px' }}
+                                disabled={isBusy}
+                                type="button"
+                                onClick={() => handleAcceptRequest(item.userId)}
+                              >
+                                {isBusy ? 'Accepting...' : 'Accept'}
+                              </button>
+                              <button
+                                className="outline-pill compact"
+                                disabled={isBusy}
+                                type="button"
+                                onClick={() => handleRejectRequest(item.userId)}
+                              >
+                                {isBusy ? 'Rejecting...' : 'Reject'}
+                              </button>
+                            </div>
+                          ) : activeTab === 'muted' ? (
+                            <button
+                              className="outline-pill compact"
+                              disabled={isBusy}
+                              type="button"
+                              onClick={() => handleUnmute(item.userId)}
+                            >
+                              {isBusy ? 'Unmuting...' : 'Unmute'}
+                            </button>
+                          ) : null}
+                          <time>{item.followedAt ? new Date(item.followedAt).toLocaleDateString() : ''}</time>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </section>
 
       <SiteFooter />
