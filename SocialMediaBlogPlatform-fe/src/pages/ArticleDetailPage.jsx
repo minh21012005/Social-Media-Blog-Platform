@@ -989,6 +989,33 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         <img alt="" className="article-detail-cover" src={article.image} />
         <section className="article-content page-container">
           <MarkdownPreview content={article.content} />
+          {(() => {
+            const tagList = Array.isArray(article.tags)
+              ? article.tags
+              : (typeof article.tags === 'string'
+                  ? article.tags.split(',').map(t => t.trim()).filter(Boolean)
+                  : []);
+            if (tagList.length === 0) return null;
+            return (
+              <div className="article-tags-section">
+                <div className="article-tags-list">
+                  {tagList.map((tag) => (
+                    <a
+                      href={`/search?tag=${tag}`}
+                      key={tag}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigate(`/search?tag=${tag}`);
+                      }}
+                      className="article-tag-pill"
+                    >
+                      {tag}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </section>
       </article>
       <section className="comments-section page-container" aria-labelledby="comments-title">

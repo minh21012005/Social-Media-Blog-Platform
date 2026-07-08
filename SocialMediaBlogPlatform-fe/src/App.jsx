@@ -303,6 +303,19 @@ function App() {
     if (pathname === '/search') {
       const query = routeUrl.searchParams.get('q')?.trim() || ''
       return <SearchPage key={query} query={query} navigate={navigate} />
+      const tag = routeUrl.searchParams.get('tag')?.trim() || ''
+      return (
+        <SearchPage
+          key={`${query}-${tag}`}
+          query={query}
+          tag={tag}
+          navigate={navigate}
+          session={session}
+          requestWithAuth={requestWithAuth}
+          notify={notify}
+          mutedUserIds={mutedUserIds}
+        />
+      )
     }
 
     return <HomePage navigate={navigate} requestWithAuth={requestWithAuth} notify={notify} />

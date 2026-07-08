@@ -34,6 +34,10 @@ public interface SpringDataJpaArticleRepository extends JpaRepository<JpaArticle
                           LOWER(a.title) LIKE CONCAT('%', :query, '%')
                           OR LOWER(COALESCE(a.summary, '')) LIKE CONCAT('%', :query, '%')
                           OR LOWER(a.content) LIKE CONCAT('%', :query, '%')
+                          OR EXISTS (
+                              SELECT 1 FROM article_tags t
+                              WHERE t.article_id = a.id AND LOWER(t.tag) LIKE CONCAT('%', :query, '%')
+                          )
                       ))
                     ORDER BY
                       CASE WHEN :sort = 'views' THEN COALESCE(s.view_count, 0) ELSE 0 END DESC,
@@ -55,6 +59,10 @@ public interface SpringDataJpaArticleRepository extends JpaRepository<JpaArticle
                           LOWER(a.title) LIKE CONCAT('%', :query, '%')
                           OR LOWER(COALESCE(a.summary, '')) LIKE CONCAT('%', :query, '%')
                           OR LOWER(a.content) LIKE CONCAT('%', :query, '%')
+                          OR EXISTS (
+                              SELECT 1 FROM article_tags t
+                              WHERE t.article_id = a.id AND LOWER(t.tag) LIKE CONCAT('%', :query, '%')
+                          )
                       ))
                     """,
             nativeQuery = true

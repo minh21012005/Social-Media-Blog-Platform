@@ -19,6 +19,8 @@ const maxContentImages = 10
 const maxContentLength = 50000
 
 export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave, onPublish, notify }) {
+  const isPublished = initialArticle?.status === 'PUBLISHED'
+  const isArchived = initialArticle?.status === 'ARCHIVED'
   const contentRef = useRef(null)
   const [form, setForm] = useState(() => ({
     ...emptyArticle,
@@ -213,7 +215,10 @@ export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave,
             {fieldErrors.category && <span className="field-error">{fieldErrors.category}</span>}
           </div>
           <label>
-            Tags
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%' }}>
+              <span>Tags</span>
+              <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--muted)', opacity: 0.75 }}>Separated by commas</span>
+            </div>
             <input
               aria-invalid={Boolean(fieldErrors.tags)}
               placeholder="ai, writing, productivity"
@@ -307,15 +312,25 @@ export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave,
             onChange={update('content')}
           />
           {fieldErrors.content && <span className="field-error">{fieldErrors.content}</span>}
+          <div className="editor-markdown-tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="tip-icon">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <span>
+              Tip: Embed external web images using standard Markdown syntax: <code>![Alt Text](URL)</code>
+            </span>
+          </div>
         </div>
         {error && <p className="form-error">{error}</p>}
         <div className="editor-actions">
           <button className="submit-button" disabled={saving} type="submit">
-            {saving ? 'Saving...' : 'Save draft'}
+            {saving ? 'Saving...' : (isPublished || isArchived ? 'Save changes' : 'Save draft')}
           </button>
-          {onPublish && (
+          {onPublish && !isPublished && (
             <button className="outline-pill inline-pill" disabled={saving} type="button" onClick={publish}>
-              Publish
+              {isArchived ? 'Publish again' : 'Publish'}
             </button>
           )}
         </div>
