@@ -1,5 +1,5 @@
 .site-header {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(249, 250, 251, 0.92);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
@@ -420,7 +420,7 @@
 }
 
 .editor-grid .article-card {
-  max-width: 520px;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -431,7 +431,7 @@
 }
 
 .category-grid .article-card {
-  max-width: 340px;
+  max-width: 100%;
   width: 100%;
 }
 
@@ -593,7 +593,6 @@
   font-weight: 500;
   padding: 8px 14px;
   text-decoration: none;
-  border-radius: 999px;
   background: rgba(255, 255, 255, 0.4);
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -708,6 +707,7 @@
 }
 
 .category-hero {
+  background: #ffffff;
   border-bottom: 1px solid var(--border);
   padding: clamp(60px, 8vw, 90px) 24px clamp(50px, 7vw, 76px);
   text-align: center;
@@ -988,32 +988,43 @@
 .category-controls select {
   background: #fff;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   color: var(--ink);
   font: inherit;
-  font-size: 14px;
-  font-weight: 550;
+  font-size: 13.5px;
+  font-weight: 400;
   outline: 0;
-  padding: 11px 20px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
-  width: 100%;
+  padding: 8px 14px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.category-controls input {
+  flex: 1;
+  max-width: 380px;
 }
 
 .category-controls select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right 18px center;
+  background-position: right 12px center;
   background-size: 14px;
-  padding-right: 40px;
+  cursor: pointer;
+  min-width: 140px;
+  padding-right: 34px;
 }
 
 .category-controls input:focus,
 .category-controls select:focus {
   border-color: var(--copper);
-  box-shadow: 0 0 0 3px rgba(185, 135, 110, 0.12);
+  box-shadow: 0 0 0 3px rgba(162, 107, 82, 0.1);
+}
+
+.category-controls input::placeholder {
+  color: var(--soft);
+  font-weight: 400;
 }
 
 .profile-form textarea {
@@ -1417,11 +1428,11 @@
 
 .category-controls {
   align-items: center;
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(0, 1fr) 180px;
-  margin-top: 40px;
-  padding-bottom: 32px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 36px;
+  padding-bottom: 28px;
 }
 
 .editor-layout {
