@@ -740,12 +740,14 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
         }
         if (session) {
           try {
-            const liked = await requestWithAuth((token) => isArticleLiked(article.id, token))
+            const liked = await requestWithAuth((token) => isArticleLiked(article.id, token, { silent: true }))
             if (active) {
               setIsLiked(liked)
             }
           } catch (likedError) {
-            console.error('Could not check if article is liked.', likedError)
+            if (likedError?.status !== 401 && likedError?.status !== 403) {
+              console.error('Could not check if article is liked.', likedError)
+            }
           }
         }
       } catch (error) {
@@ -915,6 +917,10 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   }
 
   const handleLike = async (articleId) => {
+    if (!session) {
+      navigate('/login')
+      return
+    }
     await requestWithAuth((token) => likeArticle(articleId, token))
     setIsLiked(true)
     setLikeCount((count) => {
@@ -925,6 +931,10 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
   }
 
   const handleUnlike = async (articleId) => {
+    if (!session) {
+      navigate('/login')
+      return
+    }
     await requestWithAuth((token) => unlikeArticle(articleId, token))
     setIsLiked(false)
     setLikeCount((count) => {

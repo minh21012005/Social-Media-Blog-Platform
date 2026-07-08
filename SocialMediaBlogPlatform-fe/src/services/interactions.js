@@ -66,8 +66,9 @@ export async function getArticleLikes(articleId, token, { silent = false } = {})
   })
 }
 
-export async function isArticleLiked(articleId, token) {
+export async function isArticleLiked(articleId, token, { silent = false } = {}) {
   return apiRequest(`/api/v1/interactions/${articleId}/liked`, {
     token,
+    silent,
   })
 }

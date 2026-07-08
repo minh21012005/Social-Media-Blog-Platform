@@ -174,6 +174,13 @@ function App() {
       }
     }
 
+    if (!activeAuth?.accessToken) {
+      navigate('/login')
+      const authError = new Error('Authentication is required')
+      authError.status = 401
+      throw authError
+    }
+
     try {
       return await request(activeAuth.accessToken)
     } catch (error) {
@@ -182,6 +189,12 @@ function App() {
       }
       try {
         const refreshed = await restoreSessionFromRefresh()
+        if (!refreshed?.accessToken) {
+          navigate('/login')
+          const authError = new Error('Authentication is required')
+          authError.status = 401
+          throw authError
+        }
         return request(refreshed.accessToken)
       } catch (refreshError) {
         navigate('/login')
