@@ -7,7 +7,7 @@ import { searchUsers } from '../services/users'
 import { getFollowStatus, followUser, unfollowUser } from '../services/follows'
 import { authors } from '../data/editorial'
 
-export function SearchPage({ query, navigate, session, requestWithAuth, notify, mutedUserIds = new Set() }) {
+export function SearchPage({ query, tag, navigate, session, requestWithAuth, notify, mutedUserIds = new Set() }) {
   const [page, setPage] = useState(0)
   const [state, setState] = useState({ loading: true, articles: [], error: '', page: 0, totalPages: 0, totalItems: 0 })
   
@@ -24,8 +24,14 @@ export function SearchPage({ query, navigate, session, requestWithAuth, notify, 
     async function loadArticles() {
       setState((current) => ({ ...current, loading: true, error: '' }))
       try {
-        const result = query
-          ? await listPublishedArticles({ q: query, page, size: 12, sort: 'latest' })
+        const result = (query || tag)
+          ? await listPublishedArticles({
+              q: query || undefined,
+              tag: tag || undefined,
+              page,
+              size: 12,
+              sort: 'latest'
+            })
           : { items: [], page: 0, totalPages: 0, totalItems: 0 }
         if (active) {
           setState({
@@ -47,7 +53,7 @@ export function SearchPage({ query, navigate, session, requestWithAuth, notify, 
     return () => {
       active = false
     }
-  }, [page, query])
+  }, [page, query, tag])
 
   // Load users and follow statuses
   useEffect(() => {
@@ -140,17 +146,19 @@ export function SearchPage({ query, navigate, session, requestWithAuth, notify, 
 
   return (
     <main>
-      <section className="search-hero page-container" style={{ borderBottom: query ? 'none' : undefined, paddingBottom: query ? 0 : undefined }}>
+      <section className="search-hero page-container" style={{ borderBottom: (query || tag) ? 'none' : undefined, paddingBottom: (query || tag) ? 0 : undefined }}>
         <span className="form-eyebrow">Search</span>
-        <h1>{query ? `Results for "${query}"` : 'Search Chronicle.'}</h1>
+        <h1>{tag ? `Tag: "${tag}"` : (query ? `Results for "${query}"` : 'Search Chronicle.')}</h1>
         <p>
-          {query
-            ? `${state.totalItems} ${state.totalItems === 1 ? 'story' : 'stories'} and ${users.length} ${users.length === 1 ? 'person' : 'people'} found.`
-            : 'Use the search icon above to find stories or people.'}
+          {tag
+            ? `${state.totalItems} ${state.totalItems === 1 ? 'story' : 'stories'} found.`
+            : (query
+                ? `${state.totalItems} ${state.totalItems === 1 ? 'story' : 'stories'} and ${users.length} ${users.length === 1 ? 'person' : 'people'} found.`
+                : 'Use the search icon above to find stories or people.')}
         </p>
 
         {/* Tabs */}
-        {query && (
+        {query && !tag && (
           <div className="profile-tabs" style={{ marginTop: '32px' }}>
             <button
               className={`profile-tab${searchMode === 'stories' ? ' profile-tab--active' : ''}`}

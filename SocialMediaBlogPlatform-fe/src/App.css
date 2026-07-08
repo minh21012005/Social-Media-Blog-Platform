@@ -1788,6 +1788,37 @@
   border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.article-tags-section {
+  border-top: 1px solid var(--border);
+  margin-top: 48px;
+  padding-top: 24px;
+}
+
+.article-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.article-tag-pill {
+  background-color: #f2f2f2;
+  color: #666666;
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 99px;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.2s ease;
+  line-height: 1.4;
+}
+
+.article-tag-pill:hover {
+  background-color: #e6e6e6;
+  color: #222222;
+  transform: translateY(-1px);
+}
+
 .editor-content-tools {
   display: flex;
   justify-content: flex-start;
