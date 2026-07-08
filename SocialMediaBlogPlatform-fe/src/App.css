@@ -1763,6 +1763,31 @@
   padding: 18px;
 }
 
+.editor-markdown-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.editor-markdown-tip .tip-icon {
+  color: var(--copper);
+  flex-shrink: 0;
+}
+
+.editor-markdown-tip code {
+  background: #f1f1f2;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono, SFMono-Regular, Consolas, monospace);
+  font-size: 11px;
+  color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
 .editor-content-tools {
   display: flex;
   justify-content: flex-start;
