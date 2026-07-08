@@ -6,8 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/presence")
 public class PresenceController {
 
-    private static final Logger log = LoggerFactory.getLogger(PresenceController.class);
     private static final String PRESENCE_KEY_PREFIX = "presence:user:";
     private final StringRedisTemplate redisTemplate;
 
@@ -32,36 +29,29 @@ public class PresenceController {
             return ApiResponse.success(Map.of());
         }
 
-        try {
-            // Prepare Redis keys
-            List<String> keys = userIds.stream()
-                    .map(id -> PRESENCE_KEY_PREFIX + id)
-                    .toList();
+        // Prepare Redis keys
+        List<String> keys = userIds.stream()
+            .map(id -> PRESENCE_KEY_PREFIX + id.toString())
+            .toList();
 
-            // MGET from Redis
-            List<String> values = redisTemplate.opsForValue().multiGet(keys);
+        // MGET from Redis
+        List<String> values = redisTemplate.opsForValue().multiGet(keys);
 
-            // Map results back to UUIDs
-            Map<UUID, Boolean> result = IntStream.range(0, userIds.size())
-                    .boxed()
-                    .collect(Collectors.toMap(
-                            userIds::get,
-                            i -> {
-                                String val = values == null || i >= values.size() ? null : values.get(i);
-                                try {
-                                    return val != null && Integer.parseInt(val) > 0;
-                                } catch (NumberFormatException e) {
-                                    return false;
-                                }
-                            }
-                    ));
+        // Map results back to UUIDs
+        Map<UUID, Boolean> result = IntStream.range(0, userIds.size())
+            .boxed()
+            .collect(Collectors.toMap(
+                userIds::get,
+                i -> {
+                    String val = values == null ? null : values.get(i);
+                    try {
+                        return val != null && Integer.parseInt(val) > 0;
+                    } catch (NumberFormatException e) {
+                        return false;
+                    }
+                }
+            ));
 
-            return ApiResponse.success(result);
-        } catch (Exception ex) {
-            log.warn("Presence lookup failed. Returning offline statuses. userIds={}", userIds, ex);
-            Map<UUID, Boolean> fallback = userIds.stream()
-                    .collect(Collectors.toMap(id -> id, id -> false));
-            return ApiResponse.success(fallback);
-        }
+        return ApiResponse.success(result);
     }
 }
