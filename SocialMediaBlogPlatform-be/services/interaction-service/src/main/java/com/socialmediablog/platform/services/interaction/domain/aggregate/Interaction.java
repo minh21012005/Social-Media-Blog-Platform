@@ -79,6 +79,19 @@ public class Interaction {
         );
     }
 
+    public Interaction clap(Instant now) {
+        return new Interaction(
+                id,
+                userId,
+                targetType,
+                targetId,
+                clapCount + 1,
+                now,
+                createdAt,
+                now
+        );
+    }
+
     private static int validateClapCount(int clapCount) {
         if (clapCount < 1) {
             throw new IllegalArgumentException("Clap count must be at least 1");

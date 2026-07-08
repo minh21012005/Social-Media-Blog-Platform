@@ -13,5 +13,9 @@ public interface InteractionRepository {
 
     Optional<Interaction> findByUserIdAndTarget(InteractorId userId, InteractionTargetType targetType, TargetId targetId);
 
+    boolean existsByUserIdAndTarget(InteractorId userId, InteractionTargetType targetType, TargetId targetId);
+
+    long countByTarget(InteractionTargetType targetType, TargetId targetId);
+
     Interaction save(Interaction interaction);
 }

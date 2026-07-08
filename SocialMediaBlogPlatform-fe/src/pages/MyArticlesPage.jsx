@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
-import { archiveArticle, deleteArticle, formatCount, listMyArticles, publishArticle } from '../services/articles'
+import { archiveArticle, deleteArticle, formatCount, getArticleClapCount, listMyArticles, publishArticle } from '../services/articles'
 
 export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
   const [status, setStatus] = useState('')
@@ -15,10 +15,26 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
       setState((current) => ({ ...current, loading: true, error: '' }))
       try {
         const result = await requestWithAuth((token) => listMyArticles({ status, page }, token))
+        const items = await requestWithAuth(async (token) => {
+          const counts = await Promise.all(
+            (result.items || []).map((article) =>
+              getArticleClapCount(article.id, token)
+                .then((data) => Number(data?.clapCount || 0))
+                .catch(() => Number(article.stats?.clapCount || 0))
+            )
+          )
+          return (result.items || []).map((article, index) => ({
+            ...article,
+            stats: {
+              ...(article.stats || {}),
+              clapCount: counts[index],
+            },
+          }))
+        })
         if (active) {
           setState({
             loading: false,
-            articles: result.items,
+            articles: items,
             error: '',
             page: result.page || 0,
             totalPages: result.totalPages || 0,
@@ -40,12 +56,28 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
     try {
       await requestWithAuth(action)
       const result = await requestWithAuth((token) => listMyArticles({ status, page }, token))
+      const items = await requestWithAuth(async (token) => {
+        const counts = await Promise.all(
+          (result.items || []).map((article) =>
+            getArticleClapCount(article.id, token)
+              .then((data) => Number(data?.clapCount || 0))
+              .catch(() => Number(article.stats?.clapCount || 0))
+          )
+        )
+        return (result.items || []).map((article, index) => ({
+          ...article,
+          stats: {
+            ...(article.stats || {}),
+            clapCount: counts[index],
+          },
+        }))
+      })
       if (result.items.length === 0 && page > 0) {
         setPage(page - 1)
       } else {
         setState({
           loading: false,
-          articles: result.items,
+          articles: items,
           error: '',
           page: result.page || 0,
           totalPages: result.totalPages || 0,
@@ -111,7 +143,9 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                 <span className="article-category">{article.status}</span>
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
-                <span className="dashboard-stat">{formatCount(article.stats?.viewCount)} views</span>
+                <span className="dashboard-stat">
+                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.clapCount)} hearts
+                </span>
               </div>
               <div className="row-actions">
                 <button type="button" onClick={() => navigate(`/articles/${article.id}/edit`)}>Edit</button>

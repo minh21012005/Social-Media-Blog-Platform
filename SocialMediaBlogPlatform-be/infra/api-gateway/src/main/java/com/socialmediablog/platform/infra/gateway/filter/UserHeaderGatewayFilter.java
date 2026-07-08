@@ -2,6 +2,7 @@ package com.socialmediablog.platform.infra.gateway.filter;
 
 import com.socialmediablog.platform.common.security.GatewayUserHeaders;
 import com.socialmediablog.platform.common.security.JwtSupport;
+import org.springframework.cloud.gateway.filter.NettyRoutingFilter;
 import java.util.Set;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -30,7 +31,8 @@ public class UserHeaderGatewayFilter implements GlobalFilter, Ordered {
 
     @Override
     public int getOrder() {
-        return Ordered.LOWEST_PRECEDENCE;
+        // Must run before the routing filter so mutated headers are forwarded downstream.
+        return NettyRoutingFilter.ORDER - 1;
     }
 
     private ServerWebExchange withUserHeaders(ServerWebExchange exchange, Jwt jwt) {

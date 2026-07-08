@@ -2366,6 +2366,89 @@
   justify-content: center;
 }
 
+.article-detail-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.article-bookmark-btn {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  transition: transform 0.1s ease, box-shadow 0.2s ease, color 0.2s ease;
+  width: 40px;
+}
+
+.article-bookmark-btn:hover {
+  box-shadow: 0 0 0 4px rgba(185, 135, 110, 0.15);
+}
+
+.article-bookmark-btn.saved {
+  color: var(--copper);
+  border-color: var(--copper);
+}
+
+.article-bookmark-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.article-clap-wrapper {
+  align-items: center;
+  display: inline-flex;
+  position: relative;
+}
+
+.article-clap-btn {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  width: 40px;
+}
+
+.article-clap-btn:active {
+  transform: scale(0.92);
+}
+
+.article-clap-btn:hover {
+  box-shadow: 0 0 0 4px rgba(185, 135, 110, 0.15);
+}
+
+.article-clap-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.article-clap-btn.clapped {
+  border-color: var(--copper);
+  color: var(--copper);
+}
+
+.article-clap-count {
+  color: var(--ink-light);
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: 8px;
+  min-width: 28px;
+  text-align: left;
+}
+
 .author-badge {
   align-items: center;
   color: var(--ink);
