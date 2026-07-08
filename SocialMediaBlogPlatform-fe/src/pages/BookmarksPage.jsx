@@ -23,7 +23,7 @@ export function BookmarksPage({ requestWithAuth, navigate, notify }) {
     async function load() {
       setState({ loading: true, items: [], error: '' })
       try {
-        const bookmarkValues = await requestWithAuth((token) => listMyBookmarks(token))
+        const bookmarkValues = await requestWithAuth((token) => listMyBookmarks(token, { silent: true }))
         const articleIds = (bookmarkValues || []).map(getBookmarkArticleId).filter(Boolean)
 
         if (articleIds.length === 0) {
@@ -48,7 +48,11 @@ export function BookmarksPage({ requestWithAuth, navigate, notify }) {
         }
       } catch (error) {
         if (active) {
-          setState({ loading: false, items: [], error: error.message || 'Could not load bookmarks.' })
+          if (error?.status === 403) {
+            setState({ loading: false, items: [], error: '' })
+          } else {
+            setState({ loading: false, items: [], error: error.message || 'Could not load bookmarks.' })
+          }
         }
       }
     }

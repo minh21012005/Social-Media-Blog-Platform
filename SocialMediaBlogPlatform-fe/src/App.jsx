@@ -15,7 +15,6 @@ import { BookmarksPage } from './pages/BookmarksPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
-import { FollowLabPage } from './pages/FollowLabPage'
 import './App.css'
 
 function isProtectedRoute(route) {
@@ -23,7 +22,6 @@ function isProtectedRoute(route) {
     || route === '/articles/me'
     || route === '/bookmarks'
     || route === '/profile'
-    || route === '/follow-lab'
     || /^\/articles\/[^/]+\/edit$/.test(route)
 }
 

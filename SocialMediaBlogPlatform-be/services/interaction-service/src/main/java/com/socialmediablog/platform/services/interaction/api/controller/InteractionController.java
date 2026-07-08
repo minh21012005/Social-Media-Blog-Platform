@@ -90,6 +90,9 @@ public class InteractionController {
 
     @GetMapping("/bookmarks/me")
     public ApiResponse<List<UUID>> listMyBookmarks(@AuthenticationPrincipal CurrentUser currentUser) {
+        if (currentUser == null) {
+            return ApiResponse.success(List.of());
+        }
         return ApiResponse.success(listMyBookmarksUseCase.execute(new ListMyBookmarksQuery(currentUserId(currentUser))));
     }
 

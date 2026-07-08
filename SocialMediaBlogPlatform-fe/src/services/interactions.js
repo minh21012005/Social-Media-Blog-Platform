@@ -1,5 +1,29 @@
 import { apiRequest } from './api'
 
+function normalizeBookmarkCollection(payload) {
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return []
+  }
+
+  const nested = payload.data && typeof payload.data === 'object' ? payload.data : null
+  const collection = [
+    payload.items,
+    payload.content,
+    payload.results,
+    payload.bookmarks,
+    nested?.items,
+    nested?.content,
+    nested?.results,
+    nested?.bookmarks,
+  ].find((value) => Array.isArray(value))
+
+  return collection || []
+}
+
 export function bookmarkArticle(articleId, token) {
   return apiRequest(`/api/v1/interactions/${articleId}/bookmark`, {
     method: 'POST',
@@ -14,10 +38,11 @@ export function removeBookmark(articleId, token) {
   })
 }
 
-export function listMyBookmarks(token) {
+export function listMyBookmarks(token, { silent = false } = {}) {
   return apiRequest('/api/v1/interactions/bookmarks/me', {
     token,
-  })
+    silent,
+  }).then(normalizeBookmarkCollection)
 }
 
 export async function likeArticle(articleId, token) {
@@ -34,8 +59,11 @@ export async function unlikeArticle(articleId, token) {
   })
 }
 
-export async function getArticleLikes(articleId) {
-  return apiRequest(`/api/v1/interactions/${articleId}/likes`)
+export async function getArticleLikes(articleId, token, { silent = false } = {}) {
+  return apiRequest(`/api/v1/interactions/${articleId}/likes`, {
+    token,
+    silent,
+  })
 }
 
 export async function isArticleLiked(articleId, token) {

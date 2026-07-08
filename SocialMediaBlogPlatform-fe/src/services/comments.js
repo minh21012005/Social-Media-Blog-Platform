@@ -1,5 +1,30 @@
 import { apiRequest } from './api'
 
+function normalizeCommentCollection(payload) {
+  if (Array.isArray(payload)) {
+    return payload
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return []
+  }
+
+  const nested = payload.data && typeof payload.data === 'object' ? payload.data : null
+  const candidates = [
+    payload.items,
+    payload.content,
+    payload.results,
+    payload.comments,
+    nested?.items,
+    nested?.content,
+    nested?.results,
+    nested?.comments,
+  ]
+
+  const collection = candidates.find((value) => Array.isArray(value))
+  return collection || []
+}
+
 async function withTransientRetry(requestFn, maxRetries = 1) {
   let attempt = 0
   while (true) {
@@ -19,11 +44,13 @@ async function withTransientRetry(requestFn, maxRetries = 1) {
 export function listArticleComments(articleId, token, page = 0, size = 10, sort = 'NEWEST') {
   const query = new URLSearchParams({ page, size, sort }).toString()
   return withTransientRetry(() => apiRequest(`/api/v1/articles/${articleId}/comments?${query}`, { token }))
+    .then(normalizeCommentCollection)
 }
 
 export function listCommentReplies(commentId, token, page = 0, size = 10) {
   const query = new URLSearchParams({ page, size }).toString()
   return withTransientRetry(() => apiRequest(`/api/v1/comments/${commentId}/replies?${query}`, { token }))
+    .then(normalizeCommentCollection)
 }
 
 export function createCommentReply(commentId, payload, token) {

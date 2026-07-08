@@ -192,8 +192,9 @@ function CommentComposer({ articleId, session, requestWithAuth, navigate, onCrea
 }
 
 async function enrichComments(comments) {
-  const authorMap = await getPublicUsers((comments || []).map((comment) => comment.authorId)).catch(() => new Map())
-  return (comments || []).map((comment) => ({
+  const commentList = Array.isArray(comments) ? comments : []
+  const authorMap = await getPublicUsers(commentList.map((comment) => comment.authorId)).catch(() => new Map())
+  return commentList.map((comment) => ({
     ...comment,
     author: authorMap.get(comment.authorId) || null,
   }))
@@ -723,7 +724,9 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
           }
         }
         try {
-          const likesPayload = await getArticleLikes(article.id)
+          const likesPayload = session
+            ? await requestWithAuth((token) => getArticleLikes(article.id, token, { silent: true }))
+            : await getArticleLikes(article.id, undefined, { silent: true })
           const { count, likerNames } = normalizeLikePayload(likesPayload)
           if (active) {
             setLikeCount(count)
@@ -731,7 +734,9 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
             likeActorSnapshotRef.current = new Set(likerNames)
           }
         } catch (likesError) {
-          console.error('Could not load likes.', likesError)
+          if (likesError?.status !== 403) {
+            console.error('Could not load likes.', likesError)
+          }
         }
         if (session) {
           try {
@@ -771,7 +776,9 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
 
     const checkNewLikes = async () => {
       try {
-        const likesPayload = await getArticleLikes(state.article.id)
+        const likesPayload = session
+          ? await requestWithAuth((token) => getArticleLikes(state.article.id, token, { silent: true }))
+          : await getArticleLikes(state.article.id, undefined, { silent: true })
         const { count: latestLikes, likerNames } = normalizeLikePayload(likesPayload)
         if (!active) {
           return
@@ -806,7 +813,7 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth }) 
       active = false
       window.clearInterval(intervalId)
     }
-  }, [isArticleOwner, state.article?.id])
+  }, [isArticleOwner, requestWithAuth, session, state.article?.id])
 
   useEffect(() => {
     if (!likeNotice) {

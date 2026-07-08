@@ -112,7 +112,7 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
                 <span className="dashboard-stat">
-                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.likeCount ?? article.stats?.likesCount)} likes
+                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.likeCount ?? article.stats?.likesCount ?? article.likeCount ?? article.likesCount)} likes
                 </span>
               </div>
               <div className="row-actions">

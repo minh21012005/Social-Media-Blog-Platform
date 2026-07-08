@@ -60,6 +60,7 @@ public class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles/*/comments").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles/*/comments/count").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/interactions/bookmarks/me").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/interactions/*/likes").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/presence/**").permitAll()

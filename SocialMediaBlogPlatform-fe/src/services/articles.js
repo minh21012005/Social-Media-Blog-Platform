@@ -1,6 +1,7 @@
 import { apiRequest } from './api'
 import { articles as fallbackArticles, authors, categories } from '../data/editorial'
 import { getPublicUsers } from './users'
+import { getArticleLikes } from './interactions'
 
 const categoryMap = new Map(categories.map((category) => [category.slug, category.label]))
 const fallbackImages = new Map(fallbackArticles.map((article) => [article.categorySlug, article.image]))
@@ -66,6 +67,49 @@ export function normalizeArticle(article, author) {
   }
 }
 
+function coerceLikeCount(payload) {
+  if (typeof payload === 'number' && Number.isFinite(payload) && payload >= 0) {
+    return payload
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.length
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+
+  const nested = payload.data && typeof payload.data === 'object' ? payload.data : null
+  const explicit = Number(
+    payload.count
+    ?? payload.total
+    ?? payload.likeCount
+    ?? payload.likesCount
+    ?? nested?.count
+    ?? nested?.total
+    ?? nested?.likeCount
+    ?? nested?.likesCount
+  )
+
+  if (Number.isFinite(explicit) && explicit >= 0) {
+    return explicit
+  }
+
+  const list = [
+    payload.items,
+    payload.users,
+    payload.likes,
+    payload.likers,
+    nested?.items,
+    nested?.users,
+    nested?.likes,
+    nested?.likers,
+  ].find((value) => Array.isArray(value))
+
+  return Array.isArray(list) ? list.length : null
+}
+
 export async function enrichArticles(articles) {
   const authorMap = await getPublicUsers(articles.map((article) => article.authorId)).catch(() => new Map())
   return articles.map((article) => normalizeArticle(article, authorMap.get(article.authorId)))
@@ -112,9 +156,42 @@ export async function listMyArticles({ status, page = 0, size = 20 } = {}, token
     searchParams.set('status', status)
   }
   const result = await apiRequest(`/api/v1/articles/me?${searchParams.toString()}`, { token })
+
+  const baseItems = (result?.items || []).map((article) => normalizeArticle(article, null))
+  const items = await Promise.all(baseItems.map(async (article) => {
+    const existingLikeCount = coerceLikeCount(
+      article.stats?.likeCount
+      ?? article.stats?.likesCount
+      ?? article.likeCount
+      ?? article.likesCount
+    )
+
+    if (existingLikeCount !== null) {
+      return {
+        ...article,
+        stats: {
+          ...(article.stats || {}),
+          likeCount: existingLikeCount,
+        },
+      }
+    }
+
+    const fallbackLikeCount = await getArticleLikes(article.id, token, { silent: true })
+      .then((payload) => coerceLikeCount(payload) ?? 0)
+      .catch(() => 0)
+
+    return {
+      ...article,
+      stats: {
+        ...(article.stats || {}),
+        likeCount: fallbackLikeCount,
+      },
+    }
+  }))
+
   return {
     ...result,
-    items: (result?.items || []).map((article) => normalizeArticle(article, null)),
+    items,
   }
 }
 
