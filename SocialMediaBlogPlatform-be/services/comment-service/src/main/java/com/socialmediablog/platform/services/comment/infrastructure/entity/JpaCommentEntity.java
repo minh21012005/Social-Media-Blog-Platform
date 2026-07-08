@@ -34,6 +34,13 @@ public class JpaCommentEntity extends BaseEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "pinned_at")
+    private Instant pinnedAt;
+
+    @jakarta.persistence.OneToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "id", referencedColumnName = "comment_id", insertable = false, updatable = false)
+    private JpaCommentStatsEntity stats;
+
     protected JpaCommentEntity() {
     }
 
@@ -47,8 +54,8 @@ public class JpaCommentEntity extends BaseEntity {
             Instant editedAt,
             Instant deletedAt,
             Instant createdAt,
-            Instant updatedAt
-    ) {
+            Instant updatedAt,
+            Instant pinnedAt) {
         super(id, createdAt, updatedAt);
         this.articleId = articleId;
         this.authorId = authorId;
@@ -57,6 +64,7 @@ public class JpaCommentEntity extends BaseEntity {
         this.status = status;
         this.editedAt = editedAt;
         this.deletedAt = deletedAt;
+        this.pinnedAt = pinnedAt;
     }
 
     public static JpaCommentEntity fromDomain(Comment comment) {
@@ -70,8 +78,8 @@ public class JpaCommentEntity extends BaseEntity {
                 comment.editedAt(),
                 comment.deletedAt(),
                 comment.createdAt(),
-                comment.updatedAt()
-        );
+                comment.updatedAt(),
+                comment.pinnedAt());
     }
 
     public Comment toDomain() {
@@ -85,7 +93,7 @@ public class JpaCommentEntity extends BaseEntity {
                 editedAt,
                 deletedAt,
                 createdAt,
-                updatedAt
-        );
+                updatedAt,
+                pinnedAt);
     }
 }

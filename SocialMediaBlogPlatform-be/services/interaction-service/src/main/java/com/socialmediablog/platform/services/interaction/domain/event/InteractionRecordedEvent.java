@@ -1,5 +1,6 @@
 package com.socialmediablog.platform.services.interaction.domain.event;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.socialmediablog.platform.common.events.DomainEvent;
 import java.time.Instant;
 import java.util.UUID;
@@ -8,6 +9,7 @@ public record InteractionRecordedEvent(UUID eventId, UUID interactionId, UUID ta
         implements DomainEvent {
 
     @Override
+    @JsonProperty("eventType")
     public String eventType() {
         return "interaction.recorded";
     }

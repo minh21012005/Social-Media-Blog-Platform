@@ -15,8 +15,9 @@ public record CommentResponse(
         Instant deletedAt,
         Instant createdAt,
         Instant updatedAt,
-        CommentStatsResponse stats
-) {
+        Instant pinnedAt,
+        CommentStatsResponse stats,
+        boolean clappedByCurrentUser) {
 
     public static CommentResponse from(CommentView comment) {
         return new CommentResponse(
@@ -30,7 +31,8 @@ public record CommentResponse(
                 comment.deletedAt(),
                 comment.createdAt(),
                 comment.updatedAt(),
-                CommentStatsResponse.from(comment.stats())
-        );
+                comment.pinnedAt(),
+                CommentStatsResponse.from(comment.stats()),
+                comment.clappedByCurrentUser());
     }
 }

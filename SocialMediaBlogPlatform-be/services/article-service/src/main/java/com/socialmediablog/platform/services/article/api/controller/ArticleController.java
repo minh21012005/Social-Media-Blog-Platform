@@ -29,12 +29,15 @@ import com.socialmediablog.platform.services.article.application.port.in.ListEdi
 import com.socialmediablog.platform.services.article.application.port.in.ListFeaturedArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListMyArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListPublishedArticlesUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.ListTrendingArticlesUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.PublishArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.RecordArticleViewUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.UpdateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.UploadArticleMediaUseCase;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase;
+import com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -63,10 +66,12 @@ public class ArticleController {
     private final ArchiveArticleUseCase archiveArticleUseCase;
     private final DeleteArticleUseCase deleteArticleUseCase;
     private final GetArticleBySlugUseCase getArticleBySlugUseCase;
+    private final GetArticleByIdUseCase getArticleByIdUseCase;
     private final ListPublishedArticlesUseCase listPublishedArticlesUseCase;
     private final ListMyArticlesUseCase listMyArticlesUseCase;
     private final ListFeaturedArticlesUseCase listFeaturedArticlesUseCase;
     private final ListEditorPicksUseCase listEditorPicksUseCase;
+    private final ListTrendingArticlesUseCase listTrendingArticlesUseCase;
     private final CurateArticleUseCase curateArticleUseCase;
     private final UploadArticleMediaUseCase uploadArticleMediaUseCase;
     private final RecordArticleViewUseCase recordArticleViewUseCase;
@@ -79,10 +84,12 @@ public class ArticleController {
             ArchiveArticleUseCase archiveArticleUseCase,
             DeleteArticleUseCase deleteArticleUseCase,
             GetArticleBySlugUseCase getArticleBySlugUseCase,
+            GetArticleByIdUseCase getArticleByIdUseCase,
             ListPublishedArticlesUseCase listPublishedArticlesUseCase,
             ListMyArticlesUseCase listMyArticlesUseCase,
             ListFeaturedArticlesUseCase listFeaturedArticlesUseCase,
             ListEditorPicksUseCase listEditorPicksUseCase,
+            ListTrendingArticlesUseCase listTrendingArticlesUseCase,
             CurateArticleUseCase curateArticleUseCase,
             UploadArticleMediaUseCase uploadArticleMediaUseCase,
             RecordArticleViewUseCase recordArticleViewUseCase
@@ -94,10 +101,12 @@ public class ArticleController {
         this.archiveArticleUseCase = archiveArticleUseCase;
         this.deleteArticleUseCase = deleteArticleUseCase;
         this.getArticleBySlugUseCase = getArticleBySlugUseCase;
+        this.getArticleByIdUseCase = getArticleByIdUseCase;
         this.listPublishedArticlesUseCase = listPublishedArticlesUseCase;
         this.listMyArticlesUseCase = listMyArticlesUseCase;
         this.listFeaturedArticlesUseCase = listFeaturedArticlesUseCase;
         this.listEditorPicksUseCase = listEditorPicksUseCase;
+        this.listTrendingArticlesUseCase = listTrendingArticlesUseCase;
         this.curateArticleUseCase = curateArticleUseCase;
         this.uploadArticleMediaUseCase = uploadArticleMediaUseCase;
         this.recordArticleViewUseCase = recordArticleViewUseCase;
@@ -140,9 +149,21 @@ public class ArticleController {
                 .toList());
     }
 
+    @GetMapping("/trending")
+    public ApiResponse<List<ArticleResponse>> trending(@RequestParam(defaultValue = "6") int size) {
+        return ApiResponse.success(listTrendingArticlesUseCase.executeTrending(new ListCuratedArticlesCommand(size)).stream()
+                .map(ArticleResponse::from)
+                .toList());
+    }
+
     @GetMapping("/slug/{slug}")
     public ApiResponse<ArticleResponse> detail(@PathVariable String slug) {
         return ApiResponse.success(ArticleResponse.from(getArticleBySlugUseCase.executeBySlug(slug)));
+    }
+
+    @GetMapping("/id/{articleId}")
+    public ApiResponse<ArticleResponse> detailById(@PathVariable UUID articleId) {
+        return ApiResponse.success(ArticleResponse.from(getArticleByIdUseCase.executeById(articleId)));
     }
 
     @GetMapping("/me")
@@ -275,7 +296,7 @@ public class ArticleController {
 
     private void ensureAdmin(CurrentUser currentUser) {
         if (currentUser == null || !currentUser.hasRole("ADMIN")) {
-            throw new com.socialmediablog.platform.services.article.application.exception.ForbiddenArticleActionException(
+            throw new ForbiddenArticleActionException(
                     "Only admins can curate articles"
             );
         }

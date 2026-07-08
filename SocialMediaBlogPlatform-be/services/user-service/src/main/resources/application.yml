@@ -60,3 +60,7 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
   avatar-folder: ${CLOUDINARY_AVATAR_FOLDER:social-blog/avatars}
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId}]"

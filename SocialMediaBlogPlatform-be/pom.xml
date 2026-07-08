@@ -38,6 +38,7 @@
         <module>services/interaction-service</module>
         <module>services/follower-service</module>
         <module>services/notification-service</module>
+        <module>services/websocket-service</module>
     </modules>
 
     <dependencyManagement>

@@ -2,10 +2,13 @@ package com.socialmediablog.platform.services.article.config;
 
 import com.socialmediablog.platform.common.security.GatewayHeaderAuthenticationFilter;
 import com.socialmediablog.platform.common.security.error.ServletSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.correlation.CorrelationIdFilter;
 import com.socialmediablog.platform.common.web.error.ErrorCode;
 import java.time.Clock;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,7 +28,7 @@ public class SecurityConfig {
     ) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                .cors(Customizer.withDefaults())
+                .cors(cors -> cors.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) ->
@@ -46,7 +49,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info", "/error").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/internal/articles/*/comment-policy").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/trending", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -57,6 +60,13 @@ public class SecurityConfig {
     @Bean
     GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter() {
         return new GatewayHeaderAuthenticationFilter();
+    }
+
+    @Bean
+    FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter() {
+        FilterRegistrationBean<CorrelationIdFilter> registration = new FilterRegistrationBean<>(new CorrelationIdFilter());
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 
     @Bean

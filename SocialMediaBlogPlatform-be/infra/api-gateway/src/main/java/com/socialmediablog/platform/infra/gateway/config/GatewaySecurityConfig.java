@@ -3,6 +3,7 @@ package com.socialmediablog.platform.infra.gateway.config;
 import com.socialmediablog.platform.common.security.JwtProperties;
 import com.socialmediablog.platform.common.security.JwtSupport;
 import com.socialmediablog.platform.common.security.error.ReactiveSecurityErrorResponseWriter;
+import com.socialmediablog.platform.common.web.correlation.CorrelationHeaders;
 import com.socialmediablog.platform.common.web.error.ErrorCode;
 import java.util.Arrays;
 import java.util.List;
@@ -53,12 +54,15 @@ public class GatewaySecurityConfig {
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .pathMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/users/*", "/api/v1/users/by-username/*", "/api/v1/users/public").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/users/search", "/api/v1/users/*", "/api/v1/users/by-username/*", "/api/v1/users/public").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/trending", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .pathMatchers("/ws/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles/*/comments").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/articles/*/comments/count").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/comments/*/replies").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/interactions/*/likes").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/presence/**").permitAll()
                         .pathMatchers("/api/v1/**").authenticated()
                         .anyExchange().permitAll()
                 )
@@ -93,8 +97,13 @@ public class GatewaySecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(splitCsv(allowedOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
-        configuration.setExposedHeaders(List.of("Authorization"));
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "X-Requested-With",
+                CorrelationHeaders.CORRELATION_ID
+        ));
+        configuration.setExposedHeaders(List.of("Authorization", CorrelationHeaders.CORRELATION_ID));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

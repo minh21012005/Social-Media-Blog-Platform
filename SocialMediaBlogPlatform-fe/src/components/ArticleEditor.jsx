@@ -236,41 +236,68 @@ export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave,
         </label>
         <div className="editor-cover-control">
           <span className="editor-field-label">Cover image</span>
-          {form.coverImageUrl && <img alt="" className="editor-cover-preview" src={form.coverImageUrl} />}
-          {fieldErrors.coverImageUrl && <span className="field-error">{fieldErrors.coverImageUrl}</span>}
-          <div className="editor-cover-actions">
-            <MediaUploader busy={uploading} label={form.coverImageUrl ? 'Replace cover image' : 'Upload cover image'} onUpload={upload} />
-            <button
-              className="text-button"
-              type="button"
-              onClick={() => setShowCoverUrlInput((current) => !current)}
-            >
-              {showCoverUrlInput ? 'Hide image URL' : 'Use image URL instead'}
-            </button>
-            {form.coverImageUrl && (
-              <button
-                className="text-button muted"
-                type="button"
-                onClick={() => setForm((current) => ({ ...current, coverImageUrl: '' }))}
-              >
-                Remove
-              </button>
+          <div className={`editor-cover-dropzone ${form.coverImageUrl ? 'has-image' : 'is-empty'}`}>
+            {form.coverImageUrl ? (
+              <>
+                <img alt="" className="editor-cover-preview" src={form.coverImageUrl} />
+                <div className="editor-cover-overlay">
+                  <div className="editor-cover-overlay-buttons">
+                    <MediaUploader busy={uploading} label="Replace image" onUpload={upload} />
+                    <button
+                      className="text-button inline-pill-light"
+                      type="button"
+                      style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                      onClick={() => setShowCoverUrlInput((current) => !current)}
+                    >
+                      {showCoverUrlInput ? 'Hide URL' : 'Edit URL'}
+                    </button>
+                    <button
+                      className="text-button inline-pill-light danger"
+                      type="button"
+                      style={{ color: '#fca5a5', borderColor: 'rgba(239,68,68,0.4)', background: 'rgba(239,68,68,0.15)' }}
+                      onClick={() => setForm((current) => ({ ...current, coverImageUrl: '' }))}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="editor-cover-placeholder">
+                <p className="placeholder-text">Add a high-quality cover image to make your story stand out</p>
+                <div className="placeholder-actions">
+                  <MediaUploader busy={uploading} label="Upload cover image" onUpload={upload} />
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => setShowCoverUrlInput((current) => !current)}
+                  >
+                    {showCoverUrlInput ? 'Hide image URL' : 'Use image URL instead'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
+          {fieldErrors.coverImageUrl && <span className="field-error">{fieldErrors.coverImageUrl}</span>}
           {showCoverUrlInput && (
-            <label>
+            <label style={{ marginTop: '12px' }}>
               Image URL
               <input
                 placeholder="https://res.cloudinary.com/..."
                 value={form.coverImageUrl}
                 onChange={update('coverImageUrl')}
               />
-              {fieldErrors.coverImageUrl && <span className="field-error">{fieldErrors.coverImageUrl}</span>}
             </label>
           )}
         </div>
-        <label>
-          Markdown content
+
+        <div className="editor-markdown-wrapper" style={{ display: 'grid', gap: '9px' }}>
+          <div className="editor-content-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="editor-field-label" style={{ margin: 0 }}>Markdown content</span>
+            <div className="editor-content-tools" style={{ margin: 0 }}>
+              <MediaUploader busy={contentImageUploading} label="Insert image" onUpload={insertContentImage} />
+            </div>
+          </div>
           <textarea
             aria-invalid={Boolean(fieldErrors.content)}
             className="editor-content"
@@ -280,9 +307,6 @@ export function ArticleEditor({ initialArticle, requestWithAuth, saving, onSave,
             onChange={update('content')}
           />
           {fieldErrors.content && <span className="field-error">{fieldErrors.content}</span>}
-        </label>
-        <div className="editor-content-tools">
-          <MediaUploader busy={contentImageUploading} label="Insert image" onUpload={insertContentImage} />
         </div>
         {error && <p className="form-error">{error}</p>}
         <div className="editor-actions">

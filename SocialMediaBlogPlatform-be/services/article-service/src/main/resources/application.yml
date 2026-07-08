@@ -23,6 +23,23 @@ spring:
     properties:
       hibernate:
         format_sql: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+outbox:
+  relay:
+    topic: article.events
+    batch-size: ${OUTBOX_RELAY_BATCH_SIZE:100}
+    fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:5000}
 
 eureka:
   instance:
@@ -45,3 +62,14 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:}
   api-secret: ${CLOUDINARY_API_SECRET:}
   article-folder: ${CLOUDINARY_ARTICLE_FOLDER:social-blog/articles}
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId}]"
+
+trending:
+  job:
+    cron: "${TRENDING_JOB_CRON:0 */15 * * * *}"
+    page-size: ${TRENDING_JOB_PAGE_SIZE:200}
+  cache:
+    ttl-minutes: ${TRENDING_CACHE_TTL_MINUTES:20}

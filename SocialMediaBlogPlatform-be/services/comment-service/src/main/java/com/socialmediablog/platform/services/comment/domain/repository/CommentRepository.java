@@ -10,11 +10,19 @@ public interface CommentRepository {
 
     Optional<Comment> findById(CommentId id);
 
-    List<Comment> findByArticleId(ArticleId articleId);
-
-    List<Comment> findByParentCommentId(CommentId parentCommentId);
-
     long countByParentCommentId(CommentId parentCommentId);
+
+    long countVisibleByArticleId(ArticleId articleId);
+
+    List<Comment> findRootCommentsByArticleId(ArticleId articleId, int page, int size, String sortBy);
+
+    long countRootCommentsByArticleId(ArticleId articleId);
+
+    Optional<Comment> findPinnedByArticleId(ArticleId articleId);
+
+    List<Comment> findRepliesByParentCommentId(CommentId parentCommentId, int page, int size);
+
+    long countVisibleRepliesByParentCommentId(CommentId parentCommentId);
 
     Comment save(Comment comment);
 }

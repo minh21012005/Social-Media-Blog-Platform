@@ -147,8 +147,8 @@ public class Article {
             Instant now
     ) {
         ensureOwner(actorId);
-        if (status == ArticleStatus.ARCHIVED || status == ArticleStatus.DELETED) {
-            throw new IllegalStateException("Only draft or published articles can be updated");
+        if (status == ArticleStatus.DELETED) {
+            throw new IllegalStateException("Deleted articles cannot be updated");
         }
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl, status, publishedAt,
                 featuredRank, editorPickRank,
@@ -157,12 +157,13 @@ public class Article {
 
     public Article publish(AuthorId actorId, Instant now) {
         ensureOwner(actorId);
-        if (status == ArticleStatus.ARCHIVED || status == ArticleStatus.DELETED) {
-            throw new IllegalStateException("Only draft or published articles can be published");
+        if (status == ArticleStatus.DELETED) {
+            throw new IllegalStateException("Deleted articles cannot be published");
         }
         validatePublishable();
+        Instant nextPublishedAt = this.publishedAt != null ? this.publishedAt : now;
         return new Article(id, authorId, title, slug, category, summary, content, coverImageUrl,
-                ArticleStatus.PUBLISHED, now, featuredRank, editorPickRank, tags, createdAt, now);
+                ArticleStatus.PUBLISHED, nextPublishedAt, featuredRank, editorPickRank, tags, createdAt, now);
     }
 
     public Article archive(AuthorId actorId, Instant now) {

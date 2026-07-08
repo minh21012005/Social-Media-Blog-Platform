@@ -217,6 +217,17 @@ class AuthApplicationServiceTests {
             users.put(user.id(), user);
             return user;
         }
+
+        @Override
+        public List<User> searchUsers(String query) {
+            if (query == null || query.isBlank()) {
+                return List.of();
+            }
+            String lowerQuery = query.toLowerCase(Locale.ROOT);
+            return users.values().stream()
+                    .filter(user -> user.isActive() && (user.username().value().toLowerCase(Locale.ROOT).contains(lowerQuery) || user.displayName().toLowerCase(Locale.ROOT).contains(lowerQuery)))
+                    .toList();
+        }
     }
 
     private static class TestPasswordHasher implements PasswordHasher {

@@ -29,7 +29,7 @@ public class JpaFollowRelationEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     private String status;
 
-    @Column(name = "followed_at", nullable = false)
+    @Column(name = "followed_at")
     private Instant followedAt;
 
     @Column(name = "unfollowed_at")

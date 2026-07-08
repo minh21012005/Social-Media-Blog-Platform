@@ -18,7 +18,7 @@ spring:
             - id: comment-service-article-comments
               uri: lb://comment-service
               predicates:
-                - Path=/api/v1/articles/*/comments
+                - Path=/api/v1/articles/*/comments,/api/v1/articles/*/comments/**
             - id: article-service
               uri: lb://article-service
               predicates:
@@ -39,6 +39,14 @@ spring:
               uri: lb://notification-service
               predicates:
                 - Path=/api/v1/notifications/**
+            - id: websocket-service
+              uri: lb:ws://websocket-service
+              predicates:
+                - Path=/ws/**
+            - id: websocket-service-api
+              uri: lb://websocket-service
+              predicates:
+                - Path=/api/v1/presence/**
 
 security:
   jwt:
@@ -51,6 +59,10 @@ security:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+logging:
+  pattern:
+    level: "%5p [correlationId:%X{correlationId}]"
 
 eureka:
   instance:

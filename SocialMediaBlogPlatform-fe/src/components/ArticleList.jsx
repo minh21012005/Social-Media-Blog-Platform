@@ -1,6 +1,6 @@
 import { ArticleCard } from './ArticleCard'
 
-export function ArticleList({ articles, emptyTitle = 'No stories yet.', emptyText, navigate }) {
+export function ArticleList({ articles, emptyTitle = 'No stories yet.', emptyText, navigate, variant = 'grid', className = 'category-grid' }) {
   if (!articles?.length) {
     return (
       <div className="empty-state">
@@ -11,9 +11,9 @@ export function ArticleList({ articles, emptyTitle = 'No stories yet.', emptyTex
   }
 
   return (
-    <div className="category-grid">
+    <div className={className}>
       {articles.map((article) => (
-        <ArticleCard article={article} key={article.id} navigate={navigate} />
+        <ArticleCard article={article} key={article.id} navigate={navigate} variant={variant} />
       ))}
     </div>
   )
