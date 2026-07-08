@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
-import { formatCount, getArticleBySlug, recordArticleView } from '../services/articles'
+import {
+  bookmarkArticle,
+  clapArticle,
+  formatCount,
+  getArticleBookmarkState,
+  getArticleBySlug,
+  getArticleClapCount,
+  getArticleClapState,
+  recordArticleView,
+  removeBookmarkArticle
+} from '../services/articles'
 import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies, getArticleCommentCount } from '../services/comments'
 import { getPublicUsers } from '../services/users'
 import { CommentClapButton } from '../components/CommentClapButton'
@@ -274,7 +284,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
           loadingMore: false
         },
       }))
-    } catch (err) {
+    } catch {
       setRepliesByComment((current) => ({
         ...current,
         [commentId]: { ...currentState, error: 'Could not load more replies.', loadingMore: false },
@@ -729,7 +739,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
   )
 }
 
-export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mutedUserIds = new Set() }) {
+export function ArticleDetailPage({ slug, navigate, notify, session, requestWithAuth, mutedUserIds = new Set() }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [comments, setComments] = useState([])
   const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
@@ -739,6 +749,9 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
   const [loadingMore, setLoadingMore] = useState(false)
 
   const [commentCount, setCommentCount] = useState(0)
+  const [articleSessionClaps, setArticleSessionClaps] = useState(0)
+  const [showArticleClapBubble, setShowArticleClapBubble] = useState(false)
+  const [bookmarkSubmitting, setBookmarkSubmitting] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -835,6 +848,110 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
   }
 
   const currentUserId = useMemo(() => session?.user?.id, [session])
+
+  useEffect(() => {
+    if (!showArticleClapBubble) {
+      return undefined
+    }
+    const timer = setTimeout(() => setShowArticleClapBubble(false), 1500)
+    return () => clearTimeout(timer)
+  }, [showArticleClapBubble, articleSessionClaps])
+
+  useEffect(() => {
+    const articleId = state.article?.id
+    if (!articleId) {
+      return
+    }
+
+    let active = true
+
+    async function hydrateClapState() {
+      if (session) {
+        try {
+          const clapState = await requestWithAuth((token) => getArticleClapState(articleId, token))
+          if (!active) {
+            return
+          }
+          setState((current) => {
+            if (!current.article || current.article.id !== articleId) {
+              return current
+            }
+            return {
+              ...current,
+              article: {
+                ...current.article,
+                clappedByCurrentUser: Boolean(clapState?.clappedByCurrentUser),
+                stats: {
+                  ...(current.article.stats || {}),
+                  clapCount: Number(clapState?.clapCount || 0),
+                },
+              },
+            }
+          })
+          return
+        } catch {
+          // Fallback to public count endpoint below.
+        }
+      }
+
+      try {
+        const countResponse = await getArticleClapCount(articleId)
+        if (!active) {
+          return
+        }
+        setState((current) => {
+          if (!current.article || current.article.id !== articleId) {
+            return current
+          }
+          return {
+            ...current,
+            article: {
+              ...current.article,
+              stats: {
+                ...(current.article.stats || {}),
+                clapCount: Number(countResponse?.clapCount || 0),
+              },
+            },
+          }
+        })
+      } catch {
+        // Keep article stats from article-service when interaction-service is unavailable.
+      }
+    }
+
+    async function hydrateBookmarkState() {
+      if (!session) {
+        return
+      }
+      try {
+        const bookmarkState = await requestWithAuth((token) => getArticleBookmarkState(articleId, token))
+        if (!active) {
+          return
+        }
+        setState((current) => {
+          if (!current.article || current.article.id !== articleId) {
+            return current
+          }
+          return {
+            ...current,
+            article: {
+              ...current.article,
+              bookmarkedByCurrentUser: Boolean(bookmarkState?.bookmarkedByCurrentUser),
+            },
+          }
+        })
+      } catch {
+        // Keep default state when bookmark endpoint is unavailable.
+      }
+    }
+
+    hydrateClapState()
+    hydrateBookmarkState()
+
+    return () => {
+      active = false
+    }
+  }, [state.article?.id, session, requestWithAuth])
 
   const handleCommentCreated = (comment) => {
     setCommentCount((prev) => prev + 1)
@@ -982,6 +1099,120 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
     return updated
   }
 
+  const handleArticleClap = async () => {
+    if (!session) {
+      navigate('/login')
+      return
+    }
+    if (!state.article) {
+      return
+    }
+    if (state.article.clappedByCurrentUser) {
+      return
+    }
+
+    const articleId = state.article.id
+    const nextSessionClaps = articleSessionClaps + 1
+
+    // Optimistic update so users see clap count increase instantly.
+    setArticleSessionClaps(nextSessionClaps)
+    setShowArticleClapBubble(true)
+    setState((current) => {
+      if (!current.article || current.article.id !== articleId) {
+        return current
+      }
+      const currentCount = Number(current.article.stats?.clapCount || 0)
+      return {
+        ...current,
+        article: {
+          ...current.article,
+          clappedByCurrentUser: true,
+          stats: {
+            ...(current.article.stats || {}),
+            clapCount: currentCount + 1,
+          },
+        },
+      }
+    })
+
+    try {
+      const response = await requestWithAuth((token) => clapArticle(articleId, token))
+      setState((current) => {
+        if (!current.article || current.article.id !== articleId) {
+          return current
+        }
+
+        const currentCount = Number(current.article.stats?.clapCount || 0)
+        const serverCount = Number(response?.clapCount)
+        const nextCount = Number.isFinite(serverCount) ? serverCount : currentCount
+
+        return {
+          ...current,
+          article: {
+            ...current.article,
+            clappedByCurrentUser: true,
+            stats: {
+              ...(current.article.stats || {}),
+              clapCount: nextCount,
+            },
+          },
+        }
+      })
+    } catch (error) {
+      // Keep optimistic value so the button feels responsive even if the API fails.
+      console.error('Article clap request failed, keeping optimistic count.', error)
+    }
+  }
+
+  const handleToggleBookmark = async () => {
+    if (!session) {
+      navigate('/login')
+      return
+    }
+    if (!state.article || bookmarkSubmitting) {
+      return
+    }
+
+    const articleId = state.article.id
+    const currentlyBookmarked = Boolean(state.article.bookmarkedByCurrentUser)
+
+    setBookmarkSubmitting(true)
+    try {
+      if (currentlyBookmarked) {
+        await requestWithAuth((token) => removeBookmarkArticle(articleId, token))
+      } else {
+        await requestWithAuth((token) => bookmarkArticle(articleId, token))
+      }
+
+      setState((current) => {
+        if (!current.article || current.article.id !== articleId) {
+          return current
+        }
+        return {
+          ...current,
+          article: {
+            ...current.article,
+            bookmarkedByCurrentUser: !currentlyBookmarked,
+          },
+        }
+      })
+      notify?.(
+        currentlyBookmarked ? 'Removed from bookmarks.' : 'Saved to bookmarks.',
+        {
+          title: currentlyBookmarked ? 'Bookmark updated' : 'Saved bookmark',
+          type: currentlyBookmarked ? 'info' : 'success',
+        }
+      )
+    } catch (error) {
+      notify?.(error.message || 'Could not update bookmark.', {
+        title: 'Action failed',
+        type: 'error',
+      })
+    } finally {
+      setBookmarkSubmitting(false)
+    }
+  }
+
   if (state.loading) {
     return <main className="page-container loading-state">Loading story...</main>
   }
@@ -1017,6 +1248,37 @@ export function ArticleDetailPage({ slug, navigate, session, requestWithAuth, mu
           <div className="article-detail-meta">
             <AuthorBadge author={article.author} navigate={navigate} />
             <span style={{ color: 'var(--ink-light)' }}>&middot; {article.date}</span>
+          </div>
+          <div className="article-detail-actions">
+            <div className="article-clap-wrapper">
+              <div className={`clap-bubble ${showArticleClapBubble ? 'show' : ''}`}>
+                +{articleSessionClaps}
+              </div>
+              <button
+                className={`article-clap-btn ${article.clappedByCurrentUser ? 'clapped' : ''}`}
+                disabled={Boolean(article.clappedByCurrentUser)}
+                onClick={handleArticleClap}
+                type="button"
+                title={article.clappedByCurrentUser ? 'You already hearted this article' : 'Heart this article'}
+              >
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35z" />
+                </svg>
+              </button>
+              <span className="article-clap-count">{formatCount(article.stats?.clapCount)}</span>
+            </div>
+            <button
+              aria-label={article.bookmarkedByCurrentUser ? 'Remove bookmark' : 'Save to bookmarks'}
+              className={`article-bookmark-btn ${article.bookmarkedByCurrentUser ? 'saved' : ''}`}
+              disabled={bookmarkSubmitting}
+              onClick={handleToggleBookmark}
+              title={article.bookmarkedByCurrentUser ? 'Saved in bookmarks' : 'Save for later'}
+              type="button"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                <path d="M6 2a2 2 0 0 0-2 2v18l8-4 8 4V4a2 2 0 0 0-2-2H6z" />
+              </svg>
+            </button>
           </div>
         </header>
         <img alt="" className="article-detail-cover" src={article.image} />

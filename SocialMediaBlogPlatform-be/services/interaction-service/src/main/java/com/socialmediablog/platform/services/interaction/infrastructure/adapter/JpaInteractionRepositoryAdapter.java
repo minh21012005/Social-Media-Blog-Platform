@@ -36,6 +36,16 @@ public class JpaInteractionRepositoryAdapter implements InteractionRepository {
     }
 
     @Override
+    public boolean existsByUserIdAndTarget(InteractorId userId, InteractionTargetType targetType, TargetId targetId) {
+        return repository.existsByUserIdAndTargetTypeAndTargetId(userId.value(), targetType.name(), targetId.value());
+    }
+
+    @Override
+    public long countByTarget(InteractionTargetType targetType, TargetId targetId) {
+        return repository.countByTargetTypeAndTargetId(targetType.name(), targetId.value());
+    }
+
+    @Override
     public Interaction save(Interaction interaction) {
         return repository.save(JpaInteractionEntity.fromDomain(interaction)).toDomain();
     }

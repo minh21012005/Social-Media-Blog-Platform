@@ -100,8 +100,8 @@ export async function getArticleBySlug(slug) {
   return enriched
 }
 
-export async function getArticleById(id) {
-  const article = await apiRequest(`/api/v1/articles/id/${id}`)
+export async function getArticleById(id, token) {
+  const article = await apiRequest(`/api/v1/articles/id/${id}`, { token })
   const [enriched] = await enrichArticles([article])
   return enriched
 }
@@ -159,6 +159,51 @@ export function recordArticleView(articleId, payload = {}) {
   return apiRequest(`/api/v1/articles/${articleId}/views`, {
     method: 'POST',
     body: payload,
+  })
+}
+
+export function clapArticle(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/clap`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export function getArticleClapCount(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/clap-count`, {
+    token,
+  })
+}
+
+export function getArticleClapState(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/clap-state`, {
+    token,
+  })
+}
+
+export function bookmarkArticle(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/bookmark`, {
+    method: 'POST',
+    token,
+  })
+}
+
+export function removeBookmarkArticle(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/bookmark`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
+export function getArticleBookmarkState(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/bookmark-state`, {
+    token,
+  })
+}
+
+export function listMyBookmarks(token) {
+  return apiRequest('/api/v1/interactions/bookmarks/me', {
+    token,
   })
 }
 

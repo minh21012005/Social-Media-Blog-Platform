@@ -13,6 +13,7 @@ import { ArticleDetailPage } from './pages/ArticleDetailPage'
 import { EditArticlePage } from './pages/EditArticlePage'
 import { MyArticlesPage } from './pages/MyArticlesPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { SavedBookmarksPage } from './pages/SavedBookmarksPage'
 import { SearchPage } from './pages/SearchPage'
 import { WritePage } from './pages/WritePage'
 
@@ -24,6 +25,7 @@ import './App.css'
 function isProtectedRoute(route) {
   return route === '/write'
     || route === '/articles/me'
+    || route === '/bookmarks'
     || route === '/profile'
     || route === '/admin'
     || /^\/articles\/[^/]+\/edit$/.test(route)
@@ -280,6 +282,10 @@ function App() {
       return protectedPage(<MyArticlesPage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
     }
 
+    if (pathname === '/bookmarks') {
+      return protectedPage(<SavedBookmarksPage requestWithAuth={requestWithAuth} navigate={navigate} notify={notify} />)
+    }
+
     if (pathname === '/profile') {
       return protectedPage(
         <ProfilePage
@@ -322,6 +328,7 @@ function App() {
       return (
         <ArticleDetailPage
           navigate={navigate}
+          notify={notify}
           requestWithAuth={requestWithAuth}
           session={session}
           slug={articleMatch[1]}
