@@ -33,6 +33,7 @@ public class GatewaySecurityConfig {
     SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(Customizer.withDefaults())
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((exchange, exceptionCause) ->
                                 ReactiveSecurityErrorResponseWriter.write(
