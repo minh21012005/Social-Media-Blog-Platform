@@ -25,7 +25,7 @@ security:
   jwt:
     issuer: ${JWT_ISSUER:social-media-blog-platform}
     key-id: ${JWT_KEY_ID:social-blog-local-dev}
-    public-key-path: ${JWT_PUBLIC_KEY_PATH:../../infra/api-gateway/src/main/resources/config/jwt/dev-public-key.pem}
+    public-key-path: ${JWT_PUBLIC_KEY_PATH:./config/jwt/dev-public-key.pem}
 
 logging:
   pattern:
