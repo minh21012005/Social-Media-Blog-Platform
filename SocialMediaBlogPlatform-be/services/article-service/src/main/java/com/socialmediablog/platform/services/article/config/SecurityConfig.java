@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info", "/error").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/internal/articles/*/comment-policy").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/trending", "/api/v1/articles/slug/**", "/api/v1/articles/status").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/trending", "/api/v1/articles/slug/**", "/api/v1/articles/id/**", "/api/v1/articles/status").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/articles/*/views").permitAll()
                         .anyRequest().authenticated()
                 )
