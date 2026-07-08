@@ -21,7 +21,7 @@ export function ArticleCard({ article, variant = 'grid', navigate, requestWithAu
         </h3>
         <p>{article.summary}</p>
         <div className="meta-row">
-          <ArticleMeta article={article} />
+          <ArticleMeta article={article} navigate={navigate} />
           <BookmarkButton articleId={article.id} saved={article.bookmarked} requestWithAuth={requestWithAuth} notify={notify} />
         </div>
       </div>
