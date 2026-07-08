@@ -177,158 +177,160 @@ export function SiteHeader({ session, navigate, onLogout }) {
 
   return (
     <header className="site-header">
-      <a className="brand-wordmark" href="/" onClick={open('/')}>Chronicle</a>
-      <nav aria-label="Primary navigation" className="site-nav">
-        {categories.map((category) => (
-          <a
-            href={`/category/${category.slug}`}
-            key={category.slug}
-            onClick={open(`/category/${category.slug}`)}
-          >
-            {category.label}
-          </a>
-        ))}
-      </nav>
-      <div className="site-actions">
-        <div className="header-search" ref={searchRef}>
-          <button
-            aria-expanded={searchOpen}
-            aria-label="Search"
-            className="icon-button"
-            type="button"
-            onClick={() => setSearchOpen((current) => !current)}
-          >
-            <SearchIcon />
-          </button>
-          {searchOpen && (
-            <form className="header-search-panel" onSubmit={submitSearch}>
-              <input
-                autoFocus
-                aria-label="Search stories"
-                placeholder="Search stories"
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-              <button type="submit">Search</button>
-            </form>
-          )}
-        </div>
-        <div className="header-notif" ref={notifRef}>
-          <button
-            aria-expanded={notifOpen}
-            aria-label="Notifications"
-            className="icon-button notif-bell"
-            type="button"
-            onClick={() => setNotifOpen((c) => !c)}
-          >
-            <BellIcon />
-            {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
-              <span className="notif-badge">
-                {Math.min(notifications.filter((n) => n.status === 'UNREAD').length, 99)}
-              </span>
+      <div className="site-header-inner">
+        <a className="brand-wordmark" href="/" onClick={open('/')}>Chronicle</a>
+        <nav aria-label="Primary navigation" className="site-nav">
+          {categories.map((category) => (
+            <a
+              href={`/category/${category.slug}`}
+              key={category.slug}
+              onClick={open(`/category/${category.slug}`)}
+            >
+              {category.label}
+            </a>
+          ))}
+        </nav>
+        <div className="site-actions">
+          <div className="header-search" ref={searchRef}>
+            <button
+              aria-expanded={searchOpen}
+              aria-label="Search"
+              className="icon-button"
+              type="button"
+              onClick={() => setSearchOpen((current) => !current)}
+            >
+              <SearchIcon />
+            </button>
+            {searchOpen && (
+              <form className="header-search-panel" onSubmit={submitSearch}>
+                <input
+                  autoFocus
+                  aria-label="Search stories"
+                  placeholder="Search stories"
+                  type="search"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                />
+                <button type="submit">Search</button>
+              </form>
             )}
-          </button>
-          {notifOpen && (
-            <div className="notif-dropdown">
-              <div className="notif-dropdown-header">
-                <span>Notifications</span>
-                {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
-                  <div className="notif-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span className="notif-unread-count">
-                      {notifications.filter((n) => n.status === 'UNREAD').length} unread
-                    </span>
-                    <button
-                      className="text-button"
-                      type="button"
-                      onClick={handleMarkAllRead}
-                      style={{ fontSize: '0.85rem', cursor: 'pointer', background: 'none', border: 'none', color: '#03a87c', padding: 0 }}
-                    >
-                      Mark all as read
+          </div>
+          <div className="header-notif" ref={notifRef}>
+            <button
+              aria-expanded={notifOpen}
+              aria-label="Notifications"
+              className="icon-button notif-bell"
+              type="button"
+              onClick={() => setNotifOpen((c) => !c)}
+            >
+              <BellIcon />
+              {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
+                <span className="notif-badge">
+                  {Math.min(notifications.filter((n) => n.status === 'UNREAD').length, 99)}
+                </span>
+              )}
+            </button>
+            {notifOpen && (
+              <div className="notif-dropdown">
+                <div className="notif-dropdown-header">
+                  <span>Notifications</span>
+                  {notifications.filter((n) => n.status === 'UNREAD').length > 0 && (
+                    <div className="notif-header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span className="notif-unread-count">
+                        {notifications.filter((n) => n.status === 'UNREAD').length} unread
+                      </span>
+                      <button
+                        className="text-button"
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        style={{ fontSize: '0.85rem', cursor: 'pointer', background: 'none', border: 'none', color: '#03a87c', padding: 0 }}
+                      >
+                        Mark all as read
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <ul className="notif-list">
+                  {notifications.length === 0 ? (
+                    <li className="notif-empty">You don&apos;t have any notifications yet</li>
+                  ) : (
+                    notifications.map((n) => (
+                      <li
+                        key={n.id}
+                        className={`notif-item${n.status === 'UNREAD' ? ' notif-item--unread' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleMarkRead(n)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleMarkRead(n)}
+                      >
+                        {n.status === 'UNREAD' && <span className="notif-dot" aria-hidden="true" />}
+                        <div className="notif-content">
+                          <p className="notif-title">{n.title}</p>
+                          {n.body && <p className="notif-body">{n.body}</p>}
+                          <time className="notif-time" dateTime={n.createdAt}>
+                            {new Date(n.createdAt).toLocaleString('en-US', {
+                              day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+                            })}
+                          </time>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+          {session ? (
+            <>
+              <button className="header-write-button" type="button" onClick={() => navigate('/write')}>Write</button>
+              <div className="header-user-menu" ref={menuRef}>
+                <button
+                  aria-expanded={menuOpen}
+                  className="header-user-button"
+                  type="button"
+                  onClick={() => setMenuOpen((current) => !current)}
+                >
+                  <span>{initial}</span>
+                  {displayName}
+                </button>
+                {menuOpen && (
+                  <div className="header-dropdown">
+                    {session?.user?.roles?.includes('ADMIN') && (
+                      <button type="button" onClick={() => {
+                        setMenuOpen(false)
+                        navigate('/admin')
+                      }}>
+                        Admin Dashboard
+                      </button>
+                    )}
+                    <button type="button" onClick={() => {
+                      setMenuOpen(false)
+                      navigate('/articles/me')
+                    }}>
+                      My articles
+                    </button>
+                    <button type="button" onClick={() => {
+                      setMenuOpen(false)
+                      navigate('/profile')
+                    }}>
+                      Profile
+                    </button>
+                    <button type="button" onClick={() => {
+                      setMenuOpen(false)
+                      onLogout()
+                    }}>
+                      Log out
                     </button>
                   </div>
                 )}
               </div>
-              <ul className="notif-list">
-                {notifications.length === 0 ? (
-                  <li className="notif-empty">You don&apos;t have any notifications yet</li>
-                ) : (
-                  notifications.map((n) => (
-                    <li
-                      key={n.id}
-                      className={`notif-item${n.status === 'UNREAD' ? ' notif-item--unread' : ''}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleMarkRead(n)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleMarkRead(n)}
-                    >
-                      {n.status === 'UNREAD' && <span className="notif-dot" aria-hidden="true" />}
-                      <div className="notif-content">
-                        <p className="notif-title">{n.title}</p>
-                        {n.body && <p className="notif-body">{n.body}</p>}
-                        <time className="notif-time" dateTime={n.createdAt}>
-                          {new Date(n.createdAt).toLocaleString('en-US', {
-                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
-                          })}
-                        </time>
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
+            </>
+          ) : (
+            <button className="pill-button" type="button" onClick={() => navigate('/register')}>
+              Subscribe
+            </button>
           )}
         </div>
-        {session ? (
-          <>
-            <button className="header-write-button" type="button" onClick={() => navigate('/write')}>Write</button>
-            <div className="header-user-menu" ref={menuRef}>
-              <button
-                aria-expanded={menuOpen}
-                className="header-user-button"
-                type="button"
-                onClick={() => setMenuOpen((current) => !current)}
-              >
-                <span>{initial}</span>
-                {displayName}
-              </button>
-              {menuOpen && (
-                <div className="header-dropdown">
-                  {session?.user?.roles?.includes('ADMIN') && (
-                    <button type="button" onClick={() => {
-                      setMenuOpen(false)
-                      navigate('/admin')
-                    }}>
-                      Admin Dashboard
-                    </button>
-                  )}
-                  <button type="button" onClick={() => {
-                    setMenuOpen(false)
-                    navigate('/articles/me')
-                  }}>
-                    My articles
-                  </button>
-                  <button type="button" onClick={() => {
-                    setMenuOpen(false)
-                    navigate('/profile')
-                  }}>
-                    Profile
-                  </button>
-                  <button type="button" onClick={() => {
-                    setMenuOpen(false)
-                    onLogout()
-                  }}>
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <button className="pill-button" type="button" onClick={() => navigate('/register')}>
-            Subscribe
-          </button>
-        )}
       </div>
     </header>
   )
