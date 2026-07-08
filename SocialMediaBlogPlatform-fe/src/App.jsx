@@ -369,10 +369,12 @@ function App() {
 
     if (pathname === '/search') {
       const query = routeUrl.searchParams.get('q')?.trim() || ''
+      const tag = routeUrl.searchParams.get('tag')?.trim() || ''
       return (
         <SearchPage
-          key={query}
+          key={`${query}-${tag}`}
           query={query}
+          tag={tag}
           navigate={navigate}
           session={session}
           requestWithAuth={requestWithAuth}

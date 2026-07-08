@@ -186,10 +186,13 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
             }
             if (normalizedQuery != null) {
                 String pattern = "%" + normalizedQuery + "%";
+                jakarta.persistence.criteria.Join<JpaArticleEntity, String> tagsJoin = root.join("tags", jakarta.persistence.criteria.JoinType.LEFT);
                 predicates.add(criteriaBuilder.or(
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), pattern),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), pattern),
-                        criteriaBuilder.like(criteriaBuilder.lower(root.get("content")), pattern)));
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("content")), pattern),
+                        criteriaBuilder.like(criteriaBuilder.lower(tagsJoin), pattern)));
+                criteriaQuery.distinct(true);
             }
 
             return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
