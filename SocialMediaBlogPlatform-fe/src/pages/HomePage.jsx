@@ -171,9 +171,9 @@ export function HomePage({ navigate, mutedUserIds = new Set() }) {
           <Newsletter />
           <section className="topics-section">
             <h2>Popular Topics</h2>
-            <div className="topic-list" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div className="topic-list">
               {categories.map((category) => (
-                <a href={`/category/${category.slug}`} key={category.slug} onClick={open(`/category/${category.slug}`)} style={{ border: '1px solid var(--border)', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', color: 'var(--ink)', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                <a href={`/category/${category.slug}`} key={category.slug} onClick={open(`/category/${category.slug}`)}>
                   {category.label}
                 </a>
               ))}
