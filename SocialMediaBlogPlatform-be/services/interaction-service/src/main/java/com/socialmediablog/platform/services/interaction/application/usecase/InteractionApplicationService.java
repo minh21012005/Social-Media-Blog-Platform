@@ -109,19 +109,20 @@ public class InteractionApplicationService implements GetServiceStatusUseCase, B
         InteractorId userId = InteractorId.of(command.userId());
         TargetId articleId = TargetId.of(command.articleId());
 
-        interactionRepository.findByUserIdAndTarget(userId, InteractionTargetType.ARTICLE, articleId)
-                .orElseGet(() -> interactionRepository.save(
-                        Interaction.record(userId, InteractionTargetType.ARTICLE, articleId, 1, now)
-                ));
+        Interaction interaction = interactionRepository.findByUserIdAndTarget(userId, InteractionTargetType.ARTICLE, articleId)
+            .map(existing -> existing.clap(now))
+            .orElseGet(() -> Interaction.record(userId, InteractionTargetType.ARTICLE, articleId, 1, now));
 
-        return interactionRepository.countByTarget(InteractionTargetType.ARTICLE, articleId);
+        interactionRepository.save(interaction);
+
+        return interactionRepository.totalClapsByTarget(InteractionTargetType.ARTICLE, articleId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public long getArticleClapCount(java.util.UUID articleId) {
         TargetId targetId = TargetId.of(articleId);
-        return interactionRepository.countByTarget(InteractionTargetType.ARTICLE, targetId);
+        return interactionRepository.totalClapsByTarget(InteractionTargetType.ARTICLE, targetId);
     }
 
     @Override

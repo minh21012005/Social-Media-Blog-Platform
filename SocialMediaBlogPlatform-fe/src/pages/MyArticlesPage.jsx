@@ -144,7 +144,7 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
                 <span className="dashboard-stat">
-                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.clapCount)} hearts
+                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.clapCount)} claps
                 </span>
               </div>
               <div className="row-actions">

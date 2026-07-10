@@ -15,7 +15,7 @@ public interface InteractionRepository {
 
     boolean existsByUserIdAndTarget(InteractorId userId, InteractionTargetType targetType, TargetId targetId);
 
-    long countByTarget(InteractionTargetType targetType, TargetId targetId);
+    long totalClapsByTarget(InteractionTargetType targetType, TargetId targetId);
 
     Interaction save(Interaction interaction);
 }

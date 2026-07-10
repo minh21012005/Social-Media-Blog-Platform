@@ -41,8 +41,8 @@ public class JpaInteractionRepositoryAdapter implements InteractionRepository {
     }
 
     @Override
-    public long countByTarget(InteractionTargetType targetType, TargetId targetId) {
-        return repository.countByTargetTypeAndTargetId(targetType.name(), targetId.value());
+    public long totalClapsByTarget(InteractionTargetType targetType, TargetId targetId) {
+        return repository.sumClapCountByTargetTypeAndTargetId(targetType.name(), targetId.value());
     }
 
     @Override
