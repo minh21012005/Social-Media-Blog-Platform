@@ -1,0 +1,35 @@
+# ============================================================
+# websocket-service — Service-specific configuration
+# ============================================================
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # websocket-service uses JsonDeserializer with a specific target type — CANNOT be in global config
+    consumer:
+      group-id: websocket-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.socialmediablog.platform.services.websocket.infrastructure.messaging.NotificationPushEvent
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+# websocket-service exposes additional actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+# Enable debug logging for websocket package
+logging:
+  level:
+    com.socialmediablog.platform.services.websocket: DEBUG

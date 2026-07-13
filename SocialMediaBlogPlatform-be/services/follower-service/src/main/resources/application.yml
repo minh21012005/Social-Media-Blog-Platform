@@ -6,49 +6,4 @@ spring:
     name: follower-service
   config:
     import: optional:file:.env[.properties],optional:file:../../.env[.properties],optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
-  datasource:
-    url: ${FOLLOWER_SERVICE_DB_URL:jdbc:postgresql://localhost:5432/social_blog_followers}
-    username: ${FOLLOWER_SERVICE_DB_USERNAME:social_blog}
-    password: ${FOLLOWER_SERVICE_DB_PASSWORD:social_blog}
-  flyway:
-    enabled: true
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        format_sql: true
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
-      acks: all
-      retries: 3
 
-outbox:
-  relay:
-    topic: follower.events
-    batch-size: ${OUTBOX_RELAY_BATCH_SIZE:100}
-    fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:5000}
-
-eureka:
-  instance:
-    prefer-ip-address: true
-    ip-address: ${EUREKA_INSTANCE_IP_ADDRESS:127.0.0.1}
-    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
-    instance-id: ${spring.application.name}:${server.port}
-  client:
-    service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-
-logging:
-  pattern:
-    level: "%5p [correlationId:%X{correlationId}]"
