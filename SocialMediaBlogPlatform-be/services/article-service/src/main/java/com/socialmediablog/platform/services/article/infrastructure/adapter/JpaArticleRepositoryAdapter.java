@@ -51,6 +51,16 @@ public class JpaArticleRepositoryAdapter implements ArticleRepository {
     }
 
     @Override
+    public Optional<Article> findByFeaturedRank(Integer rank) {
+        return repository.findFirstByFeaturedRank(rank).map(JpaArticleEntity::toDomain);
+    }
+
+    @Override
+    public Optional<Article> findByEditorPickRank(Integer rank) {
+        return repository.findFirstByEditorPickRank(rank).map(JpaArticleEntity::toDomain);
+    }
+
+    @Override
     public List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, String sort,
             int page, int size) {
         return repository.findPublished(

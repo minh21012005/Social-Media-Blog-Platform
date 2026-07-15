@@ -324,11 +324,40 @@ public class ArticleApplicationService implements
             @CacheEvict(value = "homepage:editor-picks", allEntries = true)
     })
     public ArticleView curate(CurateArticleCommand command) {
+        validateCuration(command.featuredRank(), command.editorPickRank());
         Article article = findRequired(command.articleId());
+        if (!article.isPublished()) {
+            throw new IllegalStateException("Only published articles can be curated");
+        }
+
+        Instant now = clock.instant();
+        if (command.featuredRank() != null) {
+            articleRepository.findByFeaturedRank(command.featuredRank())
+                    .filter(current -> !current.id().equals(article.id()))
+                    .ifPresent(current -> articleRepository.save(current.curate(null, current.editorPickRank(), now)));
+        }
+        if (command.editorPickRank() != null) {
+            articleRepository.findByEditorPickRank(command.editorPickRank())
+                    .filter(current -> !current.id().equals(article.id()))
+                    .ifPresent(current -> articleRepository.save(current.curate(current.featuredRank(), null, now)));
+        }
+
         return view(articleRepository.save(article.curate(
                 command.featuredRank(),
                 command.editorPickRank(),
-                clock.instant())));
+                now)));
+    }
+
+    private void validateCuration(Integer featuredRank, Integer editorPickRank) {
+        if (featuredRank != null && editorPickRank != null) {
+            throw new IllegalArgumentException("An article cannot be Featured and an Editor's Pick at the same time");
+        }
+        if (featuredRank != null && featuredRank != 1) {
+            throw new IllegalArgumentException("Featured rank must be 1");
+        }
+        if (editorPickRank != null && (editorPickRank < 1 || editorPickRank > 5)) {
+            throw new IllegalArgumentException("Editor's Pick rank must be between 1 and 5");
+        }
     }
 
     @Override
