@@ -117,6 +117,7 @@ services:
       EUREKA_INSTANCE_HOSTNAME: social-blog-user-service
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "false"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/social_blog_users
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-not-configured}
     depends_on:
       - postgres
       - config-server

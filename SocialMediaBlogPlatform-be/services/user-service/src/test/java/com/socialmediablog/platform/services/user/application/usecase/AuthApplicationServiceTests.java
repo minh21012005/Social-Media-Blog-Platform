@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.socialmediablog.platform.common.events.DomainEvent;
 import com.socialmediablog.platform.common.security.JwtProperties;
+import com.socialmediablog.platform.services.user.application.command.GoogleLoginCommand;
 import com.socialmediablog.platform.services.user.application.command.LoginUserCommand;
 import com.socialmediablog.platform.services.user.application.command.LogoutCommand;
 import com.socialmediablog.platform.services.user.application.command.RefreshSessionCommand;
@@ -14,6 +15,7 @@ import com.socialmediablog.platform.services.user.application.exception.InvalidC
 import com.socialmediablog.platform.services.user.application.exception.InvalidRefreshTokenException;
 import com.socialmediablog.platform.services.user.application.port.out.AccessTokenIssuer;
 import com.socialmediablog.platform.services.user.application.port.out.DomainEventPublisher;
+import com.socialmediablog.platform.services.user.application.port.out.GoogleIdentityVerifier;
 import com.socialmediablog.platform.services.user.application.port.out.PasswordHasher;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenGenerator;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenHasher;
@@ -21,6 +23,7 @@ import com.socialmediablog.platform.services.user.application.port.out.RefreshTo
 import com.socialmediablog.platform.services.user.application.port.out.UserMediaStorage;
 import com.socialmediablog.platform.services.user.application.result.AuthenticatedUser;
 import com.socialmediablog.platform.services.user.application.result.IssuedToken;
+import com.socialmediablog.platform.services.user.application.result.VerifiedGoogleIdentity;
 import com.socialmediablog.platform.services.user.application.result.StoredUserMedia;
 import com.socialmediablog.platform.services.user.domain.aggregate.RefreshToken;
 import com.socialmediablog.platform.services.user.domain.aggregate.UserMediaAsset;
@@ -61,6 +64,9 @@ class AuthApplicationServiceTests {
         UserMediaAssetRepository userMediaAssetRepository = new InMemoryUserMediaAssetRepository();
         DomainEventPublisher domainEventPublisher = event -> {
         };
+        GoogleIdentityVerifier googleIdentityVerifier = credential -> new VerifiedGoogleIdentity(
+                "google-subject", "google@example.com", "Google User"
+        );
         JwtProperties jwtProperties = new JwtProperties();
         Clock clock = Clock.fixed(Instant.parse("2026-05-25T00:00:00Z"), ZoneOffset.UTC);
         authApplicationService = new AuthApplicationService(
@@ -73,6 +79,7 @@ class AuthApplicationServiceTests {
                 userMediaStorage,
                 userMediaAssetRepository,
                 domainEventPublisher,
+                googleIdentityVerifier,
                 jwtProperties,
                 clock
         );
@@ -111,6 +118,15 @@ class AuthApplicationServiceTests {
         ))).isInstanceOf(DuplicateUserException.class);
     }
 
+    @Test
+    void googleLoginCreatesUserWhenEmailDoesNotExist() {
+        AuthenticatedUser result = authApplicationService.execute(new GoogleLoginCommand("google-id-token"));
+
+        assertThat(result.user().email()).isEqualTo("google@example.com");
+        assertThat(result.user().displayName()).isEqualTo("Google User");
+        assertThat(result.token().accessToken()).startsWith("token-");
+        assertThat(userRepository.findByEmailOrUsername("google@example.com")).isPresent();
+    }
     @Test
     void loginRejectsInvalidPassword() {
         authApplicationService.execute(new RegisterUserCommand(
@@ -234,6 +250,9 @@ class AuthApplicationServiceTests {
 
         @Override
         public String hash(String rawPassword) {
+            if (rawPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+                throw new IllegalArgumentException("password cannot be more than 72 bytes");
+            }
             return "hashed:" + rawPassword;
         }
 

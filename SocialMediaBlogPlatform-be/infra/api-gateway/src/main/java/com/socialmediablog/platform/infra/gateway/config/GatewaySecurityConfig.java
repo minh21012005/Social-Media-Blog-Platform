@@ -53,7 +53,7 @@ public class GatewaySecurityConfig {
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/google").permitAll()
                         .pathMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
                         .pathMatchers(HttpMethod.GET, "/api/v1/users/search", "/api/v1/users/*", "/api/v1/users/by-username/*", "/api/v1/users/public").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/articles", "/api/v1/articles/featured", "/api/v1/articles/editor-picks", "/api/v1/articles/trending", "/api/v1/articles/slug/**", "/api/v1/articles/id/**", "/api/v1/articles/status").permitAll()

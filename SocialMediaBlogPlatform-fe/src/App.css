@@ -5028,3 +5028,47 @@ img.comment-avatar {
     width: 100%;
   }
 }
+.google-login-slot {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 22px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.google-login-slot > div,
+.google-login-slot iframe {
+  max-width: 100%;
+}
+
+.google-login-slot.is-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.google-login-slot > span {
+  align-items: center;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  font-size: 13px;
+  justify-content: center;
+  min-height: 44px;
+  width: 100%;
+}
+
+.auth-divider {
+  align-items: center;
+  color: var(--soft);
+  display: flex;
+  font-size: 11.5px;
+  gap: 12px;
+  margin: 20px 0;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after { background: rgba(17, 24, 39, 0.1); content: ''; height: 1px; flex: 1; }
