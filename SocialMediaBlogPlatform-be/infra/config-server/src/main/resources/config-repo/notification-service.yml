@@ -30,3 +30,9 @@ spring:
 outbox:
   relay:
     topic: notification.events
+
+processed-events:
+  cleanup:
+    retention-days: ${PROCESSED_EVENTS_CLEANUP_RETENTION_DAYS:90}
+    cron: ${PROCESSED_EVENTS_CLEANUP_CRON:0 30 3 * * *}
+    zone: ${PROCESSED_EVENTS_CLEANUP_ZONE:UTC}
