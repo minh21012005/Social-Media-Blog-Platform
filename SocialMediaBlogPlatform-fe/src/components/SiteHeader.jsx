@@ -330,37 +330,46 @@ export function SiteHeader({ session, navigate, onLogout }) {
                   onClick={() => setMenuOpen((current) => !current)}
                 >
                   <span>{initial}</span>
-                  {displayName}
+                  <span className="header-user-name">{displayName}</span>
                 </button>
                 {menuOpen && (
-                  <div className="header-dropdown">
+                  <div className="header-dropdown" role="menu">
+                    <div className="header-dropdown-profile">
+                      <span className="header-dropdown-avatar">{initial}</span>
+                      <div>
+                        <strong>{displayName}</strong>
+                        <small>{session?.user?.username ? `@${session.user.username}` : 'Chronicle member'}</small>
+                      </div>
+                    </div>
+                    <div className="header-dropdown-divider" />
                     {session?.user?.roles?.includes('ADMIN') && (
-                      <button type="button" onClick={() => {
+                      <button role="menuitem" type="button" onClick={() => {
                         setMenuOpen(false)
                         navigate('/admin')
                       }}>
                         Admin Dashboard
                       </button>
                     )}
-                    <button type="button" onClick={() => {
+                    <button role="menuitem" type="button" onClick={() => {
                       setMenuOpen(false)
                       navigate('/articles/me')
                     }}>
                       My articles
                     </button>
-                    <button type="button" onClick={() => {
+                    <button role="menuitem" type="button" onClick={() => {
                       setMenuOpen(false)
                       navigate('/bookmarks')
                     }}>
                       Saved bookmarks
                     </button>
-                    <button type="button" onClick={() => {
+                    <button role="menuitem" type="button" onClick={() => {
                       setMenuOpen(false)
                       navigate('/profile')
                     }}>
                       Profile
                     </button>
-                    <button type="button" onClick={() => {
+                    <div className="header-dropdown-divider" />
+                    <button className="header-dropdown-logout" role="menuitem" type="button" onClick={() => {
                       setMenuOpen(false)
                       onLogout()
                     }}>

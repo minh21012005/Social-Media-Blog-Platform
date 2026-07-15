@@ -100,31 +100,41 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
   }
 
   return (
-    <main>
-      <section className="writer-hero dashboard-hero page-container">
+    <main className="my-articles-page">
+      <section className="dashboard-page-hero page-container">
         <div>
-          <span className="form-eyebrow">Dashboard</span>
-          <h1>My articles.</h1>
-          <p>Manage drafts, published stories, and archived pieces from one calm desk.</p>
+          <span className="dashboard-kicker">Writer dashboard</span>
+          <h1>Your stories</h1>
+          <p>Draft, publish, and manage every story from one focused workspace.</p>
         </div>
-        <button className="pill-button" type="button" onClick={() => navigate('/write')}>New story</button>
+        <button className="dashboard-primary-action" type="button" onClick={() => navigate('/write')}>
+          <span aria-hidden="true">+</span> New story
+        </button>
       </section>
 
-      <section className="page-container dashboard-section">
-        <div className="dashboard-tabs">
-          {['', 'DRAFT', 'PUBLISHED', 'ARCHIVED'].map((item) => (
-            <button
-              className={status === item ? 'active' : ''}
-              key={item || 'all'}
-              type="button"
-              onClick={() => {
-                setStatus(item)
-                setPage(0)
-              }}
-            >
-              {item || 'ALL'}
-            </button>
-          ))}
+      <section className="page-container dashboard-content-section">
+        <div className="article-dashboard-toolbar">
+          <div>
+            <h2>Articles</h2>
+            <p>{state.loading ? 'Loading your workspace...' : `${state.articles.length} ${state.articles.length === 1 ? 'story' : 'stories'} in this view`}</p>
+          </div>
+          <div aria-label="Filter articles by status" className="article-status-tabs" role="tablist">
+            {['', 'DRAFT', 'PUBLISHED', 'ARCHIVED'].map((item) => (
+              <button
+                aria-selected={status === item}
+                className={status === item ? 'active' : ''}
+                key={item || 'all'}
+                role="tab"
+                type="button"
+                onClick={() => {
+                  setStatus(item)
+                  setPage(0)
+                }}
+              >
+                {item ? `${item.charAt(0)}${item.slice(1).toLowerCase()}` : 'All'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {state.loading && <div className="loading-state">Loading your articles...</div>}
@@ -135,20 +145,23 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
             <p>Start a draft and it will show up in this dashboard.</p>
           </div>
         )}
-        <div className="article-table">
+
+        <div className="managed-article-list">
           {state.articles.map((article) => (
-            <article className="article-table-row" key={article.id}>
-              <img alt="" src={article.image} />
-              <div>
-                <span className="article-category">{article.status}</span>
+            <article className="managed-article-card" key={article.id}>
+              <img alt="" className="managed-article-cover" src={article.image} />
+              <div className="managed-article-copy">
+                <span className={`article-status-badge status-${article.status?.toLowerCase()}`}>{article.status}</span>
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
-                <span className="dashboard-stat">
-                  {formatCount(article.stats?.viewCount)} views &middot; {formatCount(article.stats?.clapCount)} claps
-                </span>
+                <div className="managed-article-meta">
+                  <span>{formatCount(article.stats?.viewCount)} views</span>
+                  <span>{formatCount(article.stats?.clapCount)} claps</span>
+                  {article.date && <span>{article.date}</span>}
+                </div>
               </div>
-              <div className="row-actions">
-                <button type="button" onClick={() => navigate(`/articles/${article.id}/edit`)}>Edit</button>
+              <div className="managed-article-actions">
+                <button className="article-action-primary" type="button" onClick={() => navigate(`/articles/${article.id}/edit`)}>Edit</button>
                 {article.status !== 'PUBLISHED' && (
                   <button type="button" onClick={() => runAction((token) => publishArticle(article.id, token))}>Publish</button>
                 )}
@@ -156,7 +169,7 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                   <button type="button" onClick={() => runAction((token) => archiveArticle(article.id, token))}>Archive</button>
                 )}
                 {['DRAFT', 'ARCHIVED'].includes(article.status) && (
-                  <button className="danger-action" type="button" onClick={() => setPendingDelete(article)}>Delete</button>
+                  <button className="article-action-danger" type="button" onClick={() => setPendingDelete(article)}>Delete</button>
                 )}
               </div>
             </article>
@@ -164,6 +177,7 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
         </div>
         <Pagination page={state.page} totalPages={state.totalPages} onPageChange={setPage} />
       </section>
+
       {pendingDelete && (
         <div className="confirm-backdrop" role="presentation" onMouseDown={() => setPendingDelete(null)}>
           <section
