@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { categories } from '../data/editorial'
 import { BellIcon, SearchIcon } from './icons'
-import { getMyNotifications, markNotificationRead, markAllNotificationsRead } from '../services/notifications'
+import { getMyNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '../services/notifications'
+import { getComment } from '../services/comments'
 import { getArticleById } from '../services/articles'
 import { getPublicUser } from '../services/users'
 
@@ -121,12 +122,26 @@ export function SiteHeader({ session, navigate, onLogout }) {
         notif.type === 'NEW_COMMENT' ||
         notif.type === 'NEW_ARTICLE' ||
         notif.type === 'COMMENT_CREATED' ||
-        notif.type === 'COMMENT_REPLIED' ||
-        notif.type === 'ARTICLE_PUBLISHED'
+        notif.type === 'ARTICLE_PUBLISHED' ||
+        notif.type === 'ARTICLE_CLAPPED'
       ) {
         const article = await getArticleById(notif.subjectId)
         if (article?.slug) {
           navigate(`/articles/${article.slug}`)
+        }
+      } else if (
+        notif.type === 'COMMENT_REPLIED' ||
+        notif.type === 'COMMENT_CLAPPED'
+      ) {
+        const comment = await getComment(notif.subjectId, session.accessToken)
+        const article = await getArticleById(comment.articleId)
+        if (article?.slug) {
+          const threadId = comment.parentCommentId || comment.id
+          const params = new URLSearchParams({ comment: threadId })
+          if (comment.parentCommentId) {
+            params.set('reply', comment.id)
+          }
+          navigate(`/articles/${article.slug}?${params.toString()}`)
         }
       } else if (
         notif.type === 'NEW_FOLLOWER' ||
@@ -152,6 +167,17 @@ export function SiteHeader({ session, navigate, onLogout }) {
       setNotifications((prev) => prev.map((n) => ({ ...n, status: 'READ' })))
     } catch {
       // bỏ qua lỗi
+    }
+  }
+
+  const handleDeleteNotification = async (e, notif) => {
+    e.stopPropagation()
+    if (!session?.accessToken) return
+    try {
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id))
+      await deleteNotification(notif.id, session.accessToken)
+    } catch {
+      // ignore
     }
   }
 
@@ -191,29 +217,33 @@ export function SiteHeader({ session, navigate, onLogout }) {
           ))}
         </nav>
         <div className="site-actions">
-          <div className="header-search" ref={searchRef}>
-            <button
-              aria-expanded={searchOpen}
-              aria-label="Search"
-              className="icon-button"
-              type="button"
-              onClick={() => setSearchOpen((current) => !current)}
-            >
-              <SearchIcon />
-            </button>
-            {searchOpen && (
-              <form className="header-search-panel" onSubmit={submitSearch}>
-                <input
-                  autoFocus
-                  aria-label="Search stories"
-                  placeholder="Search stories"
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-                <button type="submit">Search</button>
-              </form>
-            )}
+          <div className={`header-search ${searchOpen ? 'is-open' : ''}`} ref={searchRef}>
+            <form className="header-search-form" onSubmit={submitSearch}>
+              <button
+                aria-expanded={searchOpen}
+                aria-label="Search"
+                className="icon-button search-toggle"
+                type="button"
+                onClick={() => {
+                  if (searchOpen && searchTerm.trim()) {
+                    submitSearch({ preventDefault: () => {} })
+                  } else {
+                    setSearchOpen((current) => !current)
+                  }
+                }}
+              >
+                <SearchIcon />
+              </button>
+              <input
+                ref={(input) => searchOpen && input && input.focus()}
+                className="header-search-input"
+                aria-label="Search stories"
+                placeholder="Search Chronicle..."
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </form>
           </div>
           <div className="header-notif" ref={notifRef}>
             <button
@@ -273,6 +303,15 @@ export function SiteHeader({ session, navigate, onLogout }) {
                             })}
                           </time>
                         </div>
+                        <button
+                          className="notif-delete-btn"
+                          type="button"
+                          aria-label="Delete notification"
+                          onClick={(e) => handleDeleteNotification(e, n)}
+                          title="Delete notification"
+                        >
+                          &times;
+                        </button>
                       </li>
                     ))
                   )}

@@ -81,8 +81,23 @@ public class JpaNotificationRepositoryAdapter implements NotificationRepository 
     }
 
     @Override
+    public boolean existsByRecipientAndActorAndTypeAndTarget(
+            com.socialmediablog.platform.services.notification.domain.vo.RecipientId recipientId, 
+            java.util.UUID actorId, 
+            com.socialmediablog.platform.services.notification.domain.model.NotificationType type, 
+            java.util.UUID targetId) {
+        return repository.existsByRecipientIdAndActorIdAndTypeAndSubjectId(recipientId.value(), actorId, type.name(), targetId);
+    }
+
+    @Override
     @Transactional
     public int markAllAsReadByRecipientId(RecipientId recipientId, Instant now) {
         return repository.markAllAsReadByRecipientId(recipientId.value(), now);
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(NotificationId id) {
+        repository.deleteById(id.value());
     }
 }

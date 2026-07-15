@@ -14,6 +14,8 @@ public interface SpringDataJpaNotificationRepository extends JpaRepository<JpaNo
 
     List<JpaNotificationEntity> findByRecipientId(UUID recipientId);
 
+    boolean existsByRecipientIdAndActorIdAndTypeAndSubjectId(UUID recipientId, UUID actorId, String type, UUID subjectId);
+
     @Modifying
     @Query("UPDATE JpaNotificationEntity n SET n.status = 'READ', n.readAt = :now, n.updatedAt = :now WHERE n.recipientId = :recipientId AND n.status = 'UNREAD'")
     int markAllAsReadByRecipientId(@Param("recipientId") UUID recipientId, @Param("now") Instant now);

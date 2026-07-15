@@ -1,0 +1,43 @@
+# ============================================================
+# article-service — Service-specific configuration
+# ============================================================
+
+spring:
+  datasource:
+    url: ${ARTICLE_SERVICE_DB_URL:jdbc:postgresql://localhost:5432/social_blog_articles}
+    username: ${ARTICLE_SERVICE_DB_USERNAME:social_blog}
+    password: ${ARTICLE_SERVICE_DB_PASSWORD:social_blog}
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: ${ARTICLE_MEDIA_MAX_FILE_SIZE:10MB}
+      max-request-size: ${ARTICLE_MEDIA_MAX_REQUEST_SIZE:10MB}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+outbox:
+  relay:
+    topic: article.events
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
+  article-folder: ${CLOUDINARY_ARTICLE_FOLDER:social-blog/articles}
+
+trending:
+  job:
+    cron: "${TRENDING_JOB_CRON:0 */15 * * * *}"
+    page-size: ${TRENDING_JOB_PAGE_SIZE:200}
+  cache:
+    ttl-minutes: ${TRENDING_CACHE_TTL_MINUTES:20}

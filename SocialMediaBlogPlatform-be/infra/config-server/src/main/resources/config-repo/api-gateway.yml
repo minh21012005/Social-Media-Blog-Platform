@@ -1,0 +1,46 @@
+# ============================================================
+# api-gateway — Service-specific configuration
+# ============================================================
+
+spring:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/users/**
+            - id: comment-service-article-comments
+              uri: lb://comment-service
+              predicates:
+                - Path=/api/v1/articles/*/comments,/api/v1/articles/*/comments/**
+            - id: article-service
+              uri: lb://article-service
+              predicates:
+                - Path=/api/v1/articles/**
+            - id: comment-service
+              uri: lb://comment-service
+              predicates:
+                - Path=/api/v1/comments/**
+            - id: interaction-service
+              uri: lb://interaction-service
+              predicates:
+                - Path=/api/v1/interactions/**
+            - id: follower-service
+              uri: lb://follower-service
+              predicates:
+                - Path=/api/v1/follows/**,/api/v1/followers/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/v1/notifications/**
+            - id: websocket-service
+              uri: lb:ws://websocket-service
+              predicates:
+                - Path=/ws/**
+            - id: websocket-service-api
+              uri: lb://websocket-service
+              predicates:
+                - Path=/api/v1/presence/**

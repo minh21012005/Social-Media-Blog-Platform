@@ -5,6 +5,7 @@ import com.socialmediablog.platform.services.notification.domain.vo.Notification
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.time.Instant;
 
 public interface NotificationRepository {
@@ -13,7 +14,11 @@ public interface NotificationRepository {
 
     List<Notification> findByRecipientId(RecipientId recipientId);
 
+    boolean existsByRecipientAndActorAndTypeAndTarget(RecipientId recipientId, UUID actorId, com.socialmediablog.platform.services.notification.domain.model.NotificationType type, UUID targetId);
+
     Notification save(Notification notification);
 
     int markAllAsReadByRecipientId(RecipientId recipientId, Instant now);
+
+    void deleteById(NotificationId id);
 }

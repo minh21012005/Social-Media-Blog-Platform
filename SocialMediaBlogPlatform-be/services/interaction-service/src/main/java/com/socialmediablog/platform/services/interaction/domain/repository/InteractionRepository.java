@@ -18,4 +18,6 @@ public interface InteractionRepository {
     long totalClapsByTarget(InteractionTargetType targetType, TargetId targetId);
 
     Interaction save(Interaction interaction);
+
+    void deleteByUserIdAndTarget(InteractorId userId, InteractionTargetType targetType, TargetId targetId);
 }

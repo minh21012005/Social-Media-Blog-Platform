@@ -11,10 +11,12 @@ import com.socialmediablog.platform.services.interaction.application.command.Boo
 import com.socialmediablog.platform.services.interaction.application.command.ClapArticleCommand;
 import com.socialmediablog.platform.services.interaction.application.command.GetServiceStatusCommand;
 import com.socialmediablog.platform.services.interaction.application.command.RemoveBookmarkCommand;
+import com.socialmediablog.platform.services.interaction.application.command.UndoClapArticleCommand;
 import com.socialmediablog.platform.services.interaction.application.port.in.BookmarkArticleUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.ClapArticleUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.RemoveBookmarkUseCase;
+import com.socialmediablog.platform.services.interaction.application.port.in.UndoClapArticleUseCase;
 import java.util.UUID;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -33,32 +35,32 @@ public class InteractionController {
     private final BookmarkArticleUseCase bookmarkArticleUseCase;
     private final RemoveBookmarkUseCase removeBookmarkUseCase;
     private final ClapArticleUseCase clapArticleUseCase;
+    private final UndoClapArticleUseCase undoClapArticleUseCase;
 
     public InteractionController(
             GetServiceStatusUseCase getServiceStatusUseCase,
             BookmarkArticleUseCase bookmarkArticleUseCase,
             RemoveBookmarkUseCase removeBookmarkUseCase,
-            ClapArticleUseCase clapArticleUseCase
-    ) {
+            ClapArticleUseCase clapArticleUseCase,
+            UndoClapArticleUseCase undoClapArticleUseCase) {
         this.getServiceStatusUseCase = getServiceStatusUseCase;
         this.bookmarkArticleUseCase = bookmarkArticleUseCase;
         this.removeBookmarkUseCase = removeBookmarkUseCase;
         this.clapArticleUseCase = clapArticleUseCase;
+        this.undoClapArticleUseCase = undoClapArticleUseCase;
     }
 
     @GetMapping("/status")
     public ApiResponse<ServiceStatusResponse> status(@AuthenticationPrincipal CurrentUser currentUser) {
         String currentUserId = currentUser == null ? "anonymous" : currentUser.id();
         return ApiResponse.success(ServiceStatusResponse.from(getServiceStatusUseCase.execute(
-                new GetServiceStatusCommand(currentUserId)
-        )));
+                new GetServiceStatusCommand(currentUserId))));
     }
 
     @PostMapping("/{articleId}/bookmark")
     public ApiResponse<Void> bookmark(
             @AuthenticationPrincipal CurrentUser currentUser,
-            @PathVariable UUID articleId
-    ) {
+            @PathVariable UUID articleId) {
         bookmarkArticleUseCase.execute(new BookmarkArticleCommand(currentUserId(currentUser), articleId));
         return ApiResponse.success("Article bookmarked", null);
     }
@@ -66,8 +68,7 @@ public class InteractionController {
     @DeleteMapping("/{articleId}/bookmark")
     public ApiResponse<Void> removeBookmark(
             @AuthenticationPrincipal CurrentUser currentUser,
-            @PathVariable UUID articleId
-    ) {
+            @PathVariable UUID articleId) {
         removeBookmarkUseCase.execute(new RemoveBookmarkCommand(currentUserId(currentUser), articleId));
         return ApiResponse.success("Bookmark removed", null);
     }
@@ -75,16 +76,23 @@ public class InteractionController {
     @PostMapping("/{articleId}/clap")
     public ApiResponse<ArticleClapResponse> clap(
             @AuthenticationPrincipal CurrentUser currentUser,
-            @PathVariable UUID articleId
-    ) {
+            @PathVariable UUID articleId) {
         long clapCount = clapArticleUseCase.execute(new ClapArticleCommand(currentUserId(currentUser), articleId));
         return ApiResponse.success("Article clapped", new ArticleClapResponse(clapCount));
     }
 
+    @DeleteMapping("/{articleId}/clap")
+    public ApiResponse<ArticleClapResponse> undoClap(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID articleId) {
+        long clapCount = undoClapArticleUseCase
+                .execute(new UndoClapArticleCommand(articleId, currentUserId(currentUser)));
+        return ApiResponse.success("Article clap undone", new ArticleClapResponse(clapCount));
+    }
+
     @GetMapping("/{articleId}/clap-count")
     public ApiResponse<ArticleClapResponse> clapCount(
-            @PathVariable UUID articleId
-    ) {
+            @PathVariable UUID articleId) {
         long clapCount = clapArticleUseCase.getArticleClapCount(articleId);
         return ApiResponse.success("Article clap count", new ArticleClapResponse(clapCount));
     }
@@ -92,8 +100,7 @@ public class InteractionController {
     @GetMapping("/{articleId}/clap-state")
     public ApiResponse<ArticleClapStateResponse> clapState(
             @AuthenticationPrincipal CurrentUser currentUser,
-            @PathVariable UUID articleId
-    ) {
+            @PathVariable UUID articleId) {
         UUID userId = currentUserId(currentUser);
         long clapCount = clapArticleUseCase.getArticleClapCount(articleId);
         boolean clappedByCurrentUser = clapArticleUseCase.hasUserClappedArticle(userId, articleId);
@@ -102,8 +109,7 @@ public class InteractionController {
 
     @GetMapping("/bookmarks/me")
     public ApiResponse<List<BookmarkResponse>> myBookmarks(
-            @AuthenticationPrincipal CurrentUser currentUser
-    ) {
+            @AuthenticationPrincipal CurrentUser currentUser) {
         List<BookmarkResponse> data = bookmarkArticleUseCase.listBookmarks(currentUserId(currentUser)).stream()
                 .map(BookmarkResponse::from)
                 .toList();
@@ -113,8 +119,7 @@ public class InteractionController {
     @GetMapping("/{articleId}/bookmark-state")
     public ApiResponse<BookmarkStateResponse> bookmarkState(
             @AuthenticationPrincipal CurrentUser currentUser,
-            @PathVariable UUID articleId
-    ) {
+            @PathVariable UUID articleId) {
         boolean bookmarked = bookmarkArticleUseCase.isBookmarked(currentUserId(currentUser), articleId);
         return ApiResponse.success("Bookmark state", new BookmarkStateResponse(bookmarked));
     }

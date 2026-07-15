@@ -8,6 +8,8 @@ import com.socialmediablog.platform.services.notification.application.port.in.Li
 import com.socialmediablog.platform.services.notification.application.port.in.MarkNotificationReadUseCase;
 import com.socialmediablog.platform.services.notification.application.port.in.MarkAllNotificationsReadUseCase;
 import com.socialmediablog.platform.services.notification.application.command.MarkAllNotificationsReadCommand;
+import com.socialmediablog.platform.services.notification.application.command.DeleteNotificationCommand;
+import com.socialmediablog.platform.services.notification.application.port.in.DeleteNotificationUseCase;
 import com.socialmediablog.platform.services.notification.application.result.NotificationItem;
 import com.socialmediablog.platform.services.notification.application.result.ServiceStatus;
 import com.socialmediablog.platform.services.notification.domain.aggregate.Notification;
@@ -22,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationApplicationService
-        implements GetServiceStatusUseCase, ListMyNotificationsUseCase, MarkNotificationReadUseCase, MarkAllNotificationsReadUseCase {
+        implements GetServiceStatusUseCase, ListMyNotificationsUseCase, MarkNotificationReadUseCase, MarkAllNotificationsReadUseCase, DeleteNotificationUseCase {
 
     private final NotificationRepository notificationRepository;
 
@@ -70,5 +72,19 @@ public class NotificationApplicationService
                 RecipientId.of(command.recipientId()), 
                 Instant.now()
         );
+    }
+
+    @Override
+    @Transactional
+    public void execute(DeleteNotificationCommand command) {
+        NotificationId notificationId = NotificationId.of(command.notificationId());
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + command.notificationId()));
+
+        if (!notification.recipientId().value().equals(command.currentUserId())) {
+            throw new IllegalArgumentException("Forbidden: notification does not belong to current user");
+        }
+
+        notificationRepository.deleteById(notificationId);
     }
 }

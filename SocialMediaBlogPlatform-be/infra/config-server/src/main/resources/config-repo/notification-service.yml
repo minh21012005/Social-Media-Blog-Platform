@@ -1,0 +1,32 @@
+# ============================================================
+# notification-service — Service-specific configuration
+# ============================================================
+
+spring:
+  datasource:
+    url: ${NOTIFICATION_SERVICE_DB_URL:jdbc:postgresql://localhost:5432/social_blog_notifications}
+    username: ${NOTIFICATION_SERVICE_DB_USERNAME:social_blog}
+    password: ${NOTIFICATION_SERVICE_DB_PASSWORD:social_blog}
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # notification-service is a CONSUMER (reads from interaction/comment/etc. events)
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+    listener:
+      ack-mode: RECORD
+    # notification-service also PRODUCES NotificationCreatedEvent via outbox relay
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+
+outbox:
+  relay:
+    topic: notification.events
