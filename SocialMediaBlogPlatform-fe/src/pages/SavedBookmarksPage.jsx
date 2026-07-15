@@ -72,16 +72,19 @@ export function SavedBookmarksPage({ requestWithAuth, navigate, notify }) {
   }
 
   return (
-    <main>
-      <section className="writer-hero dashboard-hero page-container">
+    <main className="bookmarks-page">
+      <section className="bookmarks-hero page-container">
         <div>
-          <span className="form-eyebrow">Library</span>
-          <h1>Saved bookmarks.</h1>
-          <p>Pick up where you left off and continue reading any time.</p>
+          <span className="dashboard-kicker">Your library</span>
+          <h1>Stories worth returning to</h1>
+          <p>A quiet collection of ideas, essays, and perspectives you saved for later.</p>
         </div>
+        {!state.loading && !state.error && (
+          <span className="bookmark-count">{state.items.length} saved</span>
+        )}
       </section>
 
-      <section className="page-container dashboard-section">
+      <section className="page-container bookmarks-content-section">
         {state.loading && <div className="loading-state">Loading saved stories...</div>}
         {state.error && <div className="empty-state"><h2>Could not load bookmarks.</h2><p>{state.error}</p></div>}
         {!state.loading && !state.error && state.items.length === 0 && (
@@ -91,26 +94,32 @@ export function SavedBookmarksPage({ requestWithAuth, navigate, notify }) {
           </div>
         )}
 
-        <div className="article-table">
+        <div className="bookmark-grid">
           {state.items.map(({ article, bookmarkedAt }) => (
-            <article className="article-table-row" key={article.id}>
-              <img alt="" src={article.image} />
-              <div>
-                <span className="article-category">Saved</span>
+            <article className="bookmark-card" key={article.id}>
+              <button className="bookmark-card-cover" type="button" onClick={() => navigate(`/articles/${article.slug}`)}>
+                <img alt="" src={article.image} />
+              </button>
+              <div className="bookmark-card-body">
+                <div className="bookmark-card-labels">
+                  <span>{article.category || 'Saved story'}</span>
+                  <time dateTime={bookmarkedAt}>Saved {new Date(bookmarkedAt).toLocaleDateString()}</time>
+                </div>
                 <h3>{article.title}</h3>
                 <p>{article.summary}</p>
-                <span className="dashboard-stat">Saved on {new Date(bookmarkedAt).toLocaleDateString()}</span>
-              </div>
-              <div className="row-actions">
-                <button type="button" onClick={() => navigate(`/articles/${article.slug}`)}>Read</button>
-                <button
-                  className="danger-action"
-                  disabled={removingId === article.id}
-                  type="button"
-                  onClick={() => handleRemove(article.id)}
-                >
-                  {removingId === article.id ? 'Removing...' : 'Remove'}
-                </button>
+                <div className="bookmark-card-actions">
+                  <button className="bookmark-read-action" type="button" onClick={() => navigate(`/articles/${article.slug}`)}>
+                    Read story <span aria-hidden="true">→</span>
+                  </button>
+                  <button
+                    className="bookmark-remove-action"
+                    disabled={removingId === article.id}
+                    type="button"
+                    onClick={() => handleRemove(article.id)}
+                  >
+                    {removingId === article.id ? 'Removing...' : 'Remove'}
+                  </button>
+                </div>
               </div>
             </article>
           ))}
