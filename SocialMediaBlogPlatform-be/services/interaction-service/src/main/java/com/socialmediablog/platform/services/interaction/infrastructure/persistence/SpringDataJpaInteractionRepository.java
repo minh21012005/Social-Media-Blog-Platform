@@ -15,4 +15,8 @@ public interface SpringDataJpaInteractionRepository extends JpaRepository<JpaInt
 
     @Query("SELECT COALESCE(SUM(i.clapCount), 0) FROM JpaInteractionEntity i WHERE i.targetType = :targetType AND i.targetId = :targetId")
     long sumClapCountByTargetTypeAndTargetId(@Param("targetType") String targetType, @Param("targetId") UUID targetId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM JpaInteractionEntity i WHERE i.userId = :userId AND i.targetType = :targetType AND i.targetId = :targetId")
+    void deleteByUserIdAndTargetTypeAndTargetId(@Param("userId") UUID userId, @Param("targetType") String targetType, @Param("targetId") UUID targetId);
 }

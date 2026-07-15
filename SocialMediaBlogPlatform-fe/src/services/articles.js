@@ -169,6 +169,13 @@ export function clapArticle(articleId, token) {
   })
 }
 
+export function undoClapArticle(articleId, token) {
+  return apiRequest(`/api/v1/interactions/${articleId}/clap`, {
+    method: 'DELETE',
+    token,
+  })
+}
+
 export function getArticleClapCount(articleId, token) {
   return apiRequest(`/api/v1/interactions/${articleId}/clap-count`, {
     token,

@@ -5,15 +5,18 @@ import com.socialmediablog.platform.services.interaction.application.port.out.In
 import com.socialmediablog.platform.services.interaction.infrastructure.entity.JpaOutboxEventEntity;
 import com.socialmediablog.platform.services.interaction.infrastructure.persistence.SpringDataJpaOutboxEventRepository;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OutboxInteractionEventPublisher implements InteractionEventPublisher {
 
     private final SpringDataJpaOutboxEventRepository repository;
+    private final ObjectMapper objectMapper;
 
-    public OutboxInteractionEventPublisher(SpringDataJpaOutboxEventRepository repository) {
+    public OutboxInteractionEventPublisher(SpringDataJpaOutboxEventRepository repository, ObjectMapper objectMapper) {
         this.repository = repository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -23,14 +26,16 @@ public class OutboxInteractionEventPublisher implements InteractionEventPublishe
                 aggregateId,
                 "Interaction",
                 event.eventType(),
-                payload(aggregateId, event),
+                payload(event),
                 event.occurredAt()
         ));
     }
 
-    private String payload(UUID aggregateId, DomainEvent event) {
-        return """
-                {"eventId":"%s","aggregateId":"%s","eventType":"%s","occurredAt":"%s"}
-                """.formatted(event.eventId(), aggregateId, event.eventType(), event.occurredAt()).trim();
+    private String payload(DomainEvent event) {
+        try {
+            return objectMapper.writeValueAsString(event);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize interaction event payload", e);
+        }
     }
 }

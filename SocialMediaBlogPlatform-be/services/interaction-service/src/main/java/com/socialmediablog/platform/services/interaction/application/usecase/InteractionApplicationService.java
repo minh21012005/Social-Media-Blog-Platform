@@ -4,10 +4,12 @@ import com.socialmediablog.platform.services.interaction.application.command.Boo
 import com.socialmediablog.platform.services.interaction.application.command.ClapArticleCommand;
 import com.socialmediablog.platform.services.interaction.application.command.GetServiceStatusCommand;
 import com.socialmediablog.platform.services.interaction.application.command.RemoveBookmarkCommand;
+import com.socialmediablog.platform.services.interaction.application.command.UndoClapArticleCommand;
 import com.socialmediablog.platform.services.interaction.application.port.in.BookmarkArticleUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.ClapArticleUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.interaction.application.port.in.RemoveBookmarkUseCase;
+import com.socialmediablog.platform.services.interaction.application.port.in.UndoClapArticleUseCase;
 import com.socialmediablog.platform.services.interaction.application.result.BookmarkView;
 import com.socialmediablog.platform.services.interaction.application.result.ServiceStatus;
 import com.socialmediablog.platform.services.interaction.domain.aggregate.Interaction;
@@ -19,6 +21,8 @@ import com.socialmediablog.platform.services.interaction.domain.repository.Inter
 import com.socialmediablog.platform.services.interaction.domain.vo.ArticleId;
 import com.socialmediablog.platform.services.interaction.domain.vo.InteractorId;
 import com.socialmediablog.platform.services.interaction.domain.vo.TargetId;
+import com.socialmediablog.platform.services.interaction.application.port.out.InteractionEventPublisher;
+import com.socialmediablog.platform.services.interaction.domain.event.InteractionRecordedEvent;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -27,17 +31,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class InteractionApplicationService implements GetServiceStatusUseCase, BookmarkArticleUseCase, RemoveBookmarkUseCase, ClapArticleUseCase {
+public class InteractionApplicationService implements GetServiceStatusUseCase, BookmarkArticleUseCase, RemoveBookmarkUseCase, ClapArticleUseCase, UndoClapArticleUseCase {
 
     private final BookmarkRepository bookmarkRepository;
     private final InteractionRepository interactionRepository;
+    private final InteractionEventPublisher interactionEventPublisher;
 
     public InteractionApplicationService(
             BookmarkRepository bookmarkRepository,
-            InteractionRepository interactionRepository
+            InteractionRepository interactionRepository,
+            InteractionEventPublisher interactionEventPublisher
     ) {
         this.bookmarkRepository = bookmarkRepository;
         this.interactionRepository = interactionRepository;
+        this.interactionEventPublisher = interactionEventPublisher;
     }
 
     @Override
@@ -115,6 +122,17 @@ public class InteractionApplicationService implements GetServiceStatusUseCase, B
 
         interactionRepository.save(interaction);
 
+        interactionEventPublisher.publish(
+                interaction.id().value(),
+                new InteractionRecordedEvent(
+                        UUID.randomUUID(),
+                        interaction.id().value(),
+                        articleId.value(),
+                        userId.value(),
+                        now
+                )
+        );
+
         return interactionRepository.totalClapsByTarget(InteractionTargetType.ARTICLE, articleId);
     }
 
@@ -122,6 +140,17 @@ public class InteractionApplicationService implements GetServiceStatusUseCase, B
     @Transactional(readOnly = true)
     public long getArticleClapCount(java.util.UUID articleId) {
         TargetId targetId = TargetId.of(articleId);
+        return interactionRepository.totalClapsByTarget(InteractionTargetType.ARTICLE, targetId);
+    }
+
+    @Override
+    @Transactional
+    public long execute(UndoClapArticleCommand command) {
+        InteractorId userId = InteractorId.of(command.userId());
+        TargetId targetId = TargetId.of(command.articleId());
+
+        interactionRepository.deleteByUserIdAndTarget(userId, InteractionTargetType.ARTICLE, targetId);
+        
         return interactionRepository.totalClapsByTarget(InteractionTargetType.ARTICLE, targetId);
     }
 

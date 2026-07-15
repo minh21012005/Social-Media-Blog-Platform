@@ -11,7 +11,8 @@ import {
   getArticleClapCount,
   getArticleClapState,
   recordArticleView,
-  removeBookmarkArticle
+  removeBookmarkArticle,
+  undoClapArticle
 } from '../services/articles'
 import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies, getArticleCommentCount } from '../services/comments'
 import { getPublicUsers } from '../services/users'
@@ -751,6 +752,7 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
   const [commentCount, setCommentCount] = useState(0)
   const [articleSessionClaps, setArticleSessionClaps] = useState(0)
   const [showArticleClapBubble, setShowArticleClapBubble] = useState(false)
+  const [articleClapMenuOpen, setArticleClapMenuOpen] = useState(false)
   const [bookmarkSubmitting, setBookmarkSubmitting] = useState(false)
 
   useEffect(() => {
@@ -784,7 +786,7 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
           setCommentCount(res.commentCount)
         }
       })
-      .catch(() => {})
+      .catch(() => { })
 
     return () => {
       active = false
@@ -1161,6 +1163,64 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
     }
   }
 
+  const handleArticleUndoClap = async () => {
+    if (!session) {
+      navigate('/login')
+      return
+    }
+    if (!state.article) {
+      return
+    }
+
+    const articleId = state.article.id
+    const removedCount = articleSessionClaps
+
+    setArticleSessionClaps(0)
+    setArticleClapMenuOpen(false)
+
+    setState((current) => {
+      if (!current.article || current.article.id !== articleId) {
+        return current
+      }
+      const currentCount = Number(current.article.stats?.clapCount || 0)
+      return {
+        ...current,
+        article: {
+          ...current.article,
+          clappedByCurrentUser: false,
+          stats: {
+            ...(current.article.stats || {}),
+            clapCount: Math.max(0, currentCount - removedCount),
+          },
+        },
+      }
+    })
+
+    try {
+      const response = await requestWithAuth((token) => undoClapArticle(articleId, token))
+      setState((current) => {
+        if (!current.article || current.article.id !== articleId) {
+          return current
+        }
+        const serverCount = Number(response?.clapCount)
+        const nextCount = Number.isFinite(serverCount) ? serverCount : current.article.stats.clapCount
+        return {
+          ...current,
+          article: {
+            ...current.article,
+            clappedByCurrentUser: false,
+            stats: {
+              ...(current.article.stats || {}),
+              clapCount: nextCount,
+            },
+          },
+        }
+      })
+    } catch (error) {
+      console.error('Article undo clap request failed.', error)
+    }
+  }
+
   const handleToggleBookmark = async () => {
     if (!session) {
       navigate('/login')
@@ -1262,19 +1322,20 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
                 </svg>
               </button>
               <span className="article-clap-count">{formatCount(article.stats?.clapCount)}</span>
+              <div style={{ position: 'relative', display: 'inline-block', marginLeft: '8px' }}>
+                <button className="comment-action-button" type="button" onClick={() => setArticleClapMenuOpen(!articleClapMenuOpen)}>...</button>
+                {articleClapMenuOpen && (
+                  <div className="comment-menu-popup" style={{ position: 'absolute', top: '100%', right: '0', background: 'var(--surface)', border: '1px solid var(--border)', padding: '4px', borderRadius: '4px', zIndex: 10, minWidth: '160px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginTop: '4px' }}>
+                    <button className="comment-action-button" type="button" disabled={bookmarkSubmitting} onClick={() => { handleToggleBookmark(); setArticleClapMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', gap: '8px', padding: '8px 12px' }}>
+                      Bookmark
+                    </button>
+                    {article.clappedByCurrentUser && (
+                      <button className="comment-action-button" type="button" onClick={handleArticleUndoClap} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px' }}>Undo claps</button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-            <button
-              aria-label={article.bookmarkedByCurrentUser ? 'Remove bookmark' : 'Save to bookmarks'}
-              className={`article-bookmark-btn ${article.bookmarkedByCurrentUser ? 'saved' : ''}`}
-              disabled={bookmarkSubmitting}
-              onClick={handleToggleBookmark}
-              title={article.bookmarkedByCurrentUser ? 'Saved in bookmarks' : 'Save for later'}
-              type="button"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-                <path d="M6 2a2 2 0 0 0-2 2v18l8-4 8 4V4a2 2 0 0 0-2-2H6z" />
-              </svg>
-            </button>
           </div>
         </header>
         <img alt="" className="article-detail-cover" src={article.image} />
@@ -1284,8 +1345,8 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
             const tagList = Array.isArray(article.tags)
               ? article.tags
               : (typeof article.tags === 'string'
-                  ? article.tags.split(',').map(t => t.trim()).filter(Boolean)
-                  : []);
+                ? article.tags.split(',').map(t => t.trim()).filter(Boolean)
+                : []);
             if (tagList.length === 0) return null;
             return (
               <div className="article-tags-section">

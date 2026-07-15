@@ -49,4 +49,9 @@ public class JpaInteractionRepositoryAdapter implements InteractionRepository {
     public Interaction save(Interaction interaction) {
         return repository.save(JpaInteractionEntity.fromDomain(interaction)).toDomain();
     }
+
+    @Override
+    public void deleteByUserIdAndTarget(InteractorId userId, InteractionTargetType targetType, TargetId targetId) {
+        repository.deleteByUserIdAndTargetTypeAndTargetId(userId.value(), targetType.name(), targetId.value());
+    }
 }

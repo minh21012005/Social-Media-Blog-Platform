@@ -74,18 +74,29 @@ public class InteractionEventConsumer {
                     UUID articleAuthorId = response.data().authorId();
 
                     if (!articleAuthorId.equals(userId)) {
-                        Notification notification = Notification.create(
+                        boolean alreadyNotified = notificationRepository.existsByRecipientAndActorAndTypeAndTarget(
                                 RecipientId.of(articleAuthorId),
                                 userId,
                                 NotificationType.ARTICLE_CLAPPED,
-                                "Article",
-                                targetId,
-                                "Bài viết của bạn nhận được lượt thích",
-                                null,
-                                now
+                                targetId
                         );
-                        notificationRepository.save(notification);
-                        log.info("[InteractionEventConsumer] Saved ARTICLE_CLAPPED notification for articleId={}", targetId);
+
+                        if (!alreadyNotified) {
+                            Notification notification = Notification.create(
+                                    RecipientId.of(articleAuthorId),
+                                    userId,
+                                    NotificationType.ARTICLE_CLAPPED,
+                                    "Article",
+                                    targetId,
+                                    "Bài viết của bạn nhận được lượt thích",
+                                    null,
+                                    now
+                            );
+                            notificationRepository.save(notification);
+                            log.info("[InteractionEventConsumer] Saved ARTICLE_CLAPPED notification for articleId={}", targetId);
+                        } else {
+                            log.info("[InteractionEventConsumer] ARTICLE_CLAPPED notification already exists for articleId={} from user={}, skipping.", targetId, userId);
+                        }
                     }
                 }
             } catch (Exception e) {
