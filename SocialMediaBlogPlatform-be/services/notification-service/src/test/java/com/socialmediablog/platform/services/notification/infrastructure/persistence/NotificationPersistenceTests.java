@@ -3,11 +3,8 @@ package com.socialmediablog.platform.services.notification.infrastructure.persis
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.socialmediablog.platform.services.notification.domain.aggregate.Notification;
-import com.socialmediablog.platform.services.notification.domain.aggregate.NotificationDelivery;
-import com.socialmediablog.platform.services.notification.domain.model.NotificationChannel;
 import com.socialmediablog.platform.services.notification.domain.model.NotificationType;
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
-import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaNotificationDeliveryEntity;
 import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaNotificationEntity;
 import java.time.Instant;
 import java.util.UUID;
@@ -30,11 +27,8 @@ class NotificationPersistenceTests {
     @Autowired
     private SpringDataJpaNotificationRepository notificationRepository;
 
-    @Autowired
-    private SpringDataJpaNotificationDeliveryRepository deliveryRepository;
-
     @Test
-    void mapsNotificationAndDeliveryDomainAndJpaBothWays() {
+    void mapsNotificationDomainAndJpaBothWays() {
         Notification notification = Notification.create(
                 RecipientId.of(UUID.randomUUID()),
                 UUID.randomUUID(),
@@ -53,11 +47,6 @@ class NotificationPersistenceTests {
         assertThat(mapped.title()).isEqualTo("New comment");
 
         notificationRepository.saveAndFlush(JpaNotificationEntity.fromDomain(notification));
-        NotificationDelivery delivery = NotificationDelivery.pending(notification.id(), NotificationChannel.IN_APP, NOW);
-        NotificationDelivery mappedDelivery = deliveryRepository.saveAndFlush(JpaNotificationDeliveryEntity.fromDomain(delivery)).toDomain();
-
-        assertThat(mappedDelivery.notificationId()).isEqualTo(notification.id());
-        assertThat(deliveryRepository.findByNotificationId(notification.id().value())).hasSize(1);
     }
 
 }

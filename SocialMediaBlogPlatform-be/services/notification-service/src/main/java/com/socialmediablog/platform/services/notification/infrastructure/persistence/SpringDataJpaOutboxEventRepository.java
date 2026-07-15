@@ -2,6 +2,7 @@ package com.socialmediablog.platform.services.notification.infrastructure.persis
 
 import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaOutboxEventEntity;
 import java.util.UUID;
+import java.time.Instant;
 import java.util.List;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
@@ -17,4 +18,6 @@ public interface SpringDataJpaOutboxEventRepository extends JpaRepository<JpaOut
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("SELECT e FROM JpaOutboxEventEntity e WHERE e.status = 'PENDING' ORDER BY e.createdAt ASC LIMIT :limit")
     List<JpaOutboxEventEntity> findPendingForUpdate(@Param("limit") int limit);
+
+    long deleteByStatusAndPublishedAtBefore(String status, Instant cutoff);
 }
