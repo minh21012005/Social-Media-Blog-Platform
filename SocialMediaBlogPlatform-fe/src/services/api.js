@@ -1,4 +1,13 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+const trimTrailingSlash = (value) => value.replace(/\/+$/, '')
+
+export const API_BASE_URL = trimTrailingSlash(
+  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080',
+)
+
+export const WEBSOCKET_BASE_URL = trimTrailingSlash(
+  import.meta.env.VITE_WS_BASE_URL ?? API_BASE_URL.replace(/^http/i, 'ws'),
+)
+
 export const CORRELATION_ID_HEADER = 'X-Correlation-ID'
 
 export async function apiRequest(path, { method = 'GET', body, token, credentials } = {}) {

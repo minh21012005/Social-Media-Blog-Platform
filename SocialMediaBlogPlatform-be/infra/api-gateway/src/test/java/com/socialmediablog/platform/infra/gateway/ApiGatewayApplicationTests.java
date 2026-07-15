@@ -7,7 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
         "spring.cloud.config.enabled=false",
         "spring.cloud.discovery.enabled=false",
         "spring.cloud.service-registry.auto-registration.enabled=false",
-        "eureka.client.enabled=false"
+        "eureka.client.enabled=false",
+        "security.jwt.public-key-path=../../config/jwt/dev-public-key.pem"
 })
 class ApiGatewayApplicationTests {
 

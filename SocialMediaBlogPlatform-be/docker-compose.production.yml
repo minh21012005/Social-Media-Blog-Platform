@@ -1,0 +1,102 @@
+x-jwt-public-environment: &jwt-public-environment
+  JWT_ISSUER: ${JWT_ISSUER:-subtrack}
+  JWT_KEY_ID: ${JWT_KEY_ID:-subtrack-production}
+  JWT_PUBLIC_KEY_PATH: /app/config/jwt/public.pem
+
+services:
+  # The local PostgreSQL container is intentionally disabled in production.
+  # Production services connect to the private RDS endpoint below.
+  postgres:
+    profiles: ["local-database"]
+
+  api-gateway:
+    environment:
+      <<: *jwt-public-environment
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+
+  user-service:
+    environment:
+      <<: *jwt-public-environment
+      JWT_PRIVATE_KEY_PATH: /app/config/jwt/private.pem
+      SPRING_DATASOURCE_URL: ${USER_SERVICE_DB_URL:?USER_SERVICE_DB_URL is required}
+      SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_DB_USERNAME:?USER_SERVICE_DB_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${USER_SERVICE_DB_PASSWORD:?USER_SERVICE_DB_PASSWORD is required}
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+      - ./secrets/jwt/private.pem:/app/config/jwt/private.pem:ro
+    depends_on: !override
+      - config-server
+      - discovery-server
+
+  article-service:
+    environment:
+      <<: *jwt-public-environment
+      SPRING_DATASOURCE_URL: ${ARTICLE_SERVICE_DB_URL:?ARTICLE_SERVICE_DB_URL is required}
+      SPRING_DATASOURCE_USERNAME: ${ARTICLE_SERVICE_DB_USERNAME:?ARTICLE_SERVICE_DB_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${ARTICLE_SERVICE_DB_PASSWORD:?ARTICLE_SERVICE_DB_PASSWORD is required}
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+    depends_on: !override
+      - kafka
+      - redis
+      - config-server
+      - discovery-server
+
+  comment-service:
+    environment:
+      <<: *jwt-public-environment
+      SPRING_DATASOURCE_URL: ${COMMENT_SERVICE_DB_URL:?COMMENT_SERVICE_DB_URL is required}
+      SPRING_DATASOURCE_USERNAME: ${COMMENT_SERVICE_DB_USERNAME:?COMMENT_SERVICE_DB_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${COMMENT_SERVICE_DB_PASSWORD:?COMMENT_SERVICE_DB_PASSWORD is required}
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+    depends_on: !override
+      - kafka
+      - config-server
+      - discovery-server
+
+  interaction-service:
+    environment:
+      <<: *jwt-public-environment
+      SPRING_DATASOURCE_URL: ${INTERACTION_SERVICE_DB_URL:?INTERACTION_SERVICE_DB_URL is required}
+      SPRING_DATASOURCE_USERNAME: ${INTERACTION_SERVICE_DB_USERNAME:?INTERACTION_SERVICE_DB_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${INTERACTION_SERVICE_DB_PASSWORD:?INTERACTION_SERVICE_DB_PASSWORD is required}
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+    depends_on: !override
+      - kafka
+      - config-server
+      - discovery-server
+
+  follower-service:
+    environment:
+      <<: *jwt-public-environment
+      SPRING_DATASOURCE_URL: ${FOLLOWER_SERVICE_DB_URL:?FOLLOWER_SERVICE_DB_URL is required}
+      SPRING_DATASOURCE_USERNAME: ${FOLLOWER_SERVICE_DB_USERNAME:?FOLLOWER_SERVICE_DB_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${FOLLOWER_SERVICE_DB_PASSWORD:?FOLLOWER_SERVICE_DB_PASSWORD is required}
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+    depends_on: !override
+      - kafka
+      - config-server
+      - discovery-server
+
+  notification-service:
+    environment:
+      <<: *jwt-public-environment
+      SPRING_DATASOURCE_URL: ${NOTIFICATION_SERVICE_DB_URL:?NOTIFICATION_SERVICE_DB_URL is required}
+      SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_SERVICE_DB_USERNAME:?NOTIFICATION_SERVICE_DB_USERNAME is required}
+      SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_SERVICE_DB_PASSWORD:?NOTIFICATION_SERVICE_DB_PASSWORD is required}
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
+    depends_on: !override
+      - kafka
+      - config-server
+      - discovery-server
+
+  websocket-service:
+    environment:
+      <<: *jwt-public-environment
+    volumes:
+      - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
