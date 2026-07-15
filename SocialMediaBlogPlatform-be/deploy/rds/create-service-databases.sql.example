@@ -9,6 +9,13 @@ CREATE ROLE interaction_service LOGIN PASSWORD 'CHANGE_ME_INTERACTION_SERVICE';
 CREATE ROLE follower_service LOGIN PASSWORD 'CHANGE_ME_FOLLOWER_SERVICE';
 CREATE ROLE notification_service LOGIN PASSWORD 'CHANGE_ME_NOTIFICATION_SERVICE';
 
+GRANT user_service TO postgres;
+GRANT article_service TO postgres;
+GRANT comment_service TO postgres;
+GRANT interaction_service TO postgres;
+GRANT follower_service TO postgres;
+GRANT notification_service TO postgres;
+
 CREATE DATABASE social_blog_users OWNER user_service;
 CREATE DATABASE social_blog_articles OWNER article_service;
 CREATE DATABASE social_blog_comments OWNER comment_service;

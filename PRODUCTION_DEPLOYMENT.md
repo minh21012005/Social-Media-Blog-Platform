@@ -70,7 +70,32 @@ Cấu hình khởi đầu đề xuất:
 - Gắn Elastic IP để IP không thay đổi khi reboot.
 - Dung lượng disk đủ cho Docker image, Kafka và log.
 
-### 3.2. Security Group của EC2
+### 3.2. Cấu hình RAM và swap
+
+Stack hiện tại chạy nhiều Spring Boot service cùng Kafka, vì vậy EC2 nên có tối thiểu 8 GiB RAM cho production. Nếu dùng instance 4 GiB để thử nghiệm, bắt buộc tạo swap 2 GiB để tránh Linux OOM-kill service khi khởi động đồng thời.
+
+Từ thư mục backend trên EC2, chạy script idempotent:
+
+```bash
+sudo bash deploy/ec2/configure-memory.sh
+```
+
+Script tạo `/swapfile` 2 GiB, bật swap ngay lập tức và ghi vào `/etc/fstab` để swap vẫn hoạt động sau reboot. Có thể đổi kích thước nếu cần:
+
+```bash
+sudo SWAP_SIZE=4G bash deploy/ec2/configure-memory.sh
+```
+
+Kiểm tra:
+
+```bash
+free -h
+swapon --show
+```
+
+Các giới hạn JVM và Kafka nằm trong `.env.production`/`docker-compose.production.yml`. Không xóa các giới hạn này trên instance ít RAM.
+
+### 3.3. Security Group của EC2
 
 Inbound rules:
 

@@ -3,21 +3,46 @@ x-jwt-public-environment: &jwt-public-environment
   JWT_KEY_ID: ${JWT_KEY_ID:-subtrack-production}
   JWT_PUBLIC_KEY_PATH: /app/config/jwt/public.pem
 
+# Keep the complete microservice stack within a small EC2 instance's memory.
+# JAVA_TOOL_OPTIONS can still be overridden from .env.production after an instance upgrade.
+x-java-runtime-environment: &java-runtime-environment
+  JAVA_TOOL_OPTIONS: "${JAVA_TOOL_OPTIONS:--Xms64m -Xmx192m -Xss512k -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC}"
+
 services:
   # The local PostgreSQL container is intentionally disabled in production.
   # Production services connect to the private RDS endpoint below.
   postgres:
     profiles: ["local-database"]
 
-  api-gateway:
+  kafka:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      KAFKA_HEAP_OPTS: "${KAFKA_HEAP_OPTS:--Xms128m -Xmx384m}"
+
+  redis:
+    restart: unless-stopped
+
+  config-server:
+    restart: unless-stopped
+    environment:
+      <<: *java-runtime-environment
+
+  discovery-server:
+    restart: unless-stopped
+    environment:
+      <<: *java-runtime-environment
+
+  api-gateway:
+    restart: unless-stopped
+    environment:
+      <<: [*jwt-public-environment, *java-runtime-environment]
     volumes:
       - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
 
   user-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
       JWT_PRIVATE_KEY_PATH: /app/config/jwt/private.pem
       SPRING_DATASOURCE_URL: ${USER_SERVICE_DB_URL:?USER_SERVICE_DB_URL is required}
       SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_DB_USERNAME:?USER_SERVICE_DB_USERNAME is required}
@@ -30,8 +55,9 @@ services:
       - discovery-server
 
   article-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
       SPRING_DATASOURCE_URL: ${ARTICLE_SERVICE_DB_URL:?ARTICLE_SERVICE_DB_URL is required}
       SPRING_DATASOURCE_USERNAME: ${ARTICLE_SERVICE_DB_USERNAME:?ARTICLE_SERVICE_DB_USERNAME is required}
       SPRING_DATASOURCE_PASSWORD: ${ARTICLE_SERVICE_DB_PASSWORD:?ARTICLE_SERVICE_DB_PASSWORD is required}
@@ -44,8 +70,9 @@ services:
       - discovery-server
 
   comment-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
       SPRING_DATASOURCE_URL: ${COMMENT_SERVICE_DB_URL:?COMMENT_SERVICE_DB_URL is required}
       SPRING_DATASOURCE_USERNAME: ${COMMENT_SERVICE_DB_USERNAME:?COMMENT_SERVICE_DB_USERNAME is required}
       SPRING_DATASOURCE_PASSWORD: ${COMMENT_SERVICE_DB_PASSWORD:?COMMENT_SERVICE_DB_PASSWORD is required}
@@ -57,8 +84,9 @@ services:
       - discovery-server
 
   interaction-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
       SPRING_DATASOURCE_URL: ${INTERACTION_SERVICE_DB_URL:?INTERACTION_SERVICE_DB_URL is required}
       SPRING_DATASOURCE_USERNAME: ${INTERACTION_SERVICE_DB_USERNAME:?INTERACTION_SERVICE_DB_USERNAME is required}
       SPRING_DATASOURCE_PASSWORD: ${INTERACTION_SERVICE_DB_PASSWORD:?INTERACTION_SERVICE_DB_PASSWORD is required}
@@ -70,8 +98,9 @@ services:
       - discovery-server
 
   follower-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
       SPRING_DATASOURCE_URL: ${FOLLOWER_SERVICE_DB_URL:?FOLLOWER_SERVICE_DB_URL is required}
       SPRING_DATASOURCE_USERNAME: ${FOLLOWER_SERVICE_DB_USERNAME:?FOLLOWER_SERVICE_DB_USERNAME is required}
       SPRING_DATASOURCE_PASSWORD: ${FOLLOWER_SERVICE_DB_PASSWORD:?FOLLOWER_SERVICE_DB_PASSWORD is required}
@@ -83,8 +112,9 @@ services:
       - discovery-server
 
   notification-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
       SPRING_DATASOURCE_URL: ${NOTIFICATION_SERVICE_DB_URL:?NOTIFICATION_SERVICE_DB_URL is required}
       SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_SERVICE_DB_USERNAME:?NOTIFICATION_SERVICE_DB_USERNAME is required}
       SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_SERVICE_DB_PASSWORD:?NOTIFICATION_SERVICE_DB_PASSWORD is required}
@@ -96,7 +126,8 @@ services:
       - discovery-server
 
   websocket-service:
+    restart: unless-stopped
     environment:
-      <<: *jwt-public-environment
+      <<: [*jwt-public-environment, *java-runtime-environment]
     volumes:
       - ./secrets/jwt/public.pem:/app/config/jwt/public.pem:ro
