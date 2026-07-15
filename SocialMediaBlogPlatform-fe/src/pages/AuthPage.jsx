@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiRequest } from '../services/api'
+
+const GOOGLE_SCRIPT_ID = 'google-identity-services'
+const GOOGLE_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
 
 export function AuthPage({ mode, onDone, navigate }) {
   const isRegister = mode === 'register'
@@ -12,6 +15,90 @@ export function AuthPage({ mode, onDone, navigate }) {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleUnavailable, setGoogleUnavailable] = useState(false)
+  const googleButtonRef = useRef(null)
+
+  useEffect(() => {
+    if (isRegister) {
+      return undefined
+    }
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      setGoogleUnavailable(true)
+      return undefined
+    }
+
+    let cancelled = false
+
+    const initializeGoogleButton = () => {
+      if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) {
+        return
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async ({ credential }) => {
+          if (!credential) {
+            setError('Google did not return a sign-in credential.')
+            return
+          }
+
+          setError('')
+          setLoading(true)
+          try {
+            const data = await apiRequest('/api/v1/auth/google', {
+              method: 'POST',
+              credentials: 'include',
+              body: { credential },
+            })
+            onDone(data)
+          } catch (requestError) {
+            setError(requestError.message || 'Google sign-in could not be completed.')
+          } finally {
+            setLoading(false)
+          }
+        },
+      })
+
+      googleButtonRef.current.replaceChildren()
+      const width = Math.min(400, Math.max(240, Math.floor(googleButtonRef.current.clientWidth)))
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+        width,
+      })
+    }
+
+    const existingScript = document.getElementById(GOOGLE_SCRIPT_ID)
+    const handleScriptError = () => setGoogleUnavailable(true)
+
+    if (window.google?.accounts?.id) {
+      initializeGoogleButton()
+    } else if (existingScript) {
+      existingScript.addEventListener('load', initializeGoogleButton, { once: true })
+      existingScript.addEventListener('error', handleScriptError, { once: true })
+    } else {
+      const script = document.createElement('script')
+      script.id = GOOGLE_SCRIPT_ID
+      script.src = GOOGLE_SCRIPT_URL
+      script.async = true
+      script.defer = true
+      script.addEventListener('load', initializeGoogleButton, { once: true })
+      script.addEventListener('error', handleScriptError, { once: true })
+      document.head.appendChild(script)
+    }
+
+    return () => {
+      cancelled = true
+      existingScript?.removeEventListener('load', initializeGoogleButton)
+      existingScript?.removeEventListener('error', handleScriptError)
+    }
+  }, [isRegister, onDone])
 
   const update = (field) => (event) => {
     setForm((current) => ({ ...current, [field]: event.target.value }))
@@ -70,6 +157,18 @@ export function AuthPage({ mode, onDone, navigate }) {
       <section className="auth-panel" aria-labelledby="auth-title">
         <span className="form-eyebrow">{isRegister ? 'Create account' : 'Welcome back'}</span>
         <h1 id="auth-title">{isRegister ? 'Start your Chronicle profile.' : 'Log in to Chronicle.'}</h1>
+        {!isRegister && (
+          <>
+            <div
+              aria-label="Continue with Google"
+              className={`google-login-slot${loading ? ' is-loading' : ''}`}
+              ref={googleButtonRef}
+            >
+              {googleUnavailable && <span>Google sign-in is not configured</span>}
+            </div>
+            <div className="auth-divider"><span>or continue with email</span></div>
+          </>
+        )}
         <form onSubmit={submit}>
           {isRegister && (
             <>

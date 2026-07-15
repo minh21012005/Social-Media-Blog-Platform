@@ -265,11 +265,11 @@ function App() {
     return page
   }
 
-  if (route === '/login') {
+  if (pathname === '/login') {
     return <AuthPage mode="login" onDone={handleAuthenticated} navigate={navigate} />
   }
 
-  if (route === '/register') {
+  if (pathname === '/register') {
     return <AuthPage mode="register" onDone={handleAuthenticated} navigate={navigate} />
   }
 

@@ -1,6 +1,7 @@
 package com.socialmediablog.platform.services.user.application.usecase;
 
 import com.socialmediablog.platform.services.user.application.command.LoginUserCommand;
+import com.socialmediablog.platform.services.user.application.command.GoogleLoginCommand;
 import com.socialmediablog.platform.services.user.application.command.LogoutCommand;
 import com.socialmediablog.platform.services.user.application.command.RefreshSessionCommand;
 import com.socialmediablog.platform.services.user.application.command.RegisterUserCommand;
@@ -18,6 +19,7 @@ import com.socialmediablog.platform.services.user.application.port.in.GetPublicU
 import com.socialmediablog.platform.services.user.application.port.in.GetPublicUserProfileUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.ListPublicUsersUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.LoginUserUseCase;
+import com.socialmediablog.platform.services.user.application.port.in.LoginWithGoogleUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.LogoutUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.RefreshSessionUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.RegisterUserUseCase;
@@ -25,6 +27,7 @@ import com.socialmediablog.platform.services.user.application.port.in.UpdateCurr
 import com.socialmediablog.platform.services.user.application.port.in.UploadCurrentUserAvatarUseCase;
 import com.socialmediablog.platform.services.user.application.port.out.AccessTokenIssuer;
 import com.socialmediablog.platform.services.user.application.port.out.DomainEventPublisher;
+import com.socialmediablog.platform.services.user.application.port.out.GoogleIdentityVerifier;
 import com.socialmediablog.platform.services.user.application.port.out.PasswordHasher;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenGenerator;
 import com.socialmediablog.platform.services.user.application.port.out.RefreshTokenHasher;
@@ -32,6 +35,7 @@ import com.socialmediablog.platform.services.user.application.port.out.RefreshTo
 import com.socialmediablog.platform.services.user.application.port.out.UserMediaStorage;
 import com.socialmediablog.platform.services.user.application.result.AuthenticatedUser;
 import com.socialmediablog.platform.services.user.application.result.IssuedRefreshToken;
+import com.socialmediablog.platform.services.user.application.result.VerifiedGoogleIdentity;
 import com.socialmediablog.platform.services.user.application.result.PublicUserProfile;
 import com.socialmediablog.platform.services.user.application.result.StoredUserMedia;
 import com.socialmediablog.platform.services.user.application.result.UploadedAvatar;
@@ -57,6 +61,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthApplicationService implements
         RegisterUserUseCase,
         LoginUserUseCase,
+        LoginWithGoogleUseCase,
         RefreshSessionUseCase,
         LogoutUseCase,
         GetCurrentUserUseCase,
@@ -76,6 +81,7 @@ public class AuthApplicationService implements
     private final UserMediaStorage userMediaStorage;
     private final UserMediaAssetRepository userMediaAssetRepository;
     private final DomainEventPublisher domainEventPublisher;
+    private final GoogleIdentityVerifier googleIdentityVerifier;
     private final JwtProperties jwtProperties;
     private final Clock clock;
 
@@ -89,6 +95,7 @@ public class AuthApplicationService implements
             UserMediaStorage userMediaStorage,
             UserMediaAssetRepository userMediaAssetRepository,
             DomainEventPublisher domainEventPublisher,
+            GoogleIdentityVerifier googleIdentityVerifier,
             JwtProperties jwtProperties,
             Clock clock
     ) {
@@ -101,6 +108,7 @@ public class AuthApplicationService implements
         this.userMediaStorage = userMediaStorage;
         this.userMediaAssetRepository = userMediaAssetRepository;
         this.domainEventPublisher = domainEventPublisher;
+        this.googleIdentityVerifier = googleIdentityVerifier;
         this.jwtProperties = jwtProperties;
         this.clock = clock;
     }
@@ -144,6 +152,52 @@ public class AuthApplicationService implements
         return authenticate(user);
     }
 
+    @Override
+    @Transactional
+    public AuthenticatedUser execute(GoogleLoginCommand command) {
+        VerifiedGoogleIdentity identity = googleIdentityVerifier.verify(command.credential());
+        EmailAddress email = EmailAddress.of(identity.email());
+        User user = userRepository.findByEmailOrUsername(email.value())
+                .orElseGet(() -> registerGoogleUser(email, identity.displayName()));
+        ensureActive(user);
+        return authenticate(user);
+    }
+
+    private User registerGoogleUser(EmailAddress email, String displayName) {
+        Username username = nextGoogleUsername(email.value());
+        String generatedPassword = UUID.randomUUID().toString().replace("-", "")
+                + UUID.randomUUID().toString().replace("-", "");
+        User user = User.register(
+                username,
+                email,
+                PasswordHash.of(passwordHasher.hash(generatedPassword)),
+                displayName,
+                clock.instant()
+        );
+        User savedUser = userRepository.save(user);
+        domainEventPublisher.publish(savedUser.registeredEvent(clock.instant()));
+        return savedUser;
+    }
+
+    private Username nextGoogleUsername(String email) {
+        String localPart = email.substring(0, email.indexOf('@'))
+                .toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", ".")
+                .replaceAll("^\\.+|\\.+$", "");
+        if (localPart.length() < 3) {
+            localPart = "reader";
+        }
+        localPart = localPart.substring(0, Math.min(localPart.length(), 22));
+
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 7);
+            Username candidate = Username.of(localPart + "." + suffix);
+            if (!userRepository.existsByUsername(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("Could not allocate a username for Google account");
+    }
     @Override
     @Transactional
     public AuthenticatedUser execute(RefreshSessionCommand command) {

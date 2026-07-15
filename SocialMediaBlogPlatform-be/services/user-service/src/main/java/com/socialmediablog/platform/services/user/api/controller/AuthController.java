@@ -3,13 +3,16 @@ package com.socialmediablog.platform.services.user.api.controller;
 import com.socialmediablog.platform.common.security.CurrentUser;
 import com.socialmediablog.platform.common.web.ApiResponse;
 import com.socialmediablog.platform.services.user.api.dto.AuthResponse;
+import com.socialmediablog.platform.services.user.api.dto.GoogleLoginRequest;
 import com.socialmediablog.platform.services.user.api.dto.LoginRequest;
 import com.socialmediablog.platform.services.user.api.dto.RegisterRequest;
+import com.socialmediablog.platform.services.user.application.command.GoogleLoginCommand;
 import com.socialmediablog.platform.services.user.application.command.LoginUserCommand;
 import com.socialmediablog.platform.services.user.application.command.LogoutCommand;
 import com.socialmediablog.platform.services.user.application.command.RefreshSessionCommand;
 import com.socialmediablog.platform.services.user.application.exception.InvalidRefreshTokenException;
 import com.socialmediablog.platform.services.user.application.port.in.LoginUserUseCase;
+import com.socialmediablog.platform.services.user.application.port.in.LoginWithGoogleUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.LogoutUseCase;
 import com.socialmediablog.platform.services.user.application.port.in.RefreshSessionUseCase;
 import com.socialmediablog.platform.services.user.application.command.RegisterUserCommand;
@@ -34,6 +37,7 @@ public class AuthController {
 
     private final RegisterUserUseCase registerUserUseCase;
     private final LoginUserUseCase loginUserUseCase;
+    private final LoginWithGoogleUseCase loginWithGoogleUseCase;
     private final RefreshSessionUseCase refreshSessionUseCase;
     private final LogoutUseCase logoutUseCase;
     private final RefreshTokenCookieFactory refreshTokenCookies;
@@ -41,15 +45,27 @@ public class AuthController {
     public AuthController(
             RegisterUserUseCase registerUserUseCase,
             LoginUserUseCase loginUserUseCase,
+            LoginWithGoogleUseCase loginWithGoogleUseCase,
             RefreshSessionUseCase refreshSessionUseCase,
             LogoutUseCase logoutUseCase,
             RefreshTokenCookieFactory refreshTokenCookies
     ) {
         this.registerUserUseCase = registerUserUseCase;
         this.loginUserUseCase = loginUserUseCase;
+        this.loginWithGoogleUseCase = loginWithGoogleUseCase;
         this.refreshSessionUseCase = refreshSessionUseCase;
         this.logoutUseCase = logoutUseCase;
         this.refreshTokenCookies = refreshTokenCookies;
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(
+            @Valid @RequestBody GoogleLoginRequest request
+    ) {
+        AuthenticatedUser authenticatedUser = loginWithGoogleUseCase.execute(
+                new GoogleLoginCommand(request.credential())
+        );
+        return withRefreshCookie(HttpStatus.OK, "Logged in with Google successfully", authenticatedUser);
     }
 
     @PostMapping("/register")
