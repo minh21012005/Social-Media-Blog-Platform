@@ -16,6 +16,10 @@ public interface ArticleRepository {
 
     Optional<Article> findBySlug(Slug slug);
 
+    Optional<Article> findByFeaturedRank(Integer rank);
+
+    Optional<Article> findByEditorPickRank(Integer rank);
+
     List<Article> findPublished(ArticleCategory category, UUID authorId, String tag, String query, String sort, int page, int size);
 
     long countPublished(ArticleCategory category, UUID authorId, String tag, String query);

@@ -15,6 +15,10 @@ public interface SpringDataJpaArticleRepository extends JpaRepository<JpaArticle
 
     Optional<JpaArticleEntity> findBySlug(String slug);
 
+    Optional<JpaArticleEntity> findFirstByFeaturedRank(Integer rank);
+
+    Optional<JpaArticleEntity> findFirstByEditorPickRank(Integer rank);
+
     boolean existsBySlug(String slug);
 
     boolean existsBySlugAndIdNot(String slug, UUID id);

@@ -1,330 +1,321 @@
 import { useEffect, useState } from 'react'
+import './AdminDashboardPage.css'
 import { Pagination } from '../components/Pagination'
 import { SiteFooter } from '../components/SiteFooter'
-import { listPublishedArticles, curateArticle, listFeaturedArticles, listEditorPicks } from '../services/articles'
+import { categories } from '../data/editorial'
+import { curateArticle, listEditorPicks, listFeaturedArticles, listPublishedArticles } from '../services/articles'
 
-export function AdminDashboardPage({ requestWithAuth, navigate, notify }) {
+const EMPTY_PAGE = { loading: true, articles: [], error: '', page: 0, totalPages: 0, totalItems: 0 }
+const EMPTY_CURATION = { loading: true, featured: null, editorPicks: [], error: '' }
+
+export function AdminDashboardPage({ requestWithAuth, notify }) {
   const [page, setPage] = useState(0)
-  const [state, setState] = useState({ loading: true, articles: [], error: '', page: 0, totalPages: 0 })
-  const [curationStates, setCurationStates] = useState({})
+  const [state, setState] = useState(EMPTY_PAGE)
+  const [activeCurations, setActiveCurations] = useState(EMPTY_CURATION)
+  const [searchInput, setSearchInput] = useState('')
+  const [filters, setFilters] = useState({ query: '', category: '', sort: 'latest' })
   const [updatingId, setUpdatingId] = useState('')
   const [confirmData, setConfirmData] = useState(null)
 
-  // Track all currently curated articles across all pages to resolve duplicates
-  const [activeCurations, setActiveCurations] = useState({ featured: [], editorPicks: [] })
-
-  const loadActiveCurations = async () => {
-    try {
-      const [feat, edit] = await Promise.all([
-        listFeaturedArticles({ size: 20 }),
-        listEditorPicks({ size: 20 })
-      ])
-      setActiveCurations({ featured: feat, editorPicks: edit })
-    } catch (err) {
-      console.error('Failed to load active curations', err)
-    }
-  }
-
   useEffect(() => {
-    loadActiveCurations()
+    let active = true
+
+    async function loadCurations() {
+      try {
+        const [featuredRows, editorRows] = await Promise.all([
+          listFeaturedArticles({ size: 20 }),
+          listEditorPicks({ size: 20 }),
+        ])
+        if (!active) return
+        setActiveCurations({
+          loading: false,
+          featured: featuredRows.find((article) => article.featuredRank != null) || null,
+          editorPicks: editorRows
+            .filter((article) => article.editorPickRank != null)
+            .sort((left, right) => left.editorPickRank - right.editorPickRank),
+          error: '',
+        })
+      } catch (error) {
+        if (active) {
+          setActiveCurations({ loading: false, featured: null, editorPicks: [], error: error.message })
+        }
+      }
+    }
+
+    loadCurations()
+    return () => {
+      active = false
+    }
   }, [])
 
   useEffect(() => {
     let active = true
-    async function load() {
+
+    async function loadArticles() {
       setState((current) => ({ ...current, loading: true, error: '' }))
       try {
-        const result = await listPublishedArticles({ page, size: 10 })
-        if (active) {
-          setState({
-            loading: false,
-            articles: result.items,
-            error: '',
-            page: result.page || 0,
-            totalPages: result.totalPages || 0,
-          })
-          const initialCuration = {}
-          result.items.forEach(article => {
-            initialCuration[article.id] = {
-              featuredRank: article.featuredRank ?? '',
-              editorPickRank: article.editorPickRank ?? ''
-            }
-          })
-          setCurationStates(initialCuration)
-        }
+        const result = await listPublishedArticles({
+          page,
+          size: 10,
+          q: filters.query,
+          category: filters.category,
+          sort: filters.sort,
+        })
+        if (!active) return
+        setState({
+          loading: false,
+          articles: result.items || [],
+          error: '',
+          page: result.page || 0,
+          totalPages: result.totalPages || 0,
+          totalItems: result.totalItems || 0,
+        })
       } catch (error) {
         if (active) {
-          setState({ loading: false, articles: [], error: error.message, page: 0, totalPages: 0 })
+          setState({ ...EMPTY_PAGE, loading: false, error: error.message })
         }
       }
     }
-    load()
+
+    loadArticles()
     return () => {
       active = false
     }
-  }, [page])
+  }, [filters, page])
 
-  const handleToggleFeatured = async (articleId) => {
-    if (updatingId) return
-    setUpdatingId(articleId)
-    const currentCuration = curationStates[articleId] || { featuredRank: '', editorPickRank: '' }
-    const isCurrentlyFeatured = String(currentCuration.featuredRank) === '1'
-    const nextFeaturedRank = isCurrentlyFeatured ? null : 1
-    const nextEditorPickRank = isCurrentlyFeatured
-      ? (currentCuration.editorPickRank === '' ? null : parseInt(currentCuration.editorPickRank, 10))
-      : null
+  const reload = async () => {
+    const [result, featuredRows, editorRows] = await Promise.all([
+      listPublishedArticles({
+        page,
+        size: 10,
+        q: filters.query,
+        category: filters.category,
+        sort: filters.sort,
+      }),
+      listFeaturedArticles({ size: 20 }),
+      listEditorPicks({ size: 20 }),
+    ])
 
-    try {
-      // 1. Resolve Duplicate Featured Rank (if toggling ON)
-      if (nextFeaturedRank === 1) {
-        const duplicate = activeCurations.featured.find(art => art.id !== articleId && art.featuredRank === 1) ||
-          state.articles.find(art => art.id !== articleId && art.featuredRank === 1)
-        if (duplicate) {
-          await requestWithAuth((token) => curateArticle(duplicate.id, {
-            featuredRank: null,
-            editorPickRank: duplicate.editorPickRank
-          }, token))
-        }
-      }
-
-      // 2. Save the new curation ranks for current article
-      const payload = {
-        featuredRank: nextFeaturedRank,
-        editorPickRank: nextEditorPickRank
-      }
-      await requestWithAuth((token) => curateArticle(articleId, payload, token))
-      notify?.(
-        nextFeaturedRank === 1 ? 'Article promoted to Featured.' : 'Article removed from Featured.',
-        { title: 'Curation Saved', type: 'success' }
-      )
-
-      // Reload active curations list to keep sync
-      await loadActiveCurations()
-
-      // Reload current page to update all badges and inputs
-      const result = await listPublishedArticles({ page, size: 10 })
-      setState({
-        loading: false,
-        articles: result.items,
-        error: '',
-        page: result.page || 0,
-        totalPages: result.totalPages || 0,
-      })
-      const updatedCuration = {}
-      result.items.forEach(article => {
-        updatedCuration[article.id] = {
-          featuredRank: article.featuredRank ?? '',
-          editorPickRank: article.editorPickRank ?? ''
-        }
-      })
-      setCurationStates(updatedCuration)
-
-    } catch (err) {
-      notify?.(err.message || 'Failed to save curation settings.', { title: 'Error' })
-    } finally {
-      setUpdatingId('')
-    }
-  }
-
-  const proceedWithEditorPickChange = async (article, nextEditorPickRank) => {
-    const articleId = article.id
-    setUpdatingId(articleId)
-    try {
-      // 1. Resolve Duplicate Editor Pick Rank (checking ranks 1 to 5)
-      if (nextEditorPickRank !== null) {
-        const duplicate = activeCurations.editorPicks.find(art => art.id !== articleId && art.editorPickRank === nextEditorPickRank) ||
-          state.articles.find(art => art.id !== articleId && art.editorPickRank === nextEditorPickRank)
-        if (duplicate) {
-          await requestWithAuth((token) => curateArticle(duplicate.id, {
-            featuredRank: duplicate.featuredRank,
-            editorPickRank: null
-          }, token))
-        }
-      }
-
-      // 2. Save the new curation ranks (Featured rank is reset to null due to mutual exclusion)
-      const payload = {
-        featuredRank: null,
-        editorPickRank: nextEditorPickRank
-      }
-      await requestWithAuth((token) => curateArticle(articleId, payload, token))
-      notify?.('Editor Pick rank updated successfully.', { title: 'Curation Saved', type: 'success' })
-
-      // Reload active curations list to keep sync
-      await loadActiveCurations()
-
-      // Reload current page to update all badges and inputs
-      const result = await listPublishedArticles({ page, size: 10 })
-      setState({
-        loading: false,
-        articles: result.items,
-        error: '',
-        page: result.page || 0,
-        totalPages: result.totalPages || 0,
-      })
-      const updatedCuration = {}
-      result.items.forEach(art => {
-        updatedCuration[art.id] = {
-          featuredRank: art.featuredRank ?? '',
-          editorPickRank: art.editorPickRank ?? ''
-        }
-      })
-      setCurationStates(updatedCuration)
-
-    } catch (err) {
-      notify?.(err.message || 'Failed to save curation settings.', { title: 'Error' })
-      // Revert select UI state on error
-      setCurationStates(prev => ({
-        ...prev,
-        [articleId]: {
-          ...prev[articleId],
-          editorPickRank: article.editorPickRank ?? ''
-        }
-      }))
-    } finally {
-      setUpdatingId('')
-    }
-  }
-
-  const handleEditorPickChange = (article, rawValue) => {
-    const articleId = article.id
-    const currentRank = article.editorPickRank ?? ''
-    const nextRankStr = rawValue
-
-    if (String(currentRank) === nextRankStr) {
-      return
-    }
-
-    const nextEditorPickRank = nextRankStr === '' ? null : parseInt(nextRankStr, 10)
-
-    // Build confirmation message
-    let message = ''
-    if (nextEditorPickRank === null) {
-      message = `Are you sure you want to remove "${article.title}" from Editor's Picks?`
-    } else {
-      const duplicate = activeCurations.editorPicks.find(art => art.id !== articleId && art.editorPickRank === nextEditorPickRank) ||
-        state.articles.find(art => art.id !== articleId && art.editorPickRank === nextEditorPickRank)
-      if (duplicate) {
-        message = `Editor's Pick Rank ${nextEditorPickRank} is currently assigned to "${duplicate.title}". If you proceed, that article will be removed from Editor's Picks. Do you want to continue?`
-      } else {
-        message = `Are you sure you want to assign Editor's Pick Rank ${nextEditorPickRank} to "${article.title}"?`
-      }
-    }
-
-    setConfirmData({
-      title: 'Confirm Editor\'s Pick',
-      message: message,
-      onConfirm: () => {
-        setConfirmData(null)
-        proceedWithEditorPickChange(article, nextEditorPickRank)
-      },
-      onCancel: () => {
-        setConfirmData(null)
-        // Revert select UI state to current value
-        setCurationStates(prev => ({
-          ...prev,
-          [articleId]: {
-            ...prev[articleId],
-            editorPickRank: article.editorPickRank ?? ''
-          }
-        }))
-      }
+    setState({
+      loading: false,
+      articles: result.items || [],
+      error: '',
+      page: result.page || 0,
+      totalPages: result.totalPages || 0,
+      totalItems: result.totalItems || 0,
+    })
+    setActiveCurations({
+      loading: false,
+      featured: featuredRows.find((article) => article.featuredRank != null) || null,
+      editorPicks: editorRows
+        .filter((article) => article.editorPickRank != null)
+        .sort((left, right) => left.editorPickRank - right.editorPickRank),
+      error: '',
     })
   }
 
+  const saveCuration = async (article, payload, successMessage) => {
+    if (!article || updatingId) return
+    setUpdatingId(article.id)
+    try {
+      await requestWithAuth((token) => curateArticle(article.id, payload, token))
+      await reload()
+      notify?.(successMessage, { title: 'Curation saved', type: 'success' })
+    } catch (error) {
+      notify?.(error.message || 'Could not update curation.', { title: 'Curation failed', type: 'error' })
+    } finally {
+      setUpdatingId('')
+    }
+  }
+
+  const requestFeaturedToggle = (article) => {
+    const isFeatured = article.featuredRank === 1
+    if (isFeatured) {
+      setConfirmData({
+        title: 'Remove Featured story?',
+        message: `“${article.title}” will no longer appear in the Featured position.`,
+        confirmLabel: 'Remove Featured',
+        onConfirm: () => saveCuration(article, { featuredRank: null, editorPickRank: article.editorPickRank }, 'Article removed from Featured.'),
+      })
+      return
+    }
+
+    const current = activeCurations.featured
+    setConfirmData({
+      title: current ? 'Replace Featured story?' : 'Set as Featured story?',
+      message: current
+        ? `“${current.title}” currently holds the Featured position. It will be replaced by “${article.title}”.`
+        : `“${article.title}” will become the Featured story.`,
+      confirmLabel: current ? 'Replace story' : 'Set Featured',
+      onConfirm: () => saveCuration(article, { featuredRank: 1, editorPickRank: null }, 'Featured story updated.'),
+    })
+  }
+
+  const requestEditorPickChange = (article, rawRank) => {
+    const nextRank = rawRank === '' ? null : Number(rawRank)
+    if (nextRank === article.editorPickRank) return
+
+    const current = nextRank == null
+      ? null
+      : activeCurations.editorPicks.find((item) => item.editorPickRank === nextRank && item.id !== article.id)
+
+    setConfirmData({
+      title: nextRank == null ? 'Remove Editor’s Pick?' : current ? `Replace Editor’s Pick #${nextRank}?` : `Assign Editor’s Pick #${nextRank}?`,
+      message: nextRank == null
+        ? `“${article.title}” will be removed from Editor’s Picks.`
+        : current
+          ? `“${current.title}” currently holds rank #${nextRank}. It will be replaced by “${article.title}”.`
+          : `“${article.title}” will be assigned Editor’s Pick rank #${nextRank}.`,
+      confirmLabel: nextRank == null ? 'Remove pick' : current ? 'Replace story' : 'Assign rank',
+      onConfirm: () => saveCuration(
+        article,
+        { featuredRank: null, editorPickRank: nextRank },
+        nextRank == null ? 'Article removed from Editor’s Picks.' : `Editor’s Pick #${nextRank} updated.`,
+      ),
+    })
+  }
+
+  const submitSearch = (event) => {
+    event.preventDefault()
+    setPage(0)
+    setFilters((current) => ({ ...current, query: searchInput.trim() }))
+  }
+
+  const updateFilter = (field) => (event) => {
+    setPage(0)
+    setFilters((current) => ({ ...current, [field]: event.target.value }))
+  }
+
+  const clearFilters = () => {
+    setSearchInput('')
+    setPage(0)
+    setFilters({ query: '', category: '', sort: 'latest' })
+  }
+
+  const hasFilters = Boolean(filters.query || filters.category || filters.sort !== 'latest')
+  const editorSlots = Array.from({ length: 5 }, (_, index) => {
+    const rank = index + 1
+    return { rank, article: activeCurations.editorPicks.find((item) => item.editorPickRank === rank) || null }
+  })
+
   return (
-    <main>
-      <section className="writer-hero page-container">
-        <span className="form-eyebrow">Admin Console</span>
-        <h1>Article curation.</h1>
-        <p>Promote stories to Featured slot or curate Editor&apos;s Picks to decorate the homepage.</p>
+    <main className="admin-dashboard-page">
+      <section className="admin-page-hero page-container">
+        <div>
+          <span className="dashboard-kicker">Admin console</span>
+          <h1>Editorial curation</h1>
+          <p>Manage the homepage lineup, then search the published library for the next story to promote.</p>
+        </div>
+        <span className="admin-library-count">{state.totalItems} published</span>
       </section>
 
-      <section className="page-container dashboard-section">
+      <section className="page-container admin-active-section" aria-labelledby="active-curation-title">
+        <div className="admin-section-heading">
+          <div>
+            <h2 id="active-curation-title">Active curation</h2>
+            <p>Every homepage position is visible here, regardless of where the article appears in the library.</p>
+          </div>
+        </div>
+
+        {activeCurations.loading && <div className="loading-state">Loading active curation...</div>}
+        {activeCurations.error && <div className="empty-state"><h2>Could not load active curation.</h2><p>{activeCurations.error}</p></div>}
+        {!activeCurations.loading && !activeCurations.error && (
+          <div className="curation-slot-grid">
+            <CurationSlot
+              article={activeCurations.featured}
+              busy={updatingId === activeCurations.featured?.id}
+              label="Featured"
+              onRemove={() => requestFeaturedToggle(activeCurations.featured)}
+            />
+            {editorSlots.map(({ rank, article }) => (
+              <CurationSlot
+                article={article}
+                busy={updatingId === article?.id}
+                key={rank}
+                label={`Editor’s Pick #${rank}`}
+                onRemove={() => requestEditorPickChange(article, '')}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="page-container admin-library-section" aria-labelledby="published-library-title">
+        <div className="admin-section-heading">
+          <div>
+            <h2 id="published-library-title">Published library</h2>
+            <p>Newest stories appear first. Search or filter to curate an older article.</p>
+          </div>
+        </div>
+
+        <div className="admin-library-toolbar">
+          <form className="admin-search-form" onSubmit={submitSearch}>
+            <input
+              aria-label="Search published articles"
+              placeholder="Search title, summary, content, or tag"
+              type="search"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+            />
+            <button type="submit">Search</button>
+          </form>
+          <select aria-label="Filter by category" value={filters.category} onChange={updateFilter('category')}>
+            <option value="">All categories</option>
+            {categories.map((category) => <option key={category.slug} value={category.slug}>{category.label}</option>)}
+          </select>
+          <select aria-label="Sort published articles" value={filters.sort} onChange={updateFilter('sort')}>
+            <option value="latest">Newest</option>
+            <option value="views">Most viewed</option>
+            <option value="popular">Most popular</option>
+          </select>
+          {hasFilters && <button className="admin-clear-filters" type="button" onClick={clearFilters}>Clear filters</button>}
+        </div>
+
         {state.loading && <div className="loading-state">Loading published articles...</div>}
         {state.error && <div className="empty-state"><h2>Could not load articles.</h2><p>{state.error}</p></div>}
-
         {!state.loading && !state.error && state.articles.length === 0 && (
-          <div className="empty-state">
-            <h2>No published articles.</h2>
-            <p>Wait for authors to publish some stories first.</p>
-          </div>
+          <div className="empty-state"><h2>No matching published articles.</h2><p>Try another search term or clear the current filters.</p></div>
         )}
 
         {!state.loading && !state.error && state.articles.length > 0 && (
-          <div className="article-table">
-            {state.articles.map((article) => {
-              const curation = curationStates[article.id] || { featuredRank: '', editorPickRank: '' }
-              const isUpdating = updatingId === article.id
-
-              return (
-                <article className="article-table-row admin-curation-row" key={article.id} style={{ position: 'relative' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleFeatured(article.id)}
-                    disabled={isUpdating}
-                    title={String(curation.featuredRank) === '1' ? 'Remove from Featured' : 'Promote to Featured'}
-                    style={{
-                      position: 'absolute',
-                      top: '8px',
-                      right: '8px',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: String(curation.featuredRank) === '1' ? '#f59e0b' : '#d1d5db',
-                      fontSize: '24px',
-                      transition: 'transform 0.2s ease, color 0.2s ease',
-                      zIndex: 10,
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    {String(curation.featuredRank) === '1' ? '★' : '☆'}
-                  </button>
-
-                  <img alt="" src={article.image} />
-                  <div style={{ flex: 1 }}>
-                    <span className="article-category">{article.category}</span>
-                    <h3>{article.title}</h3>
-                    <p style={{ margin: '4px 0 8px', fontSize: '14px', color: 'var(--muted)' }}>
-                      By <strong>{article.author.name}</strong> &middot; {article.date}
-                    </p>
-
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                      {article.featuredRank !== null && article.featuredRank !== undefined && (
-                        <span className="curation-badge featured">Featured</span>
-                      )}
-                      {article.editorPickRank !== null && article.editorPickRank !== undefined && (
-                        <span className="curation-badge editor-pick">Editor Pick #{article.editorPickRank}</span>
-                      )}
-                    </div>
+          <div className="admin-curation-list">
+            {state.articles.map((article) => (
+              <article className="admin-curation-row" key={article.id}>
+                <button
+                  aria-label={article.featuredRank === 1 ? 'Remove from Featured' : 'Set as Featured'}
+                  className={`admin-feature-toggle${article.featuredRank === 1 ? ' is-active' : ''}`}
+                  disabled={Boolean(updatingId)}
+                  title={article.featuredRank === 1 ? 'Remove from Featured' : 'Set as Featured'}
+                  type="button"
+                  onClick={() => requestFeaturedToggle(article)}
+                >
+                  <span aria-hidden="true">{article.featuredRank === 1 ? '\u2605' : '\u2606'}</span>
+                </button>
+                <img alt="" src={article.image} />
+                <div className="admin-curation-copy">
+                  <span className="article-category">{article.category}</span>
+                  <h3>{article.title}</h3>
+                  <p>By <strong>{article.author.name}</strong> · {article.date}</p>
+                  <div className="admin-curation-badges">
+                    {article.featuredRank === 1 && <span className="curation-badge featured">Featured</span>}
+                    {article.editorPickRank != null && <span className="curation-badge editor-pick">Editor’s Pick #{article.editorPickRank}</span>}
                   </div>
-
-                  <div className="curation-controls" style={{ display: 'flex', alignItems: 'center', minWidth: '220px', paddingRight: '24px' }}>
-                    <div className="curation-input-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}>
-                      <span style={{ fontSize: '13px', color: 'var(--ink)' }}>Editor Pick Rank</span>
-                      <select
-                        style={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border)', font: 'inherit', width: '110px' }}
-                        value={curation.editorPickRank}
-                        onChange={(e) => handleEditorPickChange(article, e.target.value)}
-                        disabled={isUpdating}
-                      >
-                        <option value="">None</option>
-                        <option value="1">Rank 1</option>
-                        <option value="2">Rank 2</option>
-                        <option value="3">Rank 3</option>
-                        <option value="4">Rank 4</option>
-                        <option value="5">Rank 5</option>
-                      </select>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
+                </div>
+                <div className="curation-controls">
+                  <label>
+                    Editor’s Pick
+                    <select
+                      disabled={Boolean(updatingId)}
+                      value={article.editorPickRank ?? ''}
+                      onChange={(event) => requestEditorPickChange(article, event.target.value)}
+                    >
+                      <option value="">Not selected</option>
+                      {[1, 2, 3, 4, 5].map((rank) => <option key={rank} value={rank}>Rank #{rank}</option>)}
+                    </select>
+                  </label>
+                </div>
+              </article>
+            ))}
           </div>
         )}
 
@@ -333,28 +324,48 @@ export function AdminDashboardPage({ requestWithAuth, navigate, notify }) {
       <SiteFooter />
 
       {confirmData && (
-        <div className="curation-confirm-backdrop" role="presentation" onClick={confirmData.onCancel}>
-          <div
-            aria-labelledby="curation-confirm-title"
-            aria-modal="true"
-            className="curation-confirm-dialog"
-            role="dialog"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <p className="curation-confirm-kicker">Confirm Curation</p>
+        <div className="curation-confirm-backdrop" role="presentation" onClick={() => setConfirmData(null)}>
+          <div aria-labelledby="curation-confirm-title" aria-modal="true" className="curation-confirm-dialog" role="dialog" onClick={(event) => event.stopPropagation()}>
+            <p className="curation-confirm-kicker">Confirm curation</p>
             <h2 id="curation-confirm-title">{confirmData.title}</h2>
             <p>{confirmData.message}</p>
             <div className="curation-confirm-actions">
-              <button className="text-button muted" type="button" onClick={confirmData.onCancel}>
-                Cancel
-              </button>
-              <button className="curation-confirm-confirm" type="button" onClick={confirmData.onConfirm}>
-                Confirm
+              <button className="text-button muted" type="button" onClick={() => setConfirmData(null)}>Cancel</button>
+              <button
+                className="curation-confirm-confirm"
+                type="button"
+                onClick={() => {
+                  const action = confirmData.onConfirm
+                  setConfirmData(null)
+                  action()
+                }}
+              >
+                {confirmData.confirmLabel || 'Confirm'}
               </button>
             </div>
           </div>
         </div>
       )}
     </main>
+  )
+}
+
+function CurationSlot({ article, busy, label, onRemove }) {
+  return (
+    <article className={`curation-slot${article ? ' is-filled' : ' is-empty'}`}>
+      <span className="curation-slot-label">{label}</span>
+      {article ? (
+        <>
+          <img alt="" src={article.image} />
+          <div>
+            <strong>{article.title}</strong>
+            <span>{article.author.name}</span>
+          </div>
+          <button disabled={busy} type="button" onClick={onRemove}>{busy ? 'Updating...' : 'Remove'}</button>
+        </>
+      ) : (
+        <p>No story assigned</p>
+      )}
+    </article>
   )
 }
