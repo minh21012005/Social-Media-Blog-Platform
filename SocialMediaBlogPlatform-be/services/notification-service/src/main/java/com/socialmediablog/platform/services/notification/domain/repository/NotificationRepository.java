@@ -16,4 +16,6 @@ public interface NotificationRepository {
     Notification save(Notification notification);
 
     int markAllAsReadByRecipientId(RecipientId recipientId, Instant now);
+
+    void deleteById(NotificationId id);
 }

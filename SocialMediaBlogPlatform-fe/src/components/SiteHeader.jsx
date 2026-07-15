@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { categories } from '../data/editorial'
 import { BellIcon, SearchIcon } from './icons'
-import { getMyNotifications, markNotificationRead, markAllNotificationsRead } from '../services/notifications'
+import { getMyNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '../services/notifications'
 import { getArticleById } from '../services/articles'
 import { getPublicUser } from '../services/users'
 
@@ -155,6 +155,17 @@ export function SiteHeader({ session, navigate, onLogout }) {
     }
   }
 
+  const handleDeleteNotification = async (e, notif) => {
+    e.stopPropagation()
+    if (!session?.accessToken) return
+    try {
+      setNotifications((prev) => prev.filter((n) => n.id !== notif.id))
+      await deleteNotification(notif.id, session.accessToken)
+    } catch {
+      // ignore
+    }
+  }
+
   const open = (path) => (event) => {
 
     event.preventDefault()
@@ -191,29 +202,33 @@ export function SiteHeader({ session, navigate, onLogout }) {
           ))}
         </nav>
         <div className="site-actions">
-          <div className="header-search" ref={searchRef}>
-            <button
-              aria-expanded={searchOpen}
-              aria-label="Search"
-              className="icon-button"
-              type="button"
-              onClick={() => setSearchOpen((current) => !current)}
-            >
-              <SearchIcon />
-            </button>
-            {searchOpen && (
-              <form className="header-search-panel" onSubmit={submitSearch}>
-                <input
-                  autoFocus
-                  aria-label="Search stories"
-                  placeholder="Search stories"
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-                <button type="submit">Search</button>
-              </form>
-            )}
+          <div className={`header-search ${searchOpen ? 'is-open' : ''}`} ref={searchRef}>
+            <form className="header-search-form" onSubmit={submitSearch}>
+              <button
+                aria-expanded={searchOpen}
+                aria-label="Search"
+                className="icon-button search-toggle"
+                type="button"
+                onClick={() => {
+                  if (searchOpen && searchTerm.trim()) {
+                    submitSearch({ preventDefault: () => {} })
+                  } else {
+                    setSearchOpen((current) => !current)
+                  }
+                }}
+              >
+                <SearchIcon />
+              </button>
+              <input
+                ref={(input) => searchOpen && input && input.focus()}
+                className="header-search-input"
+                aria-label="Search stories"
+                placeholder="Search Chronicle..."
+                type="search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </form>
           </div>
           <div className="header-notif" ref={notifRef}>
             <button
@@ -273,6 +288,15 @@ export function SiteHeader({ session, navigate, onLogout }) {
                             })}
                           </time>
                         </div>
+                        <button
+                          className="notif-delete-btn"
+                          type="button"
+                          aria-label="Delete notification"
+                          onClick={(e) => handleDeleteNotification(e, n)}
+                          title="Delete notification"
+                        >
+                          &times;
+                        </button>
                       </li>
                     ))
                   )}

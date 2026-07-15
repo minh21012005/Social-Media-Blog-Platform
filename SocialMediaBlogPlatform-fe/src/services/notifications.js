@@ -33,3 +33,15 @@ export async function markAllNotificationsRead(token) {
     token,
   })
 }
+
+/**
+ * Xóa một notification.
+ * @param {string} notificationId - UUID của notification
+ * @param {string} token - JWT access token
+ */
+export async function deleteNotification(notificationId, token) {
+  return apiRequest(`/api/v1/notifications/${notificationId}`, {
+    method: 'DELETE',
+    token,
+  })
+}

@@ -11,10 +11,13 @@ import com.socialmediablog.platform.services.notification.application.port.in.Li
 import com.socialmediablog.platform.services.notification.application.port.in.MarkNotificationReadUseCase;
 import com.socialmediablog.platform.services.notification.application.port.in.MarkAllNotificationsReadUseCase;
 import com.socialmediablog.platform.services.notification.application.command.MarkAllNotificationsReadCommand;
+import com.socialmediablog.platform.services.notification.application.command.DeleteNotificationCommand;
+import com.socialmediablog.platform.services.notification.application.port.in.DeleteNotificationUseCase;
 import com.socialmediablog.platform.services.notification.application.result.NotificationItem;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,17 +32,20 @@ public class NotificationController {
     private final ListMyNotificationsUseCase listMyNotificationsUseCase;
     private final MarkNotificationReadUseCase markNotificationReadUseCase;
     private final MarkAllNotificationsReadUseCase markAllNotificationsReadUseCase;
+    private final DeleteNotificationUseCase deleteNotificationUseCase;
 
     public NotificationController(
             GetServiceStatusUseCase getServiceStatusUseCase,
             ListMyNotificationsUseCase listMyNotificationsUseCase,
             MarkNotificationReadUseCase markNotificationReadUseCase,
-            MarkAllNotificationsReadUseCase markAllNotificationsReadUseCase
+            MarkAllNotificationsReadUseCase markAllNotificationsReadUseCase,
+            DeleteNotificationUseCase deleteNotificationUseCase
     ) {
         this.getServiceStatusUseCase = getServiceStatusUseCase;
         this.listMyNotificationsUseCase = listMyNotificationsUseCase;
         this.markNotificationReadUseCase = markNotificationReadUseCase;
         this.markAllNotificationsReadUseCase = markAllNotificationsReadUseCase;
+        this.deleteNotificationUseCase = deleteNotificationUseCase;
     }
 
     @GetMapping("/status")
@@ -89,5 +95,21 @@ public class NotificationController {
                 new MarkAllNotificationsReadCommand(userId)
         );
         return ApiResponse.success(updatedCount);
+    }
+
+    /**
+     * DELETE /api/v1/notifications/{id}
+     * Xóa một notification.
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteNotification(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID id
+    ) {
+        UUID userId = UUID.fromString(currentUser.id());
+        deleteNotificationUseCase.execute(
+                new DeleteNotificationCommand(userId, id)
+        );
+        return ApiResponse.success(null);
     }
 }
