@@ -63,6 +63,10 @@ class CommentApplicationServiceClapTests {
         Comment mockComment = Mockito.mock(Comment.class);
         when(mockComment.isDeleted()).thenReturn(false);
         when(mockComment.id()).thenReturn(commentId);
+        when(mockComment.articleId()).thenReturn(
+                com.socialmediablog.platform.services.comment.domain.vo.ArticleId.of(UUID.randomUUID()));
+        when(mockComment.authorId()).thenReturn(
+                com.socialmediablog.platform.services.comment.domain.vo.AuthorId.of(UUID.randomUUID()));
         
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(mockComment));
         when(commentStatsRepository.findByCommentId(commentId)).thenReturn(Optional.of(CommentStats.empty(commentId, clock.instant())));

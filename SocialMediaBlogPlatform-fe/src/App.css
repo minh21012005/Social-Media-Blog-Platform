@@ -3940,3 +3940,14 @@ img.comment-avatar {
     margin-bottom: 0;
   }
 }
+.comment-item-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 8px;
+  animation: comment-focus-fade 2.4s ease-out;
+}
+
+@keyframes comment-focus-fade {
+  from { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  to { background: transparent; }
+}

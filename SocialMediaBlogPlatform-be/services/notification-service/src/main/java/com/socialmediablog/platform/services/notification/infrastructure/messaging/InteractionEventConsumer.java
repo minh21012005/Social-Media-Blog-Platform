@@ -2,28 +2,23 @@ package com.socialmediablog.platform.services.notification.infrastructure.messag
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.socialmediablog.platform.common.web.ApiResponse;
 import com.socialmediablog.platform.services.notification.domain.aggregate.Notification;
 import com.socialmediablog.platform.services.notification.domain.model.NotificationType;
 import com.socialmediablog.platform.services.notification.domain.repository.NotificationRepository;
 import com.socialmediablog.platform.services.notification.domain.vo.RecipientId;
+import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaProcessedEventEntity;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleAuthorResponse;
+import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleServiceFeignClient;
+import com.socialmediablog.platform.services.notification.infrastructure.persistence.SpringDataJpaProcessedEventRepository;
 import java.time.Instant;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.socialmediablog.platform.common.web.ApiResponse;
-import com.socialmediablog.platform.services.notification.infrastructure.entity.JpaProcessedEventEntity;
-import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleAuthorResponse;
-import com.socialmediablog.platform.services.notification.infrastructure.feign.ArticleServiceFeignClient;
-import com.socialmediablog.platform.services.notification.infrastructure.persistence.SpringDataJpaProcessedEventRepository;
-
-/**
- * Listens for interaction.events Kafka topic.
- * Event payload (serialized from InteractionRecordedEvent):
- *   {"eventId":"...", "interactionId":"...", "targetId":"...", "userId":"...", "occurredAt":"...", "eventType":"interaction.recorded"}
- */
 @Component
 public class InteractionEventConsumer {
 
@@ -47,65 +42,45 @@ public class InteractionEventConsumer {
     }
 
     @KafkaListener(topics = "interaction.events", groupId = "notification-service")
-    public void consume(String message) {
-        try {
-            JsonNode payload = objectMapper.readTree(message);
-            String eventType = payload.path("eventType").asText();
-
-            if (!"interaction.recorded".equals(eventType)) {
-                return;
-            }
-
-            UUID eventId = UUID.fromString(payload.path("eventId").asText());
-            if (processedEventRepository.existsById(eventId)) {
-                log.info("[InteractionEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
-                return;
-            }
-            processedEventRepository.save(new JpaProcessedEventEntity(eventId));
-
-            UUID targetId = UUID.fromString(payload.path("targetId").asText());
-            UUID userId = UUID.fromString(payload.path("userId").asText()); // The user who interacted
-            Instant now = Instant.now();
-
-            // Try to resolve targetId as an article
-            try {
-                ApiResponse<ArticleAuthorResponse> response = articleServiceFeignClient.getArticleAuthor(targetId);
-                if (response != null && response.data() != null) {
-                    UUID articleAuthorId = response.data().authorId();
-
-                    if (!articleAuthorId.equals(userId)) {
-                        boolean alreadyNotified = notificationRepository.existsByRecipientAndActorAndTypeAndTarget(
-                                RecipientId.of(articleAuthorId),
-                                userId,
-                                NotificationType.ARTICLE_CLAPPED,
-                                targetId
-                        );
-
-                        if (!alreadyNotified) {
-                            Notification notification = Notification.create(
-                                    RecipientId.of(articleAuthorId),
-                                    userId,
-                                    NotificationType.ARTICLE_CLAPPED,
-                                    "Article",
-                                    targetId,
-                                    "Bài viết của bạn nhận được lượt thích",
-                                    null,
-                                    now
-                            );
-                            notificationRepository.save(notification);
-                            log.info("[InteractionEventConsumer] Saved ARTICLE_CLAPPED notification for articleId={}", targetId);
-                        } else {
-                            log.info("[InteractionEventConsumer] ARTICLE_CLAPPED notification already exists for articleId={} from user={}, skipping.", targetId, userId);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // If article is not found, target might be a comment. Ignore for now.
-                log.debug("[InteractionEventConsumer] Target {} not found as an article. It might be a comment.", targetId);
-            }
-
-        } catch (Exception e) {
-            log.error("[InteractionEventConsumer] Failed to process interaction event: {}", e.getMessage(), e);
+    @Transactional
+    public void consume(String message) throws Exception {
+        JsonNode payload = objectMapper.readTree(message);
+        if (!"interaction.recorded".equals(payload.path("eventType").asText())) {
+            return;
         }
+
+        UUID eventId = UUID.fromString(payload.path("eventId").asText());
+        if (processedEventRepository.existsById(eventId)) {
+            log.info("[InteractionEventConsumer] Event {} already processed. Ignoring duplicate.", eventId);
+            return;
+        }
+
+        UUID articleId = UUID.fromString(payload.path("targetId").asText());
+        UUID actorId = UUID.fromString(payload.path("userId").asText());
+        ApiResponse<ArticleAuthorResponse> response = articleServiceFeignClient.getArticleAuthor(articleId);
+        if (response == null || response.data() == null || response.data().authorId() == null) {
+            throw new IllegalStateException("Could not resolve article author for " + articleId);
+        }
+
+        UUID articleAuthorId = response.data().authorId();
+        if (!articleAuthorId.equals(actorId)) {
+            RecipientId recipientId = RecipientId.of(articleAuthorId);
+            boolean alreadyNotified = notificationRepository.existsByRecipientAndActorAndTypeAndTarget(
+                    recipientId, actorId, NotificationType.ARTICLE_CLAPPED, articleId);
+            if (!alreadyNotified) {
+                notificationRepository.save(Notification.create(
+                        recipientId,
+                        actorId,
+                        NotificationType.ARTICLE_CLAPPED,
+                        "Article",
+                        articleId,
+                        "Bài viết của bạn nhận được lượt thích",
+                        null,
+                        Instant.now()
+                ));
+            }
+        }
+
+        processedEventRepository.save(new JpaProcessedEventEntity(eventId));
     }
 }

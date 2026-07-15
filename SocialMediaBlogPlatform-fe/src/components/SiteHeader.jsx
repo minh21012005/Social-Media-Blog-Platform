@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { categories } from '../data/editorial'
 import { BellIcon, SearchIcon } from './icons'
 import { getMyNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '../services/notifications'
+import { getComment } from '../services/comments'
 import { getArticleById } from '../services/articles'
 import { getPublicUser } from '../services/users'
 
@@ -121,12 +122,26 @@ export function SiteHeader({ session, navigate, onLogout }) {
         notif.type === 'NEW_COMMENT' ||
         notif.type === 'NEW_ARTICLE' ||
         notif.type === 'COMMENT_CREATED' ||
-        notif.type === 'COMMENT_REPLIED' ||
-        notif.type === 'ARTICLE_PUBLISHED'
+        notif.type === 'ARTICLE_PUBLISHED' ||
+        notif.type === 'ARTICLE_CLAPPED'
       ) {
         const article = await getArticleById(notif.subjectId)
         if (article?.slug) {
           navigate(`/articles/${article.slug}`)
+        }
+      } else if (
+        notif.type === 'COMMENT_REPLIED' ||
+        notif.type === 'COMMENT_CLAPPED'
+      ) {
+        const comment = await getComment(notif.subjectId, session.accessToken)
+        const article = await getArticleById(comment.articleId)
+        if (article?.slug) {
+          const threadId = comment.parentCommentId || comment.id
+          const params = new URLSearchParams({ comment: threadId })
+          if (comment.parentCommentId) {
+            params.set('reply', comment.id)
+          }
+          navigate(`/articles/${article.slug}?${params.toString()}`)
         }
       } else if (
         notif.type === 'NEW_FOLLOWER' ||

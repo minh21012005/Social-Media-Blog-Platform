@@ -12,6 +12,8 @@ import com.socialmediablog.platform.services.comment.application.command.ReplyCo
 import com.socialmediablog.platform.services.comment.application.port.in.DeleteCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.EditCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.GetServiceStatusUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.GetCommentUseCase;
+import com.socialmediablog.platform.services.comment.application.query.GetCommentQuery;
 import com.socialmediablog.platform.services.comment.application.port.in.ListCommentRepliesUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ReplyCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.PinCommentUseCase;
@@ -44,6 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommentController {
 
         private final GetServiceStatusUseCase getServiceStatusUseCase;
+        private final GetCommentUseCase getCommentUseCase;
         private final EditCommentUseCase editCommentUseCase;
         private final DeleteCommentUseCase deleteCommentUseCase;
         private final ListCommentRepliesUseCase listCommentRepliesUseCase;
@@ -55,6 +58,7 @@ public class CommentController {
 
         public CommentController(
                         GetServiceStatusUseCase getServiceStatusUseCase,
+                        GetCommentUseCase getCommentUseCase,
                         EditCommentUseCase editCommentUseCase,
                         DeleteCommentUseCase deleteCommentUseCase,
                         ListCommentRepliesUseCase listCommentRepliesUseCase,
@@ -64,6 +68,7 @@ public class CommentController {
                         ClapCommentUseCase clapCommentUseCase,
                         UndoClapCommentUseCase undoClapCommentUseCase) {
                 this.getServiceStatusUseCase = getServiceStatusUseCase;
+                this.getCommentUseCase = getCommentUseCase;
                 this.editCommentUseCase = editCommentUseCase;
                 this.deleteCommentUseCase = deleteCommentUseCase;
                 this.listCommentRepliesUseCase = listCommentRepliesUseCase;
@@ -80,6 +85,14 @@ public class CommentController {
                                 new GetServiceStatusCommand(currentUser.id()))));
         }
 
+        @GetMapping("/{commentId}")
+        public ApiResponse<CommentResponse> get(
+                        @AuthenticationPrincipal CurrentUser currentUser,
+                        @PathVariable UUID commentId) {
+                UUID userId = currentUser != null ? currentUserId(currentUser) : null;
+                return ApiResponse.success("Comment loaded", CommentResponse.from(
+                                getCommentUseCase.execute(new GetCommentQuery(commentId, userId))));
+        }
         @GetMapping("/{commentId}/replies")
         public ApiResponse<CommentPageResponse> replies(
                         @AuthenticationPrincipal CurrentUser currentUser,

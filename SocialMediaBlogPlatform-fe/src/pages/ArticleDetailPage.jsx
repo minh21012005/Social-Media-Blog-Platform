@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthorBadge } from '../components/AuthorBadge'
 import { MarkdownPreview } from '../components/MarkdownPreview'
 import { SiteFooter } from '../components/SiteFooter'
@@ -14,7 +14,7 @@ import {
   removeBookmarkArticle,
   undoClapArticle
 } from '../services/articles'
-import { createComment, createCommentReply, deleteComment, editComment, listArticleComments, listCommentReplies, getArticleCommentCount } from '../services/comments'
+import { createComment, createCommentReply, deleteComment, editComment, getComment, listArticleComments, listCommentReplies, getArticleCommentCount } from '../services/comments'
 import { getPublicUsers } from '../services/users'
 import { CommentClapButton } from '../components/CommentClapButton'
 
@@ -155,7 +155,7 @@ async function enrichComments(comments) {
   }))
 }
 
-function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, mutedUserIds = new Set(), onPin, onUnpin, onClap, onUndoClap }) {
+function CommentList({ articleAuthorId, comments, currentUserId, focusCommentId, focusReplyId, onDelete, onEdit, onLoadReplies, onReply, onRequireLogin, mutedUserIds = new Set(), onPin, onUnpin, onClap, onUndoClap }) {
 
   const [editingId, setEditingId] = useState('')
   const [draft, setDraft] = useState('')
@@ -170,6 +170,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
   const [repliesByComment, setRepliesByComment] = useState({})
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
+  const focusExpandedRef = useRef('')
 
   const getReplyCount = (comment) => Number(comment.stats?.replyCount || 0)
 
@@ -228,7 +229,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     }
   }
 
-  const toggleReplies = async (comment) => {
+  const toggleReplies = useCallback(async (comment) => {
     const commentId = comment.id
     const isExpanded = Boolean(expandedReplies[commentId])
 
@@ -260,8 +261,32 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
         [commentId]: { error: replyError.message || 'Could not load replies.', items: [], loading: false, page: 0, hasMore: false },
       }))
     }
-  }
+  }, [expandedReplies, onLoadReplies, repliesByComment])
 
+  useEffect(() => {
+    if (!focusReplyId || !focusCommentId || focusExpandedRef.current === focusReplyId) {
+      return
+    }
+    const focusedComment = comments.find((comment) => comment.id === focusCommentId)
+    if (!focusedComment) {
+      return
+    }
+    focusExpandedRef.current = focusReplyId
+    if (!expandedReplies[focusCommentId]) {
+      toggleReplies(focusedComment)
+    }
+  }, [comments, expandedReplies, focusCommentId, focusReplyId, toggleReplies])
+
+  useEffect(() => {
+    const targetId = focusReplyId || focusCommentId
+    if (!targetId) {
+      return undefined
+    }
+    const timer = window.setTimeout(() => {
+      document.getElementById(`comment-${targetId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+    return () => window.clearTimeout(timer)
+  }, [comments, focusCommentId, focusReplyId, repliesByComment])
   const loadMoreReplies = async (commentId) => {
     const currentState = repliesByComment[commentId]
     if (!currentState || currentState.loadingMore) return
@@ -344,7 +369,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
     const remaining = COMMENT_MAX_LENGTH - draft.length
 
     return (
-      <article className="comment-item comment-reply-comment" key={reply.id}>
+      <article className={`comment-item comment-reply-comment${focusReplyId === reply.id ? ' comment-item-focused' : ''}`} id={`comment-${reply.id}`} key={reply.id}>
         {reply.author?.avatarUrl ? (
           <img alt="" className="comment-avatar" src={reply.author.avatarUrl} />
         ) : (
@@ -567,7 +592,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
 
           if (isDeleted) {
             return (
-              <article className="comment-item comment-item-deleted" key={comment.id}>
+              <article className={`comment-item comment-item-deleted${focusCommentId === comment.id ? ' comment-item-focused' : ''}`} id={`comment-${comment.id}`} key={comment.id}>
                 <div className="deleted-comment-card">
                   <div className="deleted-comment-header">
                     <div>
@@ -587,7 +612,7 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
           }
 
           return (
-            <article className="comment-item" key={comment.id}>
+            <article className={`comment-item${focusCommentId === comment.id ? ' comment-item-focused' : ''}`} id={`comment-${comment.id}`} key={comment.id}>
               {comment.author?.avatarUrl ? (
                 <img alt="" className="comment-avatar" src={comment.author.avatarUrl} />
               ) : (
@@ -741,6 +766,10 @@ function CommentList({ articleAuthorId, comments, currentUserId, onDelete, onEdi
 }
 
 export function ArticleDetailPage({ slug, navigate, notify, session, requestWithAuth, mutedUserIds = new Set() }) {
+  const focusParams = new URLSearchParams(window.location.search)
+  const focusCommentId = focusParams.get('comment') || ''
+  const focusReplyId = focusParams.get('reply') || ''
+  const focusLoadRef = useRef('')
   const [state, setState] = useState({ loading: true, article: null, error: '' })
   const [comments, setComments] = useState([])
   const [commentsState, setCommentsState] = useState({ loading: false, error: '' })
@@ -828,6 +857,37 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
     }
   }, [requestWithAuth, session, state.article, commentSortBy])
 
+  useEffect(() => {
+    if (!focusCommentId || !state.article || commentsState.loading) {
+      return undefined
+    }
+    if (comments.some((comment) => comment.id === focusCommentId)) {
+      return undefined
+    }
+    if (focusLoadRef.current === focusCommentId) {
+      return undefined
+    }
+
+    focusLoadRef.current = focusCommentId
+    let active = true
+    const loadFocusedComment = async () => {
+      try {
+        const comment = session
+          ? await requestWithAuth((token) => getComment(focusCommentId, token))
+          : await getComment(focusCommentId)
+        const [enriched] = await enrichComments([comment])
+        if (active && enriched) {
+          setComments((current) => [enriched, ...current.filter((item) => item.id !== enriched.id)])
+        }
+      } catch (error) {
+        console.error('Could not load focused comment.', error)
+      }
+    }
+    loadFocusedComment()
+    return () => {
+      active = false
+    }
+  }, [comments, commentsState.loading, focusCommentId, requestWithAuth, session, state.article])
   const handleLoadMoreComments = async () => {
     if (!state.article) return
     setLoadingMore(true)
@@ -1111,6 +1171,9 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
     }
 
     const articleId = state.article.id
+    const previousSessionClaps = articleSessionClaps
+    const previousClapCount = Number(state.article.stats?.clapCount || 0)
+    const previouslyClapped = Boolean(state.article.clappedByCurrentUser)
     const nextSessionClaps = articleSessionClaps + 1
 
     // Optimistic update so users see clap count increase instantly.
@@ -1158,8 +1221,25 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
         }
       })
     } catch (error) {
-      // Keep optimistic value so the button feels responsive even if the API fails.
-      console.error('Article clap request failed, keeping optimistic count.', error)
+      setArticleSessionClaps(previousSessionClaps)
+      setShowArticleClapBubble(false)
+      setState((current) => {
+        if (!current.article || current.article.id !== articleId) {
+          return current
+        }
+        return {
+          ...current,
+          article: {
+            ...current.article,
+            clappedByCurrentUser: previouslyClapped,
+            stats: {
+              ...(current.article.stats || {}),
+              clapCount: previousClapCount,
+            },
+          },
+        }
+      })
+      notify(error.message || 'Could not clap this article.', { title: 'Clap was not saved' })
     }
   }
 
@@ -1410,6 +1490,8 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
             articleAuthorId={article.author?.id}
             comments={comments}
             currentUserId={currentUserId}
+            focusCommentId={focusCommentId}
+            focusReplyId={focusReplyId}
             onDelete={handleCommentDeleted}
             onEdit={handleCommentEdited}
             onLoadReplies={handleLoadReplies}

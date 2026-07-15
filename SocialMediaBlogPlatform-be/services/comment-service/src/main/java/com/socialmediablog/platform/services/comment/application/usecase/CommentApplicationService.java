@@ -8,6 +8,7 @@ import com.socialmediablog.platform.services.comment.application.port.in.UndoCla
 import com.socialmediablog.platform.services.comment.domain.aggregate.CommentClap;
 import com.socialmediablog.platform.services.comment.domain.repository.CommentClapRepository;
 import com.socialmediablog.platform.services.comment.domain.event.CommentClappedEvent;
+import com.socialmediablog.platform.services.comment.domain.event.CommentRepliedEvent;
 import java.util.Set;
 import java.util.stream.Collectors;
 import com.socialmediablog.platform.services.comment.application.command.DeleteCommentCommand;
@@ -23,6 +24,7 @@ import com.socialmediablog.platform.services.comment.application.port.in.CreateC
 import com.socialmediablog.platform.services.comment.application.port.in.DeleteCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.EditCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.GetServiceStatusUseCase;
+import com.socialmediablog.platform.services.comment.application.port.in.GetCommentUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListArticleCommentsUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ListCommentRepliesUseCase;
 import com.socialmediablog.platform.services.comment.application.port.in.ReplyCommentUseCase;
@@ -32,6 +34,7 @@ import com.socialmediablog.platform.services.comment.application.command.PinComm
 import com.socialmediablog.platform.services.comment.application.command.UnpinCommentCommand;
 import com.socialmediablog.platform.services.comment.application.port.out.ArticleCommentPolicyPort;
 import com.socialmediablog.platform.services.comment.application.port.out.CommentEventPublisher;
+import com.socialmediablog.platform.services.comment.application.query.GetCommentQuery;
 import com.socialmediablog.platform.services.comment.application.query.ListArticleCommentsQuery;
 import com.socialmediablog.platform.services.comment.application.query.ListCommentRepliesQuery;
 import com.socialmediablog.platform.services.comment.application.result.CommentStatsView;
@@ -63,7 +66,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CommentApplicationService
                 implements GetServiceStatusUseCase, CreateCommentUseCase, EditCommentUseCase, DeleteCommentUseCase,
                 ListArticleCommentsUseCase, ListCommentRepliesUseCase, ReplyCommentUseCase, CountArticleCommentsUseCase,
-                PinCommentUseCase, UnpinCommentUseCase, ClapCommentUseCase, UndoClapCommentUseCase {
+                PinCommentUseCase, UnpinCommentUseCase, ClapCommentUseCase, UndoClapCommentUseCase, GetCommentUseCase {
 
         private final CommentRepository commentRepository;
         private final CommentStatsRepository commentStatsRepository;
@@ -107,7 +110,10 @@ public class CommentApplicationService
 
                 commentEventPublisher.publish(comment.id().value(), CommentClappedEvent.create(
                                 comment.id().value(),
+                                comment.articleId().value(),
+                                comment.authorId().value(),
                                 command.requesterId(),
+                                comment.parentCommentId() == null ? null : comment.parentCommentId().value(),
                                 now));
         }
 
@@ -185,11 +191,13 @@ public class CommentApplicationService
                 CommentStats parentStats = commentStatsRepository.findByCommentId(parentComment.id())
                                 .orElseGet(() -> CommentStats.empty(parentComment.id(), now));
                 commentStatsRepository.save(parentStats.incrementReplyCount(now));
-                commentEventPublisher.publish(savedReply.id().value(), new CommentCreatedEvent(
+                commentEventPublisher.publish(savedReply.id().value(), new CommentRepliedEvent(
                                 UUID.randomUUID(),
                                 savedReply.id().value(),
+                                parentComment.id().value(),
                                 savedReply.articleId().value(),
                                 savedReply.authorId().value(),
+                                parentComment.authorId().value(),
                                 now));
                 return CommentView.from(savedReply, CommentStatsView.from(replyStats), false);
         }
@@ -344,6 +352,15 @@ public class CommentApplicationService
                 return PageResult.of(items, query.page(), query.size(), totalItems);
         }
 
+        @Override
+        @Transactional(readOnly = true)
+        public CommentView execute(GetCommentQuery query) {
+                Comment comment = commentRepository.findById(CommentId.of(query.commentId()))
+                                .orElseThrow(() -> new CommentNotFoundException(query.commentId()));
+                boolean clappedByCurrentUser = query.currentUserId() != null
+                                && !commentClapRepository.findByCommentIdAndUserId(comment.id(), query.currentUserId()).isEmpty();
+                return CommentView.from(comment, statsWithComputedReplyCount(comment), clappedByCurrentUser);
+        }
         private boolean canDelete(Comment comment, AuthorId requesterId) {
                 if (comment.canBeDeletedBy(requesterId)) {
                         return true;

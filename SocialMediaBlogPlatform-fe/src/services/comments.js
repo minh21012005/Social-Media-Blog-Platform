@@ -72,3 +72,7 @@ export function undoClapComment(commentId, token) {
     token,
   })
 }
+
+export function getComment(commentId, token) {
+  return apiRequest(`/api/v1/comments/${commentId}`, { token })
+}
