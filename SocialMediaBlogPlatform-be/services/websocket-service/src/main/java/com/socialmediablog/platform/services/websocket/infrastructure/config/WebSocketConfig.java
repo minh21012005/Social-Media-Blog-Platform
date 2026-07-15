@@ -1,5 +1,8 @@
 package com.socialmediablog.platform.services.websocket.infrastructure.config;
 
+import java.util.Arrays;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -12,35 +15,42 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketAuthInterceptor webSocketAuthInterceptor;
+    private final String[] allowedOrigins;
 
-    public WebSocketConfig(WebSocketAuthInterceptor webSocketAuthInterceptor) {
+    public WebSocketConfig(
+            WebSocketAuthInterceptor webSocketAuthInterceptor,
+            @Value("${app.cors.allowed-origins:http://localhost:5173}") String allowedOrigins
+    ) {
         this.webSocketAuthInterceptor = webSocketAuthInterceptor;
+        this.allowedOrigins = splitCsv(allowedOrigins).toArray(String[]::new);
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Enable simple in-memory broker
         config.enableSimpleBroker("/topic", "/queue");
-        // Prefix for messages bounded for @MessageMapping endpoints
         config.setApplicationDestinationPrefixes("/app");
-        // Prefix used to send messages to specific users
         config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Register the STOMP endpoint
         registry.addEndpoint("/ws/notifications")
-                .setAllowedOriginPatterns("*") // Use pattern to support credentials if needed
-                .withSockJS(); // Fallback for browsers that don't support websocket
+                .setAllowedOrigins(allowedOrigins)
+                .withSockJS();
 
-        // Also register a raw websocket endpoint (without SockJS)
         registry.addEndpoint("/ws/notifications")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOrigins(allowedOrigins);
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(webSocketAuthInterceptor);
+    }
+
+    private List<String> splitCsv(String value) {
+        return Arrays.stream(value.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
     }
 }

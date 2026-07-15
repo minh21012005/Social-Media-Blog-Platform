@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Client } from '@stomp/stompjs'
+import { WEBSOCKET_BASE_URL } from '../services/api'
 
 export function WebSocketManager({ session, notify }) {
   const clientRef = useRef(null)
@@ -13,7 +14,7 @@ export function WebSocketManager({ session, notify }) {
     const { accessToken, user } = session
 
     const client = new Client({
-      brokerURL: 'ws://localhost:8080/ws/notifications',
+      brokerURL: `${WEBSOCKET_BASE_URL}/ws/notifications`,
       connectHeaders: {
         Authorization: `Bearer ${accessToken}`,
       },

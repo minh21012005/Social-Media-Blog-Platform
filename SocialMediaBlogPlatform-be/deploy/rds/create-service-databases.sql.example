@@ -1,0 +1,38 @@
+-- Run as the RDS master user against the default `postgres` database.
+-- Replace every CHANGE_ME value with a different strong password before running.
+-- Do not commit the filled-in version.
+
+CREATE ROLE user_service LOGIN PASSWORD 'CHANGE_ME_USER_SERVICE';
+CREATE ROLE article_service LOGIN PASSWORD 'CHANGE_ME_ARTICLE_SERVICE';
+CREATE ROLE comment_service LOGIN PASSWORD 'CHANGE_ME_COMMENT_SERVICE';
+CREATE ROLE interaction_service LOGIN PASSWORD 'CHANGE_ME_INTERACTION_SERVICE';
+CREATE ROLE follower_service LOGIN PASSWORD 'CHANGE_ME_FOLLOWER_SERVICE';
+CREATE ROLE notification_service LOGIN PASSWORD 'CHANGE_ME_NOTIFICATION_SERVICE';
+
+GRANT user_service TO postgres;
+GRANT article_service TO postgres;
+GRANT comment_service TO postgres;
+GRANT interaction_service TO postgres;
+GRANT follower_service TO postgres;
+GRANT notification_service TO postgres;
+
+CREATE DATABASE social_blog_users OWNER user_service;
+CREATE DATABASE social_blog_articles OWNER article_service;
+CREATE DATABASE social_blog_comments OWNER comment_service;
+CREATE DATABASE social_blog_interactions OWNER interaction_service;
+CREATE DATABASE social_blog_followers OWNER follower_service;
+CREATE DATABASE social_blog_notifications OWNER notification_service;
+
+REVOKE CONNECT ON DATABASE social_blog_users FROM PUBLIC;
+REVOKE CONNECT ON DATABASE social_blog_articles FROM PUBLIC;
+REVOKE CONNECT ON DATABASE social_blog_comments FROM PUBLIC;
+REVOKE CONNECT ON DATABASE social_blog_interactions FROM PUBLIC;
+REVOKE CONNECT ON DATABASE social_blog_followers FROM PUBLIC;
+REVOKE CONNECT ON DATABASE social_blog_notifications FROM PUBLIC;
+
+GRANT CONNECT ON DATABASE social_blog_users TO user_service;
+GRANT CONNECT ON DATABASE social_blog_articles TO article_service;
+GRANT CONNECT ON DATABASE social_blog_comments TO comment_service;
+GRANT CONNECT ON DATABASE social_blog_interactions TO interaction_service;
+GRANT CONNECT ON DATABASE social_blog_followers TO follower_service;
+GRANT CONNECT ON DATABASE social_blog_notifications TO notification_service;

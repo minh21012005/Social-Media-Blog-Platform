@@ -96,3 +96,7 @@ Register, login, and refresh return the access token in the response body and se
 ```powershell
 .\mvnw.cmd test
 ```
+
+## Production
+
+See [PRODUCTION_DEPLOYMENT.md](../PRODUCTION_DEPLOYMENT.md) for deployment on subtrack.click and api.subtrack.click.
