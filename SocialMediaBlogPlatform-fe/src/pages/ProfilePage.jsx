@@ -178,7 +178,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
     try {
       await requestWithAuth((token) => acceptFollowRequest(followerId, token))
       notify?.('Follow request accepted', { title: 'Accepted', type: 'success' })
-      
+
       // Update follow counts
       const newCounts = await requestWithAuth((token) => getFollowCounts(session.user.id, token)).catch(() => null)
       if (newCounts) setCounts({ followers: newCounts.followers, following: newCounts.following })
@@ -251,41 +251,34 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
         <div className="profile-header-section page-container">
           <div className="profile-header-main">
             <div className="profile-header-info">
-              <span className="form-eyebrow" style={{ display: 'inline-block', marginBottom: '8px' }}>
-                {session.user.isPrivate ? 'Private profile' : 'Public profile'}
-              </span>
+              <span className="profile-kicker">{session.user.isPrivate ? 'Private account' : 'Your Chronicle'}</span>
               <h1>{session.user.displayName}</h1>
               {session.user.username && (
-                <span className="profile-username" style={{ color: 'var(--muted)', fontSize: '15px', fontWeight: '400', display: 'block', marginTop: '4px' }}>
-                  @{session.user.username}
-                </span>
+                <span className="profile-username">@{session.user.username}</span>
               )}
-              <p className="profile-bio-snippet" style={{ color: 'var(--muted)', fontSize: '16px', lineHeight: '1.5', margin: '14px 0 16px', maxWidth: '600px' }}>
+              <p className="profile-bio-snippet">
                 {session.user.bio || 'Add a short bio so readers can recognize your voice across Chronicle.'}
               </p>
-              <div className="profile-header-stats" style={{ display: 'flex', gap: '8px', fontSize: '14px', color: 'var(--ink)' }}>
+              <div className="profile-header-stats">
                 <button
                   type="button"
                   onClick={() => setActiveTab('followers')}
-                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit' }}
                 >
-                  <strong style={{ fontWeight: '700' }}>{counts.followers}</strong> followers
+                  <strong>{counts.followers}</strong><span>followers</span>
                 </button>
-                <span className="dot-separator" style={{ color: 'var(--border)' }}>·</span>
+                <span className="dot-separator">&middot;</span>
                 <button
                   type="button"
                   onClick={() => setActiveTab('following')}
-                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit' }}
                 >
-                  <strong style={{ fontWeight: '700' }}>{counts.following}</strong> following
+                  <strong>{counts.following}</strong><span>following</span>
                 </button>
               </div>
             </div>
-            <div className="profile-header-avatar-container" style={{ flexShrink: 0 }}>
-              <img alt="" className="profile-avatar-large" src={session.user.avatarUrl || authors.sarah.avatar} style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--border)' }} />
+            <div className="profile-header-avatar-container">
+              <img alt="" className="profile-avatar-large" src={session.user.avatarUrl || authors.sarah.avatar} />
             </div>
           </div>
-
           <div className="profile-tabs">
             {[
               { id: 'about', label: 'About' },
@@ -307,13 +300,13 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
             ))}
           </div>
         </div>
-
-        <section className="profile-body-section page-container" style={{ minHeight: '300px', paddingBottom: '80px', marginTop: '32px' }}>
+        <section className="profile-body-section page-container">
           {activeTab === 'about' && (
-            <div className="profile-about-tab" style={{ maxWidth: '680px' }}>
-              <div className="profile-about-card" style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid var(--border)', padding: '24px', borderRadius: '8px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '12px', color: 'var(--ink)' }}>Bio</h3>
-                <p style={{ fontSize: '15px', color: 'var(--ink)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+            <div className="profile-about-tab">
+              <div className="profile-about-card">
+                <span className="profile-card-label">About</span>
+                <h2>A little about you</h2>
+                <p>
                   {session.user.bio || 'No bio written yet. Click on "Edit Profile" tab to add one!'}
                 </p>
               </div>
@@ -333,14 +326,14 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                       Bio
                       <textarea maxLength="500" rows="5" value={form.bio} onChange={update('bio')} />
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: '10px 0 16px', fontWeight: '500', color: 'var(--ink)' }}>
+                    <label className="profile-privacy-toggle">
                       <input
                         type="checkbox"
-                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--copper)' }}
+
                         checked={form.isPrivate}
                         onChange={(e) => setForm((c) => ({ ...c, isPrivate: e.target.checked }))}
                       />
-                      Private account (requires approval for new followers)
+                      <span><strong>Private account</strong>Requires approval for new followers.</span>
                     </label>
                     {error && <p className="form-error">{error}</p>}
                     <div className="profile-actions">
@@ -351,9 +344,9 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                   </form>
                 </div>
                 <div className="profile-settings-avatar-wrapper">
-                  <span className="editor-field-label" style={{ display: 'block', fontWeight: '780', fontSize: '15px', marginBottom: '12px' }}>Profile photo</span>
+                  <span className="profile-photo-label">Profile photo</span>
                   <img alt="" className="profile-avatar-medium" src={session.user.avatarUrl || authors.sarah.avatar} />
-                  <div style={{ marginTop: '16px' }}>
+                  <div className="profile-photo-upload">
                     <MediaUploader busy={uploading} label={session.user.avatarUrl ? 'Change photo' : 'Upload photo'} onUpload={upload} />
                   </div>
                 </div>
@@ -379,7 +372,7 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                       <div className="follow-user-row" key={item.userId}>
                         <a className="follow-user-info" href={profile?.username ? `/author/${profile.username}` : '#'} onClick={(e) => { e.preventDefault(); if (profile?.username) window.history.pushState({}, '', `/author/${profile.username}`); window.dispatchEvent(new PopStateEvent('popstate')) }}>
                           <img alt="" className="follow-user-avatar" src={profile?.avatarUrl || authors.sarah.avatar} />
-                          <div className="follow-user-text" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <div className="follow-user-text">
                             <strong>{profile?.displayName || profile?.username || 'Unknown'}</strong>
                             <span>{profile?.username ? `@${profile.username}` : ''}</span>
                           </div>
@@ -404,10 +397,10 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
                               {isBusy ? 'Updating...' : 'Unfollow'}
                             </button>
                           ) : activeTab === 'requests' ? (
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <div className="follow-request-actions">
                               <button
                                 className="submit-button compact"
-                                style={{ margin: 0, padding: '4px 12px', fontSize: '12px' }}
+
                                 disabled={isBusy}
                                 type="button"
                                 onClick={() => handleAcceptRequest(item.userId)}
@@ -444,7 +437,6 @@ export function ProfilePage({ session, requestWithAuth, onProfileUpdated, notify
           )}
         </section>
       </section>
-
       <SiteFooter />
     </main>
   )
