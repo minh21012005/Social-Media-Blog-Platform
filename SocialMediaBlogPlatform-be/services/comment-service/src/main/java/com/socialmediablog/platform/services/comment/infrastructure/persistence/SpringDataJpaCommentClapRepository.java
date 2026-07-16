@@ -2,6 +2,7 @@ package com.socialmediablog.platform.services.comment.infrastructure.persistence
 
 import com.socialmediablog.platform.services.comment.infrastructure.entity.JpaCommentClapEntity;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -9,8 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SpringDataJpaCommentClapRepository extends JpaRepository<JpaCommentClapEntity, UUID> {
-    
-    List<JpaCommentClapEntity> findByCommentIdAndUserId(UUID commentId, UUID userId);
+
+    Optional<JpaCommentClapEntity> findByCommentIdAndUserId(UUID commentId, UUID userId);
 
     @Modifying
     @Query("DELETE FROM JpaCommentClapEntity c WHERE c.commentId = :commentId AND c.userId = :userId")

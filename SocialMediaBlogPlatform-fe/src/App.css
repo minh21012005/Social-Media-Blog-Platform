@@ -2433,8 +2433,12 @@
 }
 
 .article-clap-btn.clapped {
-  border-color: var(--copper);
-  color: var(--copper);
+  border-color: var(--border);
+  color: #000;
+}
+
+.article-clap-btn.clapped:hover {
+  box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.08);
 }
 
 .article-clap-count {
@@ -4225,6 +4229,8 @@ img.comment-avatar {
 
 .managed-article-card {
   align-items: center;
+  cursor: pointer;
+  outline: none;
   background: #fff;
   border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 16px;
@@ -4239,6 +4245,11 @@ img.comment-avatar {
   border-color: rgba(17, 24, 39, 0.14);
   box-shadow: 0 12px 30px rgba(17, 24, 39, 0.055);
   transform: translateY(-1px);
+}
+
+.managed-article-card:focus-visible {
+  border-color: rgba(17, 24, 39, 0.32);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
 }
 
 .managed-article-cover {

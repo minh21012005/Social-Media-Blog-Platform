@@ -92,21 +92,23 @@ public class CommentApplicationService
 
         @Override
         @Transactional
-        public void execute(ClapCommentCommand command) {
+        public long execute(ClapCommentCommand command) {
                 Instant now = clock.instant();
                 CommentId commentId = CommentId.of(command.commentId());
-                Comment comment = commentRepository.findById(commentId)
+                Comment comment = commentRepository.findByIdForUpdate(commentId)
                                 .orElseThrow(() -> new CommentNotFoundException(command.commentId()));
                 if (comment.isDeleted()) {
                         throw new IllegalArgumentException("Cannot clap a deleted comment");
                 }
 
-                CommentClap clap = CommentClap.create(commentId, command.requesterId(), now);
+                CommentClap clap = commentClapRepository.findByCommentIdAndUserId(commentId, command.requesterId())
+                                .map(existing -> existing.clap(now))
+                                .orElseGet(() -> CommentClap.create(commentId, command.requesterId(), now));
                 commentClapRepository.save(clap);
 
                 CommentStats stats = commentStatsRepository.findByCommentId(commentId)
                                 .orElseGet(() -> CommentStats.empty(commentId, now));
-                commentStatsRepository.save(stats.incrementClapCount(now));
+                CommentStats savedStats = commentStatsRepository.save(stats.incrementClapCount(now));
 
                 commentEventPublisher.publish(comment.id().value(), CommentClappedEvent.create(
                                 comment.id().value(),
@@ -115,6 +117,7 @@ public class CommentApplicationService
                                 command.requesterId(),
                                 comment.parentCommentId() == null ? null : comment.parentCommentId().value(),
                                 now));
+                return savedStats.clapCount();
         }
 
         @Override
@@ -122,14 +125,14 @@ public class CommentApplicationService
         public long execute(UndoClapCommentCommand command) {
                 Instant now = clock.instant();
                 CommentId commentId = CommentId.of(command.commentId());
-                Comment comment = commentRepository.findById(commentId)
+                Comment comment = commentRepository.findByIdForUpdate(commentId)
                                 .orElseThrow(() -> new CommentNotFoundException(command.commentId()));
 
-                var claps = commentClapRepository.findByCommentIdAndUserId(commentId, command.requesterId());
-                if (claps.isEmpty()) {
+                var clap = commentClapRepository.findByCommentIdAndUserId(commentId, command.requesterId());
+                if (clap.isEmpty()) {
                         return 0;
                 }
-                long clapsToRemove = claps.size();
+                long clapsToRemove = clap.get().clapCount();
 
                 commentClapRepository.deleteByCommentIdAndUserId(commentId, command.requesterId());
 

@@ -6,6 +6,7 @@ import com.socialmediablog.platform.services.comment.domain.vo.CommentId;
 import com.socialmediablog.platform.services.comment.infrastructure.entity.JpaCommentClapEntity;
 import com.socialmediablog.platform.services.comment.infrastructure.persistence.SpringDataJpaCommentClapRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,6 +29,8 @@ public class JpaCommentClapRepositoryAdapter implements CommentClapRepository {
                 clap.id(),
                 clap.commentId().value(),
                 clap.userId(),
+                clap.clapCount(),
+                clap.lastClappedAt(),
                 clap.createdAt()
         );
         jpaRepository.save(entity);
@@ -36,15 +39,16 @@ public class JpaCommentClapRepositoryAdapter implements CommentClapRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CommentClap> findByCommentIdAndUserId(CommentId commentId, UUID userId) {
-        return jpaRepository.findByCommentIdAndUserId(commentId.value(), userId).stream()
+    public Optional<CommentClap> findByCommentIdAndUserId(CommentId commentId, UUID userId) {
+        return jpaRepository.findByCommentIdAndUserId(commentId.value(), userId)
                 .map(entity -> CommentClap.restore(
                         entity.getId(),
                         entity.getCommentId(),
                         entity.getUserId(),
+                        entity.getClapCount(),
+                        entity.getLastClappedAt(),
                         entity.getCreatedAt()
-                ))
-                .collect(Collectors.toList());
+                ));
     }
 
     @Override
@@ -59,10 +63,10 @@ public class JpaCommentClapRepositoryAdapter implements CommentClapRepository {
         if (commentIds.isEmpty()) {
             return Set.of();
         }
-        
+
         List<UUID> ids = commentIds.stream().map(CommentId::value).collect(Collectors.toList());
         List<UUID> clappedIds = jpaRepository.findClappedCommentIds(userId, ids);
-        
+
         return clappedIds.stream().map(CommentId::of).collect(Collectors.toSet());
     }
 }

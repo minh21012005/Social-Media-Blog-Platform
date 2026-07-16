@@ -106,6 +106,12 @@ export async function getArticleById(id, token) {
   return enriched
 }
 
+export async function getMyArticleById(articleId, token) {
+  const article = await apiRequest(`/api/v1/articles/me/${articleId}`, { token })
+  const [enriched] = await enrichArticles([article])
+  return enriched
+}
+
 export async function listMyArticles({ status, page = 0, size = 20 } = {}, token) {
   const searchParams = new URLSearchParams({ page, size })
   if (status) {

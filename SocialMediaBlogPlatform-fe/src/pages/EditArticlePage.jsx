@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArticleEditor } from '../components/ArticleEditor'
 import { SiteFooter } from '../components/SiteFooter'
-import { listMyArticles, publishArticle, updateArticle } from '../services/articles'
+import { getMyArticleById, publishArticle, updateArticle } from '../services/articles'
 
 export function EditArticlePage({ articleId, requestWithAuth, navigate, notify }) {
   const [state, setState] = useState({ loading: true, article: null, error: '' })
@@ -11,8 +11,7 @@ export function EditArticlePage({ articleId, requestWithAuth, navigate, notify }
     let active = true
     async function load() {
       try {
-        const page = await requestWithAuth((token) => listMyArticles({ size: 50 }, token))
-        const article = page.items.find((item) => item.id === articleId)
+        const article = await requestWithAuth((token) => getMyArticleById(articleId, token))
         if (active) {
           setState({
             loading: false,

@@ -24,6 +24,7 @@ import com.socialmediablog.platform.services.article.application.port.in.CreateA
 import com.socialmediablog.platform.services.article.application.port.in.CurateArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.DeleteArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleBySlugUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.GetMyArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListEditorPicksUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListFeaturedArticlesUseCase;
@@ -67,6 +68,7 @@ public class ArticleController {
     private final DeleteArticleUseCase deleteArticleUseCase;
     private final GetArticleBySlugUseCase getArticleBySlugUseCase;
     private final GetArticleByIdUseCase getArticleByIdUseCase;
+    private final GetMyArticleUseCase getMyArticleUseCase;
     private final ListPublishedArticlesUseCase listPublishedArticlesUseCase;
     private final ListMyArticlesUseCase listMyArticlesUseCase;
     private final ListFeaturedArticlesUseCase listFeaturedArticlesUseCase;
@@ -85,6 +87,7 @@ public class ArticleController {
             DeleteArticleUseCase deleteArticleUseCase,
             GetArticleBySlugUseCase getArticleBySlugUseCase,
             GetArticleByIdUseCase getArticleByIdUseCase,
+            GetMyArticleUseCase getMyArticleUseCase,
             ListPublishedArticlesUseCase listPublishedArticlesUseCase,
             ListMyArticlesUseCase listMyArticlesUseCase,
             ListFeaturedArticlesUseCase listFeaturedArticlesUseCase,
@@ -102,6 +105,7 @@ public class ArticleController {
         this.deleteArticleUseCase = deleteArticleUseCase;
         this.getArticleBySlugUseCase = getArticleBySlugUseCase;
         this.getArticleByIdUseCase = getArticleByIdUseCase;
+        this.getMyArticleUseCase = getMyArticleUseCase;
         this.listPublishedArticlesUseCase = listPublishedArticlesUseCase;
         this.listMyArticlesUseCase = listMyArticlesUseCase;
         this.listFeaturedArticlesUseCase = listFeaturedArticlesUseCase;
@@ -164,6 +168,17 @@ public class ArticleController {
     @GetMapping("/id/{articleId}")
     public ApiResponse<ArticleResponse> detailById(@PathVariable UUID articleId) {
         return ApiResponse.success(ArticleResponse.from(getArticleByIdUseCase.executeById(articleId)));
+    }
+
+    @GetMapping("/me/{articleId}")
+    public ApiResponse<ArticleResponse> myArticle(
+            @AuthenticationPrincipal CurrentUser currentUser,
+            @PathVariable UUID articleId
+    ) {
+        return ApiResponse.success(ArticleResponse.from(getMyArticleUseCase.executeMyArticle(
+                articleId,
+                currentUserId(currentUser)
+        )));
     }
 
     @GetMapping("/me")

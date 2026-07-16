@@ -99,6 +99,24 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
     })
   }
 
+  const openArticle = (article) => {
+    if (article.status === 'PUBLISHED' && article.slug) {
+      navigate(`/articles/${article.slug}`)
+      return
+    }
+    navigate(`/articles/${article.id}/edit`)
+  }
+
+  const handleArticleKeyDown = (event, article) => {
+    if (event.target !== event.currentTarget) {
+      return
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openArticle(article)
+    }
+  }
+
   return (
     <main className="my-articles-page">
       <section className="dashboard-page-hero page-container">
@@ -148,7 +166,15 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
 
         <div className="managed-article-list">
           {state.articles.map((article) => (
-            <article className="managed-article-card" key={article.id}>
+            <article
+              aria-label={article.status === 'PUBLISHED' ? `Read ${article.title}` : `Open ${article.title} in editor`}
+              className="managed-article-card"
+              key={article.id}
+              onClick={() => openArticle(article)}
+              onKeyDown={(event) => handleArticleKeyDown(event, article)}
+              role="link"
+              tabIndex={0}
+            >
               <img alt="" className="managed-article-cover" src={article.image} />
               <div className="managed-article-copy">
                 <span className={`article-status-badge status-${article.status?.toLowerCase()}`}>{article.status}</span>
@@ -160,7 +186,7 @@ export function MyArticlesPage({ requestWithAuth, navigate, notify }) {
                   {article.date && <span>{article.date}</span>}
                 </div>
               </div>
-              <div className="managed-article-actions">
+              <div className="managed-article-actions" onClick={(event) => event.stopPropagation()}>
                 <button className="article-action-primary" type="button" onClick={() => navigate(`/articles/${article.id}/edit`)}>Edit</button>
                 {article.status !== 'PUBLISHED' && (
                   <button type="button" onClick={() => runAction((token) => publishArticle(article.id, token))}>Publish</button>

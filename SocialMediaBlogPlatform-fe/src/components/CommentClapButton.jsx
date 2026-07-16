@@ -24,7 +24,7 @@ export function CommentClapButton({ comment, onClap, currentUserId }) {
     }
   }, [isClapped, storageKey]);
 
-  const handleClap = (e) => {
+  const handleClap = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -34,8 +34,21 @@ export function CommentClapButton({ comment, onClap, currentUserId }) {
       return newVal;
     });
     setShowBubble(true);
-    
-    onClap(comment, false);
+
+    try {
+      await onClap(comment, false);
+    } catch (error) {
+      setSessionClaps(prev => {
+        const newVal = Math.max(0, prev - 1);
+        if (newVal === 0) {
+          localStorage.removeItem(storageKey);
+        } else {
+          localStorage.setItem(storageKey, newVal.toString());
+        }
+        return newVal;
+      });
+      console.error('Comment clap request failed.', error);
+    }
   };
 
   useEffect(() => {
