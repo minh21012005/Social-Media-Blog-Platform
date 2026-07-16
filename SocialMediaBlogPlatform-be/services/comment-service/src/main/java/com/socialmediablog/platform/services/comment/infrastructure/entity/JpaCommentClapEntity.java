@@ -21,16 +21,31 @@ public class JpaCommentClapEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "clap_count", nullable = false)
+    private int clapCount;
+
+    @Column(name = "last_clapped_at", nullable = false)
+    private Instant lastClappedAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     protected JpaCommentClapEntity() {
     }
 
-    public JpaCommentClapEntity(UUID id, UUID commentId, UUID userId, Instant createdAt) {
+    public JpaCommentClapEntity(
+            UUID id,
+            UUID commentId,
+            UUID userId,
+            int clapCount,
+            Instant lastClappedAt,
+            Instant createdAt
+    ) {
         this.id = id;
         this.commentId = commentId;
         this.userId = userId;
+        this.clapCount = clapCount;
+        this.lastClappedAt = lastClappedAt;
         this.createdAt = createdAt;
     }
 
@@ -44,6 +59,14 @@ public class JpaCommentClapEntity {
 
     public UUID getUserId() {
         return userId;
+    }
+
+    public int getClapCount() {
+        return clapCount;
+    }
+
+    public Instant getLastClappedAt() {
+        return lastClappedAt;
     }
 
     public Instant getCreatedAt() {

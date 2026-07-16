@@ -28,6 +28,11 @@ public class JpaCommentRepositoryAdapter implements CommentRepository {
     }
 
     @Override
+    public Optional<Comment> findByIdForUpdate(CommentId id) {
+        return repository.findByIdForUpdate(id.value()).map(JpaCommentEntity::toDomain);
+    }
+
+    @Override
     public long countByParentCommentId(CommentId parentCommentId) {
         return repository.countByParentCommentIdAndStatusIn(
                 parentCommentId.value(),

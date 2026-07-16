@@ -161,13 +161,13 @@ public class CommentController {
         }
 
         @PostMapping("/{commentId}/clap")
-        public ApiResponse<Void> clap(
+        public ApiResponse<Long> clap(
                         @AuthenticationPrincipal CurrentUser currentUser,
                         @PathVariable UUID commentId) {
-                clapCommentUseCase.execute(new ClapCommentCommand(
+                long clapCount = clapCommentUseCase.execute(new ClapCommentCommand(
                                 commentId,
                                 currentUserId(currentUser)));
-                return ApiResponse.success("Comment clapped", null);
+                return ApiResponse.success("Comment clapped", clapCount);
         }
 
         @DeleteMapping("/{commentId}/clap")

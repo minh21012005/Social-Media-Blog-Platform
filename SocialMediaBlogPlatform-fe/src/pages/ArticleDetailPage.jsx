@@ -328,7 +328,19 @@ function CommentList({ articleAuthorId, comments, currentUserId, focusCommentId,
           ...current,
           [comment.parentCommentId]: {
             ...parentState,
-            items: parentState.items.map((reply) => reply.id === comment.id ? updated : reply),
+            items: parentState.items.map((reply) => {
+              if (reply.id !== comment.id) return reply
+              if (isUndo) return updated
+              const currentCount = Number(reply.stats?.clapCount || 0)
+              const updatedCount = Number(updated.stats?.clapCount || 0)
+              return {
+                ...updated,
+                stats: {
+                  ...(updated.stats || {}),
+                  clapCount: Math.max(currentCount, updatedCount),
+                },
+              }
+            }),
           },
         }
       })
@@ -1132,23 +1144,34 @@ export function ArticleDetailPage({ slug, navigate, notify, session, requestWith
       return null
     }
     const { clapComment } = await import('../services/comments')
-    await requestWithAuth((token) => clapComment(comment.id, token))
+    const response = await requestWithAuth((token) => clapComment(comment.id, token))
 
     const count = Number(comment.stats?.clapCount || 0)
+    const serverCount = Number(response)
+    const nextCount = Number.isFinite(serverCount) ? serverCount : count + 1
     const updated = {
       ...comment,
       clappedByCurrentUser: true,
-      stats: { ...comment.stats, clapCount: count + 1 }
+      stats: { ...comment.stats, clapCount: nextCount }
     }
 
-    setComments((current) => current.map((item) => item.id === comment.id ? updated : item))
+    setComments((current) => current.map((item) => {
+      if (item.id !== comment.id) return item
+      return {
+        ...updated,
+        stats: {
+          ...(updated.stats || {}),
+          clapCount: Math.max(Number(item.stats?.clapCount || 0), nextCount),
+        },
+      }
+    }))
     return updated
   }
 
   const handleCommentUndoClap = async (comment) => {
     const { undoClapComment } = await import('../services/comments')
     const response = await requestWithAuth((token) => undoClapComment(comment.id, token))
-    const removedCount = Number(response || 1) // default to 1 if api doesn't return data
+    const removedCount = Number(response ?? 0)
 
     const count = Number(comment.stats?.clapCount || 0)
     const updated = {

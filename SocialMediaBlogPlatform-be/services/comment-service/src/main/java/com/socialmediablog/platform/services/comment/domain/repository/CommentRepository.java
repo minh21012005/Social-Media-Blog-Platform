@@ -10,6 +10,8 @@ public interface CommentRepository {
 
     Optional<Comment> findById(CommentId id);
 
+    Optional<Comment> findByIdForUpdate(CommentId id);
+
     long countByParentCommentId(CommentId parentCommentId);
 
     long countVisibleByArticleId(ArticleId articleId);

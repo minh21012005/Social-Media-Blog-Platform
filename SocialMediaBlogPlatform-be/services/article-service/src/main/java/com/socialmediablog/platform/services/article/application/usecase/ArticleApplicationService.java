@@ -19,6 +19,7 @@ import com.socialmediablog.platform.services.article.application.port.in.CurateA
 import com.socialmediablog.platform.services.article.application.port.in.DeleteArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleByIdUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetArticleBySlugUseCase;
+import com.socialmediablog.platform.services.article.application.port.in.GetMyArticleUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.GetServiceStatusUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListEditorPicksUseCase;
 import com.socialmediablog.platform.services.article.application.port.in.ListFeaturedArticlesUseCase;
@@ -81,6 +82,7 @@ public class ArticleApplicationService implements
         DeleteArticleUseCase,
         GetArticleByIdUseCase,
         GetArticleBySlugUseCase,
+        GetMyArticleUseCase,
         ListPublishedArticlesUseCase,
         ListMyArticlesUseCase,
         ListFeaturedArticlesUseCase,
@@ -254,6 +256,14 @@ public class ArticleApplicationService implements
         Article article = articleRepository.findById(ArticleId.of(id))
                 .filter(Article::isPublished)
                 .orElseThrow(() -> new ArticleNotFoundException("Article was not found"));
+        return view(article);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ArticleView executeMyArticle(UUID articleId, UUID requesterId) {
+        Article article = findRequired(articleId);
+        ensureOwner(article, AuthorId.of(requesterId));
         return view(article);
     }
 
